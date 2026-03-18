@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
+from typing import Optional
 
 
 class AttendanceMarkRequest(BaseModel):
@@ -7,6 +8,7 @@ class AttendanceMarkRequest(BaseModel):
     student_code: str
     slot: str
     check_today: bool = True
+    attendance_date: Optional[str] = None
 
 
 class AttendanceUpdateRequest(BaseModel):

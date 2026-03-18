@@ -182,6 +182,7 @@ class Payment(Base):
     payment_date = Column(DateTime, default=func.now())
     month = Column(String, nullable=False) # e.g., "March 2026", "April 2026"
     status = Column(String, default="Paid")
+    payment_method = Column(String, nullable=True) # KBZPay, AYA Pay, Cash, MMQR, Banking
 
     # Relationships
     enrollment = relationship("Enrollment", back_populates="payments")

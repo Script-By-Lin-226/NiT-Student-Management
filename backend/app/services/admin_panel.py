@@ -737,6 +737,7 @@ class AdminPanelService:
             d["course_code"] = c.course_code
             d["course_name"] = c.course_name
             d["room"] = getattr(c, "room", None)
+            d["course_cost"] = getattr(c, "cost", None)
             data.append(d)
         return JSONResponse({"status_code": 200, "message": "Enrollments fetched successfully", "data": data})
 
@@ -822,6 +823,11 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Student not found"}, status_code=404)
 
         today = date.today()
+        if getattr(payload, "attendance_date", None):
+            try:
+                today = datetime.strptime(payload.attendance_date, "%Y-%m-%d").date()
+            except ValueError:
+                pass
 
         # ── One-per-day guard ──────────────────────────────────────────────
         duplicate_query = select(Attendance).where(
@@ -1195,6 +1201,7 @@ class AdminPanelService:
                 "course_code": c.course_code,
                 "course_name": c.course_name,
                 "payment_plan": e.payment_plan,
+                "payment_method": getattr(p, "payment_method", None)
             })
             
         return JSONResponse({"status_code": 200, "message": "Payments fetched successfully", "data": data})
@@ -1212,7 +1219,8 @@ class AdminPanelService:
             enrollment_id=payload.enrollment_id,
             amount=payload.amount,
             month=payload.month,
-            status="Paid"
+            status=payload.status or "Paid",
+            payment_method=payload.payment_method
         )
         session.add(pay)
         await session.commit()
