@@ -1,0 +1,433 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { RefreshCw, Search, Plus, CreditCard, History, X } from "lucide-react";
+import { AdminService, AdminEnrollment, AdminPayment } from "@/services/admin.service";
+import { useAuth } from "@/hooks/useAuth";
+
+function Modal({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: React.ReactNode }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h3 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h3>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-slate-50 text-slate-500"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-5 overflow-y-auto custom-scrollbar">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminPaymentsPage() {
+  const router = useRouter();
+  const { isAdmin, loading } = useAuth();
+
+  const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
+  
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [q, setQ] = useState("");
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<AdminEnrollment | null>(null);
+
+  // New Payment Form
+  const [pAmount, setPAmount] = useState<number | "">("");
+  const [pMonth, setPMonth] = useState("");
+  const [pYear, setPYear] = useState("");
+  const [pMethod, setPMethod] = useState("");
+
+  const calculateLeftAmount = (enr: AdminEnrollment) => {
+    const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
+    const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount, 0);
+    const cost = enr.course_cost || 0;
+    const downpayment = enr.downpayment || 0;
+    return Math.max(0, cost - (totalPaid + downpayment));
+  };
+
+  const filteredEnrollments = enrollments.filter((e) => {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return (
+      e.student_name?.toLowerCase().includes(s) ||
+      e.student_code?.toLowerCase().includes(s) ||
+      e.course_code?.toLowerCase().includes(s) ||
+      e.course_name?.toLowerCase().includes(s)
+    );
+  });
+
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const [enrData, payData] = await Promise.all([
+        AdminService.listEnrollments(),
+        AdminService.listPayments()
+      ]);
+      setEnrollments(enrData);
+      setPayments(payData);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load data");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  const openRecordPayment = (enr: AdminEnrollment) => {
+    setSelectedEnrollment(enr);
+    if (enr.payment_plan === 'installment') {
+      setPAmount(enr.installment_amount || "");
+    } else {
+      setPAmount(calculateLeftAmount(enr) || enr.course_cost || "");
+    }
+    
+    // auto select current month and year setup
+    const d = new Date();
+    if (enr.payment_plan === 'full') {
+      setPMonth('Full Payment');
+    } else {
+      setPMonth(d.toLocaleString('default', { month: 'long' }));
+    }
+    setPYear(d.getFullYear().toString());
+    setPMethod("");
+    
+    setPaymentModalOpen(true);
+  };
+
+  const submitPayment = async () => {
+    if (!selectedEnrollment) return;
+    if (pAmount === "" || !pMonth) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      await AdminService.createPayment({
+        enrollment_id: selectedEnrollment.enrollment_id,
+        amount: Number(pAmount),
+        month: pYear ? `${pMonth} ${pYear}` : pMonth,
+        payment_method: pMethod || undefined
+      });
+      setPaymentModalOpen(false);
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to record payment");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openHistory = (enr: AdminEnrollment) => {
+    setSelectedEnrollment(enr);
+    setHistoryModalOpen(true);
+  };
+
+  if (loading) return null;
+  if (!isAdmin) return null;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Payments</h1>
+          <p className="text-slate-500 font-medium text-sm mt-1">Track student enrollments and installment payments.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={load}
+            disabled={busy}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by student, course..."
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium"
+            />
+          </div>
+          {error && (
+            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-4">Student</th>
+                <th className="px-6 py-4">Course</th>
+                <th className="px-6 py-4">Plan Info</th>
+                <th className="px-6 py-4">Payment Tracking</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredEnrollments.map((enr) => {
+                const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
+                return (
+                  <tr key={enr.enrollment_id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-slate-800">{enr.student_name}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{enr.student_code}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-slate-800">{enr.course_name}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{enr.course_code}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {enr.payment_plan ? (
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex self-start items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${enr.payment_plan === 'full' ? 'bg-brand-50 text-brand-700 border-brand-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
+                            {enr.payment_plan === 'full' ? 'Full Payment' : 'Installment'}
+                          </span>
+                          {enr.payment_plan === 'installment' && (
+                            <div className="text-xs text-slate-500 mt-1">
+                              <div>Deposit: <strong className="text-slate-700">{enr.downpayment || 0} MMK</strong></div>
+                              <div>Monthly: <strong className="text-slate-700">{enr.installment_amount || 0} MMK</strong></div>
+                              <div>Left: <strong className="text-rose-600">{calculateLeftAmount(enr)} MMK</strong></div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic">No plan selected</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-2 items-start">
+                        {enr.payment_plan && calculateLeftAmount(enr) <= 0 ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider">
+                            Fully Paid
+                          </span>
+                        ) : enr.payment_plan ? (
+                          <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider">
+                            Balance Due
+                          </span>
+                        ) : null}
+                        {enrPayments.length > 0 ? (
+                          <span className="text-xs font-semibold text-slate-500">
+                            {enrPayments.length} payment(s) recorded
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">No payments yet</span>
+                        )}
+                      </div>
+                    </td>
+                  <td className="px-6 py-4">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => alert("Receipt generation feature coming soon! You will be able to print/download the payment history.")}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 transition-colors text-xs"
+                          title="Generate Receipt (Coming Soon)"
+                        >
+                          Receipt
+                        </button>
+                        <button
+                          onClick={() => openHistory(enr)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
+                        >
+                          <History className="w-4 h-4" />
+                          History
+                        </button>
+                        {(enr.payment_plan === 'installment' || enr.payment_plan === 'full') && calculateLeftAmount(enr) > 0 && (
+                          <button
+                            onClick={() => openRecordPayment(enr)}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm whitespace-nowrap"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Approve
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredEnrollments.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                    {busy ? "Loading…" : "No enrollments found."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Modal title={selectedEnrollment?.payment_plan === 'full' ? "Record Full Payment" : "Record Installment Payment"} open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
+        {selectedEnrollment && (
+          <div className="space-y-4 pt-2">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Student</div>
+                  <div className="font-semibold text-slate-800">{selectedEnrollment.student_name}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Course</div>
+                  <div className="font-semibold text-slate-800">{selectedEnrollment.course_name}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase">
+                    {selectedEnrollment.payment_plan === 'full' ? 'Total Left' : 'Monthly Expected'}
+                  </div>
+                  <div className="font-semibold text-slate-800">
+                    {selectedEnrollment.payment_plan === 'full' ? calculateLeftAmount(selectedEnrollment) : (selectedEnrollment.installment_amount || 0)} MMK
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Amount (MMK)</label>
+              <input
+                type="number"
+                value={pAmount}
+                onChange={(e) => setPAmount(e.target.value ? Number(e.target.value) : "")}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Method</label>
+              <select
+                value={pMethod}
+                onChange={(e) => setPMethod(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+              >
+                <option value="">Select Option</option>
+                <option value="KBZPay">KBZPay</option>
+                <option value="AYA Pay">AYA Pay</option>
+                <option value="Cash">Cash</option>
+                <option value="MMQR">MMQR</option>
+                <option value="Banking">Banking</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment For</label>
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={pMonth}
+                  onChange={(e) => setPMonth(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+                >
+                  <option value="">Select Option</option>
+                  <option value="Down Payment">Down Payment</option>
+                  <option value="Full Payment">Full Payment</option>
+                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={pYear}
+                  onChange={(e) => setPYear(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+                >
+                  <option value="">Select Year</option>
+                  {[...Array(5)].map((_, i) => {
+                    const y = (new Date().getFullYear() - 1 + i).toString();
+                    return <option key={y} value={y}>{y}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitPayment}
+                disabled={busy || pAmount === "" || !pMonth}
+                className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60"
+              >
+                Mark as Paid
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal title="Payment History" open={historyModalOpen} onClose={() => setHistoryModalOpen(false)}>
+        {selectedEnrollment && (
+          <div className="space-y-4 pt-2">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
+              <div className="font-bold text-slate-800">{selectedEnrollment.student_name}</div>
+              <div className="text-sm text-slate-500">{selectedEnrollment.course_name}</div>
+            </div>
+
+            {payments.filter(p => p.enrollment_id === selectedEnrollment.enrollment_id).length === 0 ? (
+              <div className="py-8 text-center text-slate-500 font-medium">
+                No payments recorded yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {payments
+                  .filter(p => p.enrollment_id === selectedEnrollment.enrollment_id)
+                  .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+                  .map(p => (
+                    <div key={p.payment_id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-xl">
+                      <div>
+                        <div className="font-bold text-slate-800">{p.month}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{new Date(p.payment_date).toLocaleString()}</div>
+                      </div>
+                      <div className="flex flex-col sm:items-end mt-2 sm:mt-0">
+                        <div className="font-extrabold text-emerald-600">{p.amount} MMK</div>
+                        <div className="flex gap-1 mt-1 justify-end">
+                           {p.payment_method && <span className="inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border bg-blue-50 text-blue-700 border-blue-100">{p.payment_method}</span>}
+                           <span className="inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border bg-emerald-50 text-emerald-700 border-emerald-100">{p.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+            
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setHistoryModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
