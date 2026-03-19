@@ -14,6 +14,7 @@ class AdminCourseCreate(BaseModel):
     academic_year_id: int
     instructor_user_code: Optional[str] = None  # teacher user_code (optional)
     start_date: Optional[str] = None
+    end_date: Optional[str] = None
     room: Optional[str] = None
     cost: Optional[float] = None
     discount_plan: Optional[str] = None
@@ -24,6 +25,7 @@ class AdminCourseUpdate(BaseModel):
     academic_year_id: Optional[int] = None
     instructor_user_code: Optional[str] = None  # set/replace instructor
     start_date: Optional[str] = None
+    end_date: Optional[str] = None
     room: Optional[str] = None
     cost: Optional[float] = None
     discount_plan: Optional[str] = None

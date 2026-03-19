@@ -37,14 +37,20 @@ def _serialize_user(u: User) -> dict:
     }
 
 
-async def _next_student_code(session: AsyncSession) -> str:
+async def _next_student_code(session: AsyncSession, department: str = "College") -> str:
     """
-    Generate a stable student_code like STU0001, based on max user_id.
-    This is simple and good enough for a single-node deployment.
+    Generate a student_code like CO001226 or IN001226 based on department.
     """
     result = await session.execute(select(User.user_id).order_by(User.user_id.desc()).limit(1))
     last_id = result.scalar_one_or_none() or 0
-    return f"STU{last_id + 1:04d}"
+    seq = last_id + 1
+    
+    prefix = "IN" if department == "Institute" else "CO"
+    now = datetime.now()
+    month_str = str(now.month)
+    year_str = str(now.year)[-2:]
+    
+    return f"{prefix}{seq:03d}{month_str}{year_str}"
 
 async def _next_parent_code(session: AsyncSession) -> str:
     """
@@ -84,7 +90,8 @@ def _serialize_course(c: Course) -> dict:
         "course_name": c.course_name,
         "academic_year_id": c.academicyear_id,
         "instructor_id": c.instructor_id,
-        "start_date": c.start_date,
+        "start_date": str(c.start_date) if getattr(c, "start_date", None) else None,
+        "end_date": str(c.end_date) if getattr(c, "end_date", None) else None,
         "room": c.room,
         "cost": getattr(c, "cost", None),
         "discount_plan": getattr(c, "discount_plan", None),
@@ -142,7 +149,7 @@ class AdminPanelService:
         if existing.scalars().first():
             return JSONResponse({"status_code": 409, "message": "Email already exists"}, status_code=409)
 
-        user_code = await _next_student_code(session)
+        user_code = await _next_student_code(session, getattr(payload, "department", "College"))
         hashed = await hash_password(payload.password)
 
         dob_dt = datetime.combine(payload.date_of_birth, time.min)
@@ -218,8 +225,13 @@ class AdminPanelService:
         if not student:
             return JSONResponse({"status_code": 404, "message": "Student not found"}, status_code=404)
 
-        enroll_r = await session.execute(select(Enrollment).where(Enrollment.student_id == student.user_id))
-        enrollments = enroll_r.scalars().all()
+        enroll_r = await session.execute(
+            select(Enrollment, Course)
+            .join(Course, Enrollment.course_id == Course.course_id)
+            .where(Enrollment.student_id == student.user_id)
+        )
+        enrollment_rows = enroll_r.all()
+        enrollments = [e for e, c in enrollment_rows]
 
         att_r = await session.execute(select(Attendance).where(Attendance.user_id == student.user_id))
         attendance = att_r.scalars().all()
@@ -231,13 +243,48 @@ class AdminPanelService:
         )
         parent_rows = parents_r.all()
 
+        enroll_ids = [e.enrollment_id for e in enrollments]
+        payments = []
+        if enroll_ids:
+            pay_r = await session.execute(
+                select(Payment, Enrollment, Course)
+                .join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)
+                .join(Course, Course.course_id == Enrollment.course_id)
+                .where(Enrollment.enrollment_id.in_(enroll_ids))
+            )
+            for p, e, c in pay_r.all():
+                payments.append({
+                    "payment_id": p.payment_id,
+                    "enrollment_id": p.enrollment_id,
+                    "enrollment_code": e.enrollment_code,
+                    "amount": p.amount,
+                    "payment_date": str(p.payment_date),
+                    "month": p.month,
+                    "status": p.status,
+                    "payment_method": getattr(p, "payment_method", None),
+                    "course_name": c.course_name,
+                    "course_code": c.course_code,
+                    "course_cost": getattr(c, "cost", 0) or 0,
+                    "payment_plan": getattr(e, "payment_plan", None),
+                    "downpayment": getattr(e, "downpayment", 0) or 0,
+                    "installment_amount": getattr(e, "installment_amount", 0) or 0
+                })
+
         return JSONResponse(
             {
                 "status_code": 200,
                 "message": "Student relations fetched successfully",
                 "data": {
                     "student": _serialize_user(student),
-                    "enrollments": [_serialize_enrollment(e) for e in enrollments],
+                    "enrollments": [
+                        {
+                            **_serialize_enrollment(e),
+                            "course_code": c.course_code,
+                            "course_name": c.course_name,
+                            "course_cost": getattr(c, "cost", 0)
+                        }
+                        for e, c in enrollment_rows
+                    ],
                     "attendance": [
                         {
                             "attendance_id": a.attendance_id,
@@ -255,6 +302,7 @@ class AdminPanelService:
                         }
                         for ps, p in parent_rows
                     ],
+                    "payments": payments,
                 },
             }
         )
@@ -480,7 +528,8 @@ class AdminPanelService:
                     course_name=name,
                     academicyear_id=year.academic_year_id,
                     instructor_id=teacher.user_id,
-                    start_date=date.today().isoformat(),
+                    start_date=date.today(),
+                    end_date=date.today().replace(month=12, day=31),
                     room="Room 1",
                 )
                 session.add(c)
@@ -661,7 +710,8 @@ class AdminPanelService:
             course_name=payload.course_name,
             academicyear_id=payload.academic_year_id,
             instructor_id=instructor_id,
-            start_date=payload.start_date,
+            start_date=datetime.strptime(payload.start_date, "%Y-%m-%d").date() if payload.start_date else None,
+            end_date=datetime.strptime(payload.end_date, "%Y-%m-%d").date() if getattr(payload, "end_date", None) else None,
             room=payload.room,
             cost=payload.cost,
             discount_plan=payload.discount_plan,
@@ -696,7 +746,9 @@ class AdminPanelService:
                     return JSONResponse({"status_code": 404, "message": "Instructor not found"}, status_code=404)
                 course.instructor_id = inst.user_id
         if payload.start_date is not None:
-            course.start_date = payload.start_date
+            course.start_date = datetime.strptime(payload.start_date, "%Y-%m-%d").date() if payload.start_date else None
+        if getattr(payload, "end_date", None) is not None:
+            course.end_date = datetime.strptime(payload.end_date, "%Y-%m-%d").date() if payload.end_date else None
         if payload.room is not None:
             course.room = payload.room
         if getattr(payload, "cost", None) is not None:
@@ -828,6 +880,20 @@ class AdminPanelService:
                 today = datetime.strptime(payload.attendance_date, "%Y-%m-%d").date()
             except ValueError:
                 pass
+
+        # Ensure attendance is within course bounds for the student
+        enroll_q = select(Enrollment).join(Course, Enrollment.course_id == Course.course_id).where(
+            and_(
+                Enrollment.student_id == student.user_id,
+                Enrollment.status == True,
+                Course.start_date <= today,
+                Course.end_date >= today
+            )
+        )
+        er = await session.execute(enroll_q)
+        active_enroll = er.scalars().first()
+        if not active_enroll:
+            return JSONResponse({"status_code": 400, "message": "Attendance is only allowed within an active course duration."}, status_code=400)
 
         # ── One-per-day guard ──────────────────────────────────────────────
         duplicate_query = select(Attendance).where(
@@ -1201,7 +1267,10 @@ class AdminPanelService:
                 "course_code": c.course_code,
                 "course_name": c.course_name,
                 "payment_plan": e.payment_plan,
-                "payment_method": getattr(p, "payment_method", None)
+                "payment_method": getattr(p, "payment_method", None),
+                "course_cost": getattr(c, "cost", 0) or 0,
+                "downpayment": getattr(e, "downpayment", 0) or 0,
+                "installment_amount": getattr(e, "installment_amount", 0) or 0
             })
             
         return JSONResponse({"status_code": 200, "message": "Payments fetched successfully", "data": data})

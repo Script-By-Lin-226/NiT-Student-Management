@@ -7,6 +7,8 @@ from app.controller.v1.staff_route import router as staff_router
 from app.middleware.authentication_middleware import AuthMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from app.core.database_initialization import init_db
+from app.core.config import settings
+import os
 
 @asynccontextmanager
 async def life_cycle(app: FastAPI):
@@ -24,15 +26,26 @@ app.include_router(staff_router)
 
 app.add_middleware(AuthMiddleware)
 
+# Build allowed origins: localhost for dev + FRONTEND_URL for Railway
+_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_frontend_url = settings.FRONTEND_URL
+if _frontend_url and _frontend_url not in _origins:
+    _origins.append(_frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    # Allow local dev frontends on any port (3000/3001/etc.)
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["x-new-token"],
 )
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+

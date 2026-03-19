@@ -1,0 +1,6 @@
+.venv
+__pycache__
+*.pyc
+.env
+alembic_error.txt
+alembic_upgrade_error.txt

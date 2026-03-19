@@ -112,7 +112,8 @@ class Course(Base):
         ForeignKey("users.user_id")
     )
 
-    start_date = Column(String, nullable=True) # e.g. "18-03-2026 2:00 Pm"
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
     room = Column(String, nullable=True) # e.g. "room 6"
     cost = Column(Float, nullable=True)
     discount_plan = Column(String, nullable=True)
