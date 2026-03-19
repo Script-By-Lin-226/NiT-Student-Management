@@ -54,8 +54,9 @@ export default function AdminPaymentsPage() {
     const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
     const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount, 0);
     const cost = enr.course_cost || 0;
-    const downpayment = enr.downpayment || 0;
-    return Math.max(0, cost - (totalPaid + downpayment));
+    // We do NOT subtract downpayment (deposit) automatically here anymore
+    // It requires an approved "payment" record to reduce the Left balance
+    return Math.max(0, cost - totalPaid);
   };
 
   const filteredEnrollments = enrollments.filter((e) => {
@@ -343,10 +344,16 @@ export default function AdminPaymentsPage() {
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
                 >
                   <option value="">Select Option</option>
-                  <option value="Down Payment">Down Payment</option>
-                  <option value="Full Payment">Full Payment</option>
-                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
-                    <option key={m} value={m}>{m}</option>
+                  <option value="Deposit">Deposit</option>
+                  {selectedEnrollment?.payment_plan === 'installment' && (
+                    <option value="Down Payment">Down Payment</option>
+                  )}
+                  {selectedEnrollment?.payment_plan === 'full' && (
+                    <option value="Full Payment">Full Payment</option>
+                  )}
+                  {selectedEnrollment?.payment_plan === 'installment' && 
+                    ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                      <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
                 <select

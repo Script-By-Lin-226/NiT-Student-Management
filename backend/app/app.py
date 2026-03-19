@@ -30,6 +30,7 @@ app.add_middleware(AuthMiddleware)
 _origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://nit-student-management.vercel.app"
 ]
 _frontend_url = settings.FRONTEND_URL
 if _frontend_url and _frontend_url not in _origins:

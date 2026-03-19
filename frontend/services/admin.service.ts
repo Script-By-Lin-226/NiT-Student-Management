@@ -15,6 +15,7 @@ export interface AdminStudent {
   address?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  profile_picture?: string | null;
 }
 
 export interface AdminStudentCreate {

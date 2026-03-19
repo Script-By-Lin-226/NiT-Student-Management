@@ -7,6 +7,8 @@ export interface AuthUser {
   token: string;
   role: string;
   user_code: string;
+  username?: string;
+  profile_picture?: string;
 }
 
 export function useAuth() {
@@ -19,9 +21,11 @@ export function useAuth() {
     const token = localStorage.getItem("token");
     const role = (localStorage.getItem("role") || "").toLowerCase();
     const user_code = localStorage.getItem("user_code");
+    const username = localStorage.getItem("username") || undefined;
+    const profile_picture = localStorage.getItem("profile_picture") || undefined;
 
     if (token && role && user_code) {
-      setUser({ token, role, user_code });
+      setUser({ token, role, user_code, username, profile_picture });
     } else {
       setUser(null);
       if (!pathname?.startsWith("/login")) {
@@ -35,6 +39,8 @@ export function useAuth() {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user_code");
+    localStorage.removeItem("username");
+    localStorage.removeItem("profile_picture");
     setUser(null);
     router.replace("/login");
   };

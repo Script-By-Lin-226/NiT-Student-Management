@@ -537,7 +537,8 @@ export default function AdminStudentsPage() {
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4">Code</th>
+                <th className="px-6 py-4 whitespace-nowrap">Code</th>
+                <th className="px-6 py-4">Pic</th>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Email</th>
                 <th className="px-6 py-4">DOB</th>
@@ -549,6 +550,20 @@ export default function AdminStudentsPage() {
               {filtered.map((s) => (
                 <tr key={s.user_code} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 font-bold text-slate-800">{s.user_code}</td>
+                  <td className="px-6 py-4">
+                    {s.profile_picture ? (
+                      <div className="relative group w-8 h-8">
+                        <img src={s.profile_picture} alt="Profile" className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 shadow-sm" />
+                        <a href={s.profile_picture} download={`pic_${s.user_code}`} className="absolute inset-0 bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Download Image" onClick={e => e.stopPropagation()}>
+                          <Download className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                        {s.username?.[0] || "?"}
+                      </div>
+                    )}
+                  </td>
                   <td 
                     className="px-6 py-4 font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer" 
                     onClick={() => openView(s)}
@@ -881,19 +896,35 @@ export default function AdminStudentsPage() {
       <Modal title="Student Details" open={viewOpen} onClose={() => setViewOpen(false)}>
         {selected && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="col-span-2">
-                <div className="text-xs font-semibold text-slate-500 uppercase">Student Code</div>
-                <div className="font-semibold text-slate-800 mt-1">{selected.user_code}</div>
+            <div className="flex flex-col sm:flex-row gap-6 items-start bg-slate-50 p-6 rounded-xl border border-slate-100">
+              <div className="flex flex-col items-center gap-3 shrink-0 w-full sm:w-auto">
+                {selected.profile_picture ? (
+                  <>
+                    <img src={selected.profile_picture} alt="Profile" className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-white shadow-sm" />
+                    <a href={selected.profile_picture} download={`pic_${selected.user_code}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 shadow-sm">
+                      <Download className="w-3.5 h-3.5" />
+                      Download Pic
+                    </a>
+                  </>
+                ) : (
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-200 border-4 border-white shadow-sm flex items-center justify-center text-4xl font-bold text-slate-400 uppercase">
+                    {selected.username?.[0] || "?"}
+                  </div>
+                )}
               </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-500 uppercase">Full Name</div>
-                <div className="font-semibold text-slate-800 mt-1">{selected.username}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-500 uppercase">Email</div>
-                <div className="font-semibold text-slate-800 mt-1">{selected.email}</div>
-              </div>
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <div className="col-span-2 sm:col-span-1">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Student Code</div>
+                  <div className="font-semibold text-slate-800 mt-1">{selected.user_code}</div>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Full Name</div>
+                  <div className="font-semibold text-slate-800 mt-1">{selected.username}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Email</div>
+                  <div className="font-semibold text-slate-800 mt-1">{selected.email}</div>
+                </div>
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase">Date of Birth</div>
                 <div className="font-semibold text-slate-800 mt-1">{selected.data_of_birth ? selected.data_of_birth.slice(0, 10) : "-"}</div>
@@ -906,6 +937,7 @@ export default function AdminStudentsPage() {
                   </span>
                 </div>
               </div>
+            </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">

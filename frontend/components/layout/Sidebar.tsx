@@ -102,9 +102,13 @@ export default function Sidebar() {
         </button>
         <div className="mt-4 flex items-center px-3 py-2">
           <div className="flex-shrink-0">
-            <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold uppercase">
-              {user?.user_code?.[0]}
-            </div>
+            {user?.profile_picture ? (
+              <img src={user.profile_picture} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold uppercase">
+                {user?.username?.[0] || user?.user_code?.[0] || "U"}
+              </div>
+            )}
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-slate-700">{user?.user_code}</p>

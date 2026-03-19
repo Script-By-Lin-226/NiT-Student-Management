@@ -1,6 +1,8 @@
 from app.security.jwt_tok import create_access_token, create_refresh_token
 from app.models.model import User
-from app.schemas.user import UserBase , LoginUser
+from app.schemas.user import UserBase, LoginUser, StudentRegister
+from app.services.admin_panel import _next_student_code
+# from datetime import datetime, time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi.responses import JSONResponse  
@@ -10,8 +12,9 @@ from app.security.rate_limiter import limiter
 
 class AuthenticationService:
 
-    async def register_user(user: UserBase, session:AsyncSession):
+    async def register_user(user: StudentRegister, session:AsyncSession):
         #Query to check user existent
+        from datetime import datetime, time
         
         query = select(User).where(User.email == user.email)
         result = await session.execute(query)
@@ -20,26 +23,32 @@ class AuthenticationService:
         if existent_user:
             raise HTTPException(status_code=400, detail="User already exists")
         
-        hashed = await hash_password(user.password)
+        # Use a default password since students won't provide one on registration page
+        hashed = await hash_password(user.phone) # Using phone number as default password
+        user_code = await _next_student_code(session, getattr(user, "department", "College"))
+        dob_dt = datetime.combine(user.date_of_birth, time.min)
         
         new_user = User(
-            user_id = user.user_id,
-            user_code=user.user_code,
+            user_code=user_code,
             username=user.username,
             email=user.email,
             password_hash=hashed,
-            data_of_birth=user.date_of_birth,
-            role=user.role,
+            data_of_birth=dob_dt,
+            role="student",
             nrc=user.nrc,
-            gender=user.gender,
+            parent_name=user.parent_name,
+            parent_phone=user.parent_phone,
+            phone=user.phone,
             address=user.address,
+            profile_picture=user.profile_picture,
+            is_active=True
         )
         
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
         
-        return new_user
+        return JSONResponse({"status_code": 201, "message": "Student registered successfully", "data": {"user_code": new_user.user_code, "username": new_user.username}})
 
     @limiter.limit("5/minute")
     async def login(request: Request, user: LoginUser, session:AsyncSession):
@@ -67,7 +76,9 @@ class AuthenticationService:
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user_code": existent_user.user_code,
-            "role": existent_user.role
+            "role": existent_user.role,
+            "username": existent_user.username,
+            "profile_picture": existent_user.profile_picture
         })
         
         response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="lax")

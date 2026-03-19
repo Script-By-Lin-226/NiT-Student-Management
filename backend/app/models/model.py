@@ -41,6 +41,7 @@ class User(Base):
     phone = Column(String, nullable=True)
     parent_name = Column(String, nullable=True)
     parent_phone = Column(String, nullable=True)
+    profile_picture = Column(Text, nullable=True)
 
     is_active = Column(Boolean, default=True)
     data_of_birth = Column(DateTime, nullable=False)

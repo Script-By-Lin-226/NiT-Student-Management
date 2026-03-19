@@ -68,6 +68,10 @@ async def init_db():
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS nrc VARCHAR"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT"))
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN profile_picture TEXT"))
+        except:
+            pass # ignore if column already exists (sqlite fallback)
 
     # Seed admin account if env vars are configured
     await _seed_admin_if_needed()

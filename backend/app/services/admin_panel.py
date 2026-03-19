@@ -31,6 +31,7 @@ def _serialize_user(u: User) -> dict:
         "parent_name": getattr(u, "parent_name", None),
         "parent_phone": getattr(u, "parent_phone", None),
         "address": getattr(u, "address", None),
+        "profile_picture": getattr(u, "profile_picture", None),
         "data_of_birth": u.data_of_birth.isoformat() if getattr(u, "data_of_birth", None) else None,
         "created_at": u.created_at.isoformat() if getattr(u, "created_at", None) else None,
         "updated_at": u.updated_at.isoformat() if getattr(u, "updated_at", None) else None,

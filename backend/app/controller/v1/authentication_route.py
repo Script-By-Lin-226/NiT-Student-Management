@@ -2,12 +2,12 @@ from app.services.authentication_service import AuthenticationService
 from fastapi import APIRouter , Depends , HTTPException , Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database_initialization import get_db
-from app.schemas.user import UserBase , LoginUser
+from app.schemas.user import UserBase , LoginUser, StudentRegister
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register")
-async def register_route(user: UserBase, session: AsyncSession = Depends(get_db)):
+async def register_route(user: StudentRegister, session: AsyncSession = Depends(get_db)):
     return await AuthenticationService.register_user(user, session)
 
 @router.post("/login")

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/services/api";
 import { Lock, Mail, Loader2, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,11 +20,13 @@ export default function LoginPage() {
 
     try {
       const res = await api.post("/auth/login", { email, password });
-      const { access_token, role, user_code } = res.data;
+      const { access_token, role, user_code, username, profile_picture } = res.data;
       
       localStorage.setItem("token", access_token);
       localStorage.setItem("role", String(role || "").toLowerCase());
       localStorage.setItem("user_code", user_code);
+      if (username) localStorage.setItem("username", username);
+      if (profile_picture) localStorage.setItem("profile_picture", profile_picture);
 
       // Redirect logic
       if (String(role || "").toLowerCase() === "admin") {
@@ -50,7 +53,7 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="mt-3 text-center text-sm font-medium text-slate-500">
-            Sign in to access the NiT Portal
+            NiT Student Management System
           </p>
         </div>
         
@@ -122,6 +125,15 @@ export default function LoginPage() {
                 </span>
               )}
             </button>
+          </div>
+
+          <div className="text-center mt-4">
+            <p className="text-sm text-slate-500">
+              Don't have an account?{" "}
+              <Link href="/register" className="font-semibold text-brand-600 hover:text-brand-500 transition-colors">
+                Register here
+              </Link>
+            </p>
           </div>
         </form>
       </div>

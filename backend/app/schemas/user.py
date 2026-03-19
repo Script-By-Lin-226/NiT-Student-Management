@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     nrc: Optional[str] = None
     gender: Optional[str] = None
     address: Optional[str] = None
+    profile_picture: Optional[str] = None
     date_of_birth: Optional[date] = None
     role: str
     is_active: Optional[bool] = True
@@ -83,3 +84,19 @@ class AdminParentCreate(BaseModel):
 class AdminParentLinkChild(BaseModel):
     student_code: str
     relationship_label: Optional[str] = "parent"
+
+class StudentRegister(BaseModel):
+    username: str
+    email: str
+    date_of_birth: date
+    
+    # Contact info
+    phone: str
+    nrc: Optional[str] = None
+    parent_name: Optional[str] = None
+    parent_phone: Optional[str] = None
+    address: Optional[str] = None
+    profile_picture: Optional[str] = None
+    
+    # Division
+    department: Optional[str] = "College"
