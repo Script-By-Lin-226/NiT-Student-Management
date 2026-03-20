@@ -17,6 +17,7 @@ export default function RegisterPage() {
     parent_phone: "",
     address: "",
     profile_picture: "",
+    department: "College",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ export default function RegisterPage() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -120,6 +121,59 @@ export default function RegisterPage() {
                   file:bg-brand-50 file:text-brand-700
                   hover:file:bg-brand-100 transition-colors"
               />
+            </div>
+          </div>
+
+          {/* Department Selection */}
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col gap-4 transition-shadow hover:shadow-md focus-within:shadow-md focus-within:border-l-4 focus-within:border-l-brand-600 relative">
+            <label className="text-base text-slate-800">
+              Department <span className="text-red-600">*</span>
+            </label>
+            <div className="flex flex-col gap-3 mt-1">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  formData.department === "College"
+                    ? "border-brand-600"
+                    : "border-slate-300 group-hover:border-slate-400"
+                }`}>
+                  {formData.department === "College" && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-600" />
+                  )}
+                </span>
+                <input
+                  type="radio"
+                  name="department"
+                  value="College"
+                  checked={formData.department === "College"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-sm text-slate-700">
+                  <span className="font-semibold text-brand-700">CO</span> — College
+                </span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  formData.department === "Institute"
+                    ? "border-brand-600"
+                    : "border-slate-300 group-hover:border-slate-400"
+                }`}>
+                  {formData.department === "Institute" && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-600" />
+                  )}
+                </span>
+                <input
+                  type="radio"
+                  name="department"
+                  value="Institute"
+                  checked={formData.department === "Institute"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-sm text-slate-700">
+                  <span className="font-semibold text-brand-700">IN</span> — Institute
+                </span>
+              </label>
             </div>
           </div>
 

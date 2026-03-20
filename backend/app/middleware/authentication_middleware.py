@@ -8,7 +8,7 @@ from jose import jwt, JWTError
 from datetime import datetime
 
 
-EXCLUDE_PATH = ["/auth/login" , "/auth/register" , "/docs" , "/openapi.json" , "/redoc" , "/favicon.ico"]
+EXCLUDE_PATH = ["/auth/login" , "/auth/register" , "/docs" , "/openapi.json" , "/redoc" , "/favicon.ico", "/register"]
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

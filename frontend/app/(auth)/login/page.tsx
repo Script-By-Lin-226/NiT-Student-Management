@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", { email: email.trim(), password });
       const { access_token, role, user_code, username, profile_picture } = res.data;
       
       localStorage.setItem("token", access_token);
@@ -36,7 +36,19 @@ export default function LoginPage() {
          router.push("/dashboard");
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Invalid credentials");
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      if (detail) {
+        setError(detail);
+      } else if (status === 429) {
+        setError("Too many login attempts. Please wait a moment and try again.");
+      } else if (status === 500) {
+        setError("Server error. Please try again later.");
+      } else if (err.code === "ERR_NETWORK") {
+        setError("Cannot connect to server. Please check your connection.");
+      } else {
+        setError("Invalid credentials. Please check your email and password.");
+      }
     } finally {
       setLoading(false);
     }

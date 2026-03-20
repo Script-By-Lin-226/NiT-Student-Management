@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = _fix_db_url(os.getenv("DATABASE_URL"))
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     # Auto-seed admin account on first startup (set in Railway env vars)
-    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "")
-    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "NiT@gmail.com")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "NiT@2026")
 
 settings = Settings()
-
+

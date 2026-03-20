@@ -42,11 +42,28 @@ async def _next_student_code(session: AsyncSession, department: str = "College")
     """
     Generate a student_code like CO001226 or IN001226 based on department.
     """
-    result = await session.execute(select(User.user_id).order_by(User.user_id.desc()).limit(1))
-    last_id = result.scalar_one_or_none() or 0
-    seq = last_id + 1
-    
     prefix = "IN" if department == "Institute" else "CO"
+    
+    # Get all student codes for this prefix to find the max sequence number
+    result = await session.execute(
+        select(User.user_code)
+        .where(and_(User.role == "student", User.user_code.like(f"{prefix}%")))
+    )
+    codes = result.scalars().all()
+    
+    max_seq = 0
+    for code in codes:
+        if code and len(code) >= 5:
+            try:
+                # The sequence is always the 3 digits after the 2-character prefix
+                seq_val = int(code[2:5])
+                if seq_val > max_seq:
+                    max_seq = seq_val
+            except ValueError:
+                pass
+                
+    seq = max_seq + 1
+    
     now = datetime.now()
     month_str = str(now.month)
     year_str = str(now.year)[-2:]
@@ -55,12 +72,26 @@ async def _next_student_code(session: AsyncSession, department: str = "College")
 
 async def _next_parent_code(session: AsyncSession) -> str:
     """
-    Generate a stable parent_code like PAR0001, based on max user_id.
-    This is simple and good enough for a single-node deployment.
+    Generate a stable parent_code like PAR0001.
     """
-    result = await session.execute(select(User.user_id).order_by(User.user_id.desc()).limit(1))
-    last_id = result.scalar_one_or_none() or 0
-    return f"PAR{last_id + 1:04d}"
+    result = await session.execute(
+        select(User.user_code)
+        .where(and_(User.role == "parent", User.user_code.like("PAR%")))
+    )
+    codes = result.scalars().all()
+    
+    max_seq = 0
+    for code in codes:
+        if code and len(code) >= 7:
+            try:
+                # PAR prefix is 3 chars, seq is after that
+                seq_val = int(code[3:])
+                if seq_val > max_seq:
+                    max_seq = seq_val
+            except ValueError:
+                pass
+                
+    return f"PAR{max_seq + 1:04d}"
 
 
 async def _next_course_code(session: AsyncSession) -> str:

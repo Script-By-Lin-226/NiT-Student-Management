@@ -8,6 +8,9 @@ from app.middleware.authentication_middleware import AuthMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from app.core.database_initialization import init_db
 from app.core.config import settings
+from app.security.rate_limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 import os
 
 @asynccontextmanager
@@ -18,6 +21,10 @@ async def life_cycle(app: FastAPI):
     print("Stopping the application...")
 
 app = FastAPI(lifespan=life_cycle)
+
+# Attach rate limiter to app state (required by slowapi)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -39,7 +46,6 @@ if _frontend_url and _frontend_url not in _origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

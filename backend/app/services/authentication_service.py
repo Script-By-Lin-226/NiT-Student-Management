@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi import Request, HTTPException
 from app.security.password_hashing import verify_password , hash_password
 from app.security.rate_limiter import limiter
+from app.core.config import settings
 
 class AuthenticationService:
 
@@ -59,7 +60,12 @@ class AuthenticationService:
         if not existent_user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        if not await verify_password(user.password, existent_user.password_hash):
+        try:
+            password_valid = await verify_password(user.password, existent_user.password_hash)
+        except Exception:
+            raise HTTPException(status_code=500, detail="Password verification error. Please contact support.")
+        
+        if not password_valid:
             raise HTTPException(status_code=401, detail="Invalid password")
         
         access_token = await create_access_token(data={
@@ -81,8 +87,13 @@ class AuthenticationService:
             "profile_picture": existent_user.profile_picture
         })
         
-        response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="lax")
-        response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite="lax")
+        # Cookie settings: use secure cookies for HTTPS deployments
+        is_production = not settings.FRONTEND_URL.startswith("http://localhost")
+        cookie_secure = is_production
+        cookie_samesite = "none" if is_production else "lax"
+        
+        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
+        response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
         response.headers["Authorization"] = f"Bearer {access_token}"
         
         return response   
