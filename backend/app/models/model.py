@@ -309,3 +309,18 @@ class StaffAttendance(Base):
     )
 
     staff_member = relationship("User", back_populates="staff_attendance")
+
+# ==============================
+# Activity Log Model
+# ==============================
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+
+    log_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    action = Column(String, nullable=False)
+    details = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=func.now())
+
+    user = relationship("User")

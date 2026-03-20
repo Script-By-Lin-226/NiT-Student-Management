@@ -1,5 +1,16 @@
 import { api } from "./api";
 
+export interface AdminUser {
+  user_id: number;
+  user_code: string;
+  username: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  data_of_birth: string | null;
+  phone?: string | null;
+}
+
 export interface AdminStudent {
   user_id: number;
   user_code: string;
@@ -272,6 +283,15 @@ export interface AdminPaymentCreate {
 }
 
 export class AdminService {
+  static async listAllUsers(): Promise<AdminUser[]> {
+    const res = await api.get<{ data: AdminUser[] }>("/admin/users");
+    return res.data.data;
+  }
+
+  static async createStaff(payload: any): Promise<AdminUser> {
+    const res = await api.post<{ data: AdminUser }>("/admin/staff", payload);
+    return res.data.data;
+  }
   static async listStudents(): Promise<AdminStudent[]> {
     const res = await api.get("/admin/students");
     return res.data.data;
@@ -447,6 +467,11 @@ export class AdminService {
 
   static async createPayment(payload: AdminPaymentCreate): Promise<void> {
     await api.post("/admin/payments", payload);
+  }
+
+  static async getActivityLogs(): Promise<any[]> {
+    const res = await api.get("/admin/activity-logs");
+    return res.data.data;
   }
 }
 

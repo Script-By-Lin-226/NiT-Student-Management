@@ -47,7 +47,7 @@ function lastNDays(n: number) {
 }
 
 export default function DashboardPage() {
-  const { isStudent, isParent, isAdmin, user } = useAuth();
+  const { isStudent, isParent, isAdminOrSales, isAdmin, user } = useAuth();
   const [courses, setCourses] = useState<StudentCourse[]>([]);
   const [attendance, setAttendance] = useState<StudentAttendance | null>(null);
 
@@ -124,7 +124,7 @@ export default function DashboardPage() {
   }, [isParent, selectedChild]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdminOrSales) return;
 
     let cancelled = false;
     setAdminLoading(true);
@@ -163,7 +163,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   const adminKpis = useMemo(() => {
     const activeEnrollments = adminEnrollments.filter((e) => e.status).length;
@@ -229,7 +229,7 @@ export default function DashboardPage() {
       }));
   }, [adminRooms]);
 
-  if (isAdmin) {
+  if (isAdminOrSales) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

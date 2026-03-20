@@ -12,11 +12,17 @@ def _get_user(request: Request) -> dict:
 
 # ── Role validators ───────────────────────────────────────────────────────────
 
-async def validating_admin_role(request: Request) -> bool:
+async def validating_admin_role(request: Request, allow_sales: bool = False) -> bool:
     user = _get_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return True
+    role = user.get("role")
+    if role == "admin":
+        return True
+    if role == "sales" and allow_sales:
+        if request.method in ["GET", "POST"]:
+            return True
+        else:
+            raise HTTPException(status_code=403, detail="Sales account can only read and create (GET, POST)")
+    raise HTTPException(status_code=403, detail="Admin access required")
 
 
 async def validating_student_role(request: Request) -> bool:

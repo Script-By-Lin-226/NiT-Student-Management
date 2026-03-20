@@ -39,7 +39,7 @@ function Modal({
 
 export default function AdminEnrollmentsPage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdmin, loading } = useAuth();
 
   const [courses, setCourses] = useState<AdminCourse[]>([]);
   const [rows, setRows] = useState<AdminEnrollment[]>([]);
@@ -67,8 +67,8 @@ export default function AdminEnrollmentsPage() {
 
 
   useEffect(() => {
-    if (!loading && !isAdmin) router.replace("/dashboard");
-  }, [loading, isAdmin, router]);
+    if (!loading && !isAdminOrSales) router.replace("/dashboard");
+  }, [loading, isAdminOrSales, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -102,12 +102,12 @@ export default function AdminEnrollmentsPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) load();
+    if (isAdminOrSales) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   if (loading) return null;
-  if (!isAdmin) return null;
+  if (!isAdminOrSales) return null;
 
   const openCreate = () => {
     setCStudentCode("");
@@ -251,14 +251,18 @@ export default function AdminEnrollmentsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => openEdit(e)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
+                      {isAdmin && (
+<button onClick={() => openEdit(e)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
                         <Pencil className="w-4 h-4" />
                         Edit
                       </button>
+)}
+                      {isAdmin && (
                       <button onClick={() => doDelete(e)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
                         <Trash2 className="w-4 h-4" />
                         Delete
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>

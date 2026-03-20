@@ -1,12 +1,12 @@
 from app.services.rbac_portal import validating_admin_role, validating_parent_role
-from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment
+from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateRequest
 from sqlalchemy import and_, select, update, delete
 from fastapi.responses import JSONResponse
 from fastapi import Request
-from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild
+from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate
 from datetime import datetime, date, time
 from app.security.password_hashing import hash_password
 from sqlalchemy import func
@@ -93,6 +93,35 @@ async def _next_parent_code(session: AsyncSession) -> str:
                 
     return f"PAR{max_seq + 1:04d}"
 
+async def _next_staff_code(session: AsyncSession, role: str) -> str:
+    """
+    Generate stable code like SAL0001 (sales), TCH0001 (teacher).
+    """
+    prefix_map = {
+        "sales": "SAL",
+        "teacher": "TCH",
+        "hr": "HRX",
+        "manager": "MGR"
+    }
+    prefix = prefix_map.get(role, "STF")
+    result = await session.execute(
+        select(User.user_code)
+        .where(and_(User.role == role, User.user_code.like(f"{prefix}%")))
+    )
+    codes = result.scalars().all()
+    
+    max_seq = 0
+    for code in codes:
+        if code and len(code) >= len(prefix) + 4:
+            try:
+                seq_val = int(code[len(prefix):])
+                if seq_val > max_seq:
+                    max_seq = seq_val
+            except ValueError:
+                pass
+                
+    return f"{prefix}{max_seq + 1:04d}"
+
 
 async def _next_course_code(session: AsyncSession) -> str:
     result = await session.execute(select(Course.course_id).order_by(Course.course_id.desc()).limit(1))
@@ -155,10 +184,75 @@ def _serialize_room(r: Room) -> dict:
         "updated_at": r.updated_at.isoformat() if getattr(r, "updated_at", None) else None,
     }
 
+
+async def _log_activity(request: Request, session: AsyncSession, action: str, details: str):
+    from app.services.rbac_portal import _get_user
+    try:
+        user_info = _get_user(request)
+        user_id = user_info.get("user_id")
+        # JWT doesn't contain user_id, so look it up from user_code
+        if not user_id and user_info.get("user_code"):
+            from app.models.model import User as UserModel
+            result = await session.execute(
+                select(UserModel.user_id).where(UserModel.user_code == user_info["user_code"])
+            )
+            row = result.scalar_one_or_none()
+            if row:
+                user_id = row
+        if user_id:
+            al = ActivityLog(
+                user_id=user_id,
+                action=action,
+                details=details
+            )
+            session.add(al)
+            await session.commit()
+    except Exception as e:
+        print("_log_activity error:", e)
+
 class AdminPanelService:
-    
-    async def get_students_details(request: Request , session:AsyncSession):
+
+    async def get_activity_logs(request: Request, session: AsyncSession):
         if not await validating_admin_role(request):
+            return {"message": "You are not authorized to perform this action"}
+            
+        from sqlalchemy.orm import joinedload
+        query = select(ActivityLog).options(joinedload(ActivityLog.user)).order_by(ActivityLog.timestamp.desc())
+        result = await session.execute(query)
+        logs = result.scalars().all()
+        
+        data = []
+        for log in logs:
+            data.append({
+                "log_id": log.log_id,
+                "user_id": log.user_id,
+                "username": log.user.username if log.user else "Unknown",
+                "role": log.user.role if log.user else "Unknown",
+                "action": log.action,
+                "details": log.details,
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None
+            })
+            
+        return JSONResponse({"status_code": 200, "message": "Activity logs fetched", "data": data})
+
+
+    
+    async def get_all_users(request: Request, session: AsyncSession):
+        if not await validating_admin_role(request, allow_sales=True):
+            return {"message": "You are not authorized to perform this action"}
+            
+        result = await session.execute(select(User))
+        users = result.scalars().all()
+        return JSONResponse(
+            {
+                "status_code": 200,
+                "message": "All users fetched successfully",
+                "data": [_serialize_user(u) for u in users],
+            }
+        )
+
+    async def get_students_details(request: Request , session:AsyncSession):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(User.role == "student")
@@ -173,7 +267,7 @@ class AdminPanelService:
         )
 
     async def create_student(payload: AdminStudentCreate, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # Email uniqueness
@@ -201,6 +295,7 @@ class AdminPanelService:
         )
         session.add(new_user)
         await session.flush()
+        await _log_activity(request, session, "Create Student", f"Student {user_code} created")
         
         # Auto-enroll if course is given
         if payload.course_code:
@@ -232,7 +327,7 @@ class AdminPanelService:
         )
     
     async def get_specific_student(user_code: str ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(and_(User.user_code == user_code , User.role == "student"))
@@ -249,7 +344,7 @@ class AdminPanelService:
         )
 
     async def get_student_relations(user_code: str, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(User).where(and_(User.user_code == user_code, User.role == "student")))
@@ -340,7 +435,7 @@ class AdminPanelService:
         )
     
     async def get_teachers_details(request: Request , session:AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(User.role == "teacher")
@@ -354,7 +449,7 @@ class AdminPanelService:
         return response
     
     async def get_specific_teacher(user_code: str ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(and_(User.user_code == user_code , User.role == "teacher"))
@@ -368,7 +463,7 @@ class AdminPanelService:
         return response
     
     async def get_parents_details(request: Request , session:AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(User.role == "parent")
@@ -382,7 +477,7 @@ class AdminPanelService:
         return response
     
     async def get_specific_parent(user_code: str ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(and_(User.user_code == user_code , User.role == "parent"))
@@ -393,7 +488,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Parent details fetched successfully", "data": _serialize_user(parent)})
 
     async def create_parent(payload: AdminParentCreate, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         existing = await session.execute(select(User).where(User.email == payload.email))
@@ -416,13 +511,52 @@ class AdminPanelService:
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
+        await _log_activity(request, session, "Create Parent", f"Parent {user_code} ({payload.username}) created")
         return JSONResponse(
             {"status_code": 201, "message": "Parent created successfully", "data": _serialize_user(new_user)},
             status_code=201,
         )
 
+    async def create_staff(payload: AdminStaffCreate, request: Request, session: AsyncSession):
+        if not await validating_admin_role(request, allow_sales=False):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to create staff accounts"}, status_code=403)
+
+        existing = await session.execute(select(User).where(User.email == payload.email))
+        if existing.scalars().first():
+            return JSONResponse({"status_code": 409, "message": "Email already exists"}, status_code=409)
+
+        user_code = await _next_staff_code(session, payload.role)
+        hashed = await hash_password(payload.password)
+        dob_dt = datetime.combine(payload.date_of_birth, time.min)
+
+        new_user = User(
+            user_code=user_code,
+            username=payload.username,
+            email=payload.email,
+            password_hash=hashed,
+            data_of_birth=dob_dt,
+            role=payload.role,
+            is_active=payload.is_active if payload.is_active is not None else True,
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        
+        # Log the activity
+        await _log_activity(
+            request, 
+            session, 
+            action="Create Staff", 
+            details=f"Created {payload.role} account '{payload.username}' ({user_code})"
+        )
+        
+        return JSONResponse(
+            {"status_code": 201, "message": "Staff created successfully", "data": _serialize_user(new_user)},
+            status_code=201,
+        )
+
     async def link_parent_child(parent_code: str, payload: AdminParentLinkChild, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         pr = await session.execute(select(User).where(and_(User.user_code == parent_code, User.role == "parent")))
@@ -443,6 +577,7 @@ class AdminPanelService:
             # allow relationship label updates
             link.relationship_label = payload.relationship_label or link.relationship_label
             await session.commit()
+            await _log_activity(request, session, "Update Parent Link", f"Parent {parent_code} linked to {payload.student_code} - relationship updated")
             return JSONResponse({"status_code": 200, "message": "Parent already linked to student; relationship updated"})
 
         session.add(
@@ -453,10 +588,11 @@ class AdminPanelService:
             )
         )
         await session.commit()
+        await _log_activity(request, session, "Link Parent-Student", f"Parent {parent_code} linked to student {payload.student_code}")
         return JSONResponse({"status_code": 201, "message": "Parent linked to student successfully"}, status_code=201)
     
     async def update_user(user_code: str, user_update: UserUpdate, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
             
         query = select(User).where(User.user_code == user_code)
@@ -476,10 +612,11 @@ class AdminPanelService:
             setattr(user, key, value)
             
         await session.commit()
+        await _log_activity(request, session, "Update User", f"User {user_code} updated")
         return JSONResponse({"status_code": 200, "message": "User updated successfully"})
         
     async def delete_user(user_code: str, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
             
         query = select(User).where(User.user_code == user_code)
@@ -507,6 +644,7 @@ class AdminPanelService:
 
         await session.delete(user)
         await session.commit()
+        await _log_activity(request, session, "Delete User", f"User {user_code} deleted")
         return JSONResponse({"status_code": 200, "message": "User deleted successfully"})
 
     async def seed_sample_data(request: Request, session: AsyncSession):
@@ -628,7 +766,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Purged all data except admin accounts"})
         
     async def get_all_users(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
             
         query = select(User)
@@ -639,7 +777,7 @@ class AdminPanelService:
     # CRUD - Academic Year
 
     async def create_academic_year(request: Request, session: AsyncSession, payload: AdminAcademicYearCreate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         existing = await session.execute(select(AcademicYear).where(AcademicYear.year_name == payload.academic_year_name))
@@ -654,10 +792,11 @@ class AdminPanelService:
         session.add(new_academic_year)
         await session.commit()
         await session.refresh(new_academic_year)
+        await _log_activity(request, session, "Create Academic Year", f"Academic year '{payload.academic_year_name}' created")
         return JSONResponse({"status_code": 201, "message": "Academic year created successfully", "data": _serialize_academic_year(new_academic_year)}, status_code=201)
         
     async def get_all_academic_years(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         query = select(AcademicYear)
         result = await session.execute(query)
@@ -665,7 +804,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": [_serialize_academic_year(y) for y in years]})
         
     async def get_specific_academic_details(academic_year_id: int ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(AcademicYear).where(AcademicYear.academic_year_id == academic_year_id)
@@ -676,7 +815,7 @@ class AdminPanelService:
         return {"status_code": 200, "message": "Academic detail fetched successfully", "data": academic_year}
         
     async def update_academic_year(academic_year_id: int, request: Request, session: AsyncSession, payload: AdminAcademicYearUpdate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
             
         query = select(AcademicYear).where(AcademicYear.academic_year_id == academic_year_id)
@@ -694,10 +833,11 @@ class AdminPanelService:
             target_year.end_date = datetime.strptime(payload.end_date, "%Y-%m-%d")
         
         await session.commit()
+        await _log_activity(request, session, "Update Academic Year", f"Academic year ID {academic_year_id} updated")
         return JSONResponse({"status_code": 200, "message": "Academic year updated successfully", "data": _serialize_academic_year(target_year)})
         
     async def delete_academic_year(academic_year_id: int, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
             
         query = select(AcademicYear).where(AcademicYear.academic_year_id == academic_year_id)
@@ -709,19 +849,20 @@ class AdminPanelService:
             
         await session.delete(target_year)
         await session.commit()
+        await _log_activity(request, session, "Delete Academic Year", f"Academic year ID {academic_year_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Academic year deleted successfully"})
 
     # CRUD - Courses
 
     async def list_courses(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(select(Course))
         courses = r.scalars().all()
         return JSONResponse({"status_code": 200, "message": "Courses fetched successfully", "data": [_serialize_course(c) for c in courses]})
 
     async def create_course(request: Request, session: AsyncSession, payload: AdminCourseCreate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         year = await session.execute(select(AcademicYear).where(AcademicYear.academic_year_id == payload.academic_year_id))
@@ -751,10 +892,11 @@ class AdminPanelService:
         session.add(new_course)
         await session.commit()
         await session.refresh(new_course)
+        await _log_activity(request, session, "Create Course", f"Course {course_code} ({payload.course_name}) created")
         return JSONResponse({"status_code": 201, "message": "Course created successfully", "data": _serialize_course(new_course)}, status_code=201)
 
     async def update_course(request: Request, session: AsyncSession, course_code: str, payload: AdminCourseUpdate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(select(Course).where(Course.course_code == course_code))
         course = r.scalars().first()
@@ -789,10 +931,11 @@ class AdminPanelService:
             course.discount_plan = payload.discount_plan
 
         await session.commit()
+        await _log_activity(request, session, "Update Course", f"Course {course_code} updated")
         return JSONResponse({"status_code": 200, "message": "Course updated successfully", "data": _serialize_course(course)})
 
     async def delete_course(request: Request, session: AsyncSession, course_code: str):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(select(Course).where(Course.course_code == course_code))
         course = r.scalars().first()
@@ -800,12 +943,13 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
         await session.delete(course)
         await session.commit()
+        await _log_activity(request, session, "Delete Course", f"Course {course_code} deleted")
         return JSONResponse({"status_code": 200, "message": "Course deleted successfully"})
 
     # CRUD - Enrollments
 
     async def list_enrollments(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(
             select(Enrollment, User, Course)
@@ -826,7 +970,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Enrollments fetched successfully", "data": data})
 
     async def create_enrollment(request: Request, session: AsyncSession, payload: AdminEnrollmentCreate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         stu_r = await session.execute(select(User).where(and_(User.user_code == payload.student_code, User.role == "student")))
@@ -858,10 +1002,11 @@ class AdminPanelService:
         session.add(e)
         await session.commit()
         await session.refresh(e)
+        await _log_activity(request, session, "Create Enrollment", f"Enrollment {enrollment_code} created for student {payload.student_code} in course {payload.course_code}")
         return JSONResponse({"status_code": 201, "message": "Enrollment created successfully", "data": _serialize_enrollment(e)}, status_code=201)
 
     async def update_enrollment(request: Request, session: AsyncSession, enrollment_code: str, payload: AdminEnrollmentUpdate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(select(Enrollment).where(Enrollment.enrollment_code == enrollment_code))
         e = r.scalars().first()
@@ -879,10 +1024,11 @@ class AdminPanelService:
             e.installment_amount = payload.installment_amount
             
         await session.commit()
+        await _log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
         return JSONResponse({"status_code": 200, "message": "Enrollment updated successfully", "data": _serialize_enrollment(e)})
 
     async def delete_enrollment(request: Request, session: AsyncSession, enrollment_code: str):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(select(Enrollment).where(Enrollment.enrollment_code == enrollment_code))
         e = r.scalars().first()
@@ -890,13 +1036,14 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Enrollment not found"}, status_code=404)
         await session.delete(e)
         await session.commit()
+        await _log_activity(request, session, "Delete Enrollment", f"Enrollment {enrollment_code} deleted")
         return JSONResponse({"status_code": 200, "message": "Enrollment deleted successfully"})
 
     # CRUD - Attendance
 
     async def mark_attendance(request: Request, session: AsyncSession, payload: AttendanceMarkRequest):
         """Mark attendance for a student. One record allowed per student per day."""
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # Resolve user_code -> user_id
@@ -956,6 +1103,7 @@ class AdminPanelService:
         session.add(new_record)
         await session.commit()
         await session.refresh(new_record)
+        await _log_activity(request, session, "Mark Attendance", f"Attendance marked for {payload.student_code} slot={payload.slot}")
         return JSONResponse({
             "status_code": 201,
             "message": "Attendance marked successfully",
@@ -969,7 +1117,7 @@ class AdminPanelService:
         }, status_code=201)
 
     async def get_all_attendance(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         query = select(Attendance, User).join(User, Attendance.user_id == User.user_id)
@@ -1026,7 +1174,7 @@ class AdminPanelService:
 
     async def update_attendance(request: Request, session: AsyncSession, attendance_id: int, payload: AttendanceUpdateRequest):
         """Update the check_today status of an attendance record."""
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         query = select(Attendance).where(Attendance.attendance_id == attendance_id)
@@ -1037,6 +1185,7 @@ class AdminPanelService:
 
         record.check_today = payload.check_today
         await session.commit()
+        await _log_activity(request, session, "Update Attendance", f"Attendance ID {attendance_id} updated to {payload.check_today}")
         return JSONResponse({
             "status_code": 200,
             "message": "Attendance updated successfully",
@@ -1050,7 +1199,7 @@ class AdminPanelService:
     # CRUD - Rooms + Availability
 
     async def list_rooms(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Room))
@@ -1082,7 +1231,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Rooms fetched successfully", "data": data})
 
     async def create_room(request: Request, session: AsyncSession, payload: AdminRoomCreate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         exists = await session.execute(select(Room).where(Room.room_name == payload.room_name))
@@ -1093,10 +1242,11 @@ class AdminPanelService:
         session.add(room)
         await session.commit()
         await session.refresh(room)
+        await _log_activity(request, session, "Create Room", f"Room '{payload.room_name}' created with capacity {payload.capacity}")
         return JSONResponse({"status_code": 201, "message": "Room created successfully", "data": _serialize_room(room)}, status_code=201)
 
     async def update_room(request: Request, session: AsyncSession, room_id: int, payload: AdminRoomUpdate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Room).where(Room.room_id == room_id))
@@ -1112,10 +1262,11 @@ class AdminPanelService:
             room.is_active = payload.is_active
 
         await session.commit()
+        await _log_activity(request, session, "Update Room", f"Room ID {room_id} updated")
         return JSONResponse({"status_code": 200, "message": "Room updated successfully", "data": _serialize_room(room)})
 
     async def delete_room(request: Request, session: AsyncSession, room_id: int):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Room).where(Room.room_id == room_id))
@@ -1125,6 +1276,7 @@ class AdminPanelService:
 
         await session.delete(room)
         await session.commit()
+        await _log_activity(request, session, "Delete Room", f"Room ID {room_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Room deleted successfully"})
 
     @staticmethod
@@ -1137,7 +1289,7 @@ class AdminPanelService:
         return f"{m // 60:02d}:{m % 60:02d}"
 
     async def get_room_availability(request: Request, session: AsyncSession, room_id: int, day: str):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Room).where(Room.room_id == room_id))
@@ -1192,7 +1344,7 @@ class AdminPanelService:
     # Timetables
 
     async def list_timetables(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(
@@ -1217,7 +1369,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Timetables fetched successfully", "data": data})
 
     async def create_timetable(request: Request, session: AsyncSession, payload: AdminTimeTableCreate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         c_r = await session.execute(select(Course).where(Course.course_code == payload.course_code))
@@ -1235,10 +1387,11 @@ class AdminPanelService:
         session.add(tt)
         await session.commit()
         await session.refresh(tt)
+        await _log_activity(request, session, "Create Timetable", f"Timetable for {payload.course_code} on {payload.day_of_week} {payload.start_time}-{payload.end_time} created")
         return JSONResponse({"status_code": 201, "message": "Timetable created successfully", "data": {"timetable_id": tt.timetable_id}}, status_code=201)
 
     async def update_timetable(request: Request, session: AsyncSession, timetable_id: int, payload: AdminTimeTableUpdate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(TimeTable).where(TimeTable.timetable_id == timetable_id))
@@ -1256,10 +1409,11 @@ class AdminPanelService:
             tt.room_name = payload.room_name
 
         await session.commit()
+        await _log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")
         return JSONResponse({"status_code": 200, "message": "Timetable updated successfully"})
 
     async def delete_timetable(request: Request, session: AsyncSession, timetable_id: int):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(TimeTable).where(TimeTable.timetable_id == timetable_id))
@@ -1268,11 +1422,12 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Timetable not found"}, status_code=404)
         await session.delete(tt)
         await session.commit()
+        await _log_activity(request, session, "Delete Timetable", f"Timetable ID {timetable_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Timetable deleted successfully"})
 
     # --- Payments CRUD ---
     async def list_payments(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         query = (
@@ -1308,7 +1463,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Payments fetched successfully", "data": data})
 
     async def create_payment(request: Request, session: AsyncSession, payload: PaymentCreate):
-        if not await validating_admin_role(request):
+        if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         enroll_r = await session.execute(select(Enrollment).where(Enrollment.enrollment_id == payload.enrollment_id))
@@ -1326,4 +1481,5 @@ class AdminPanelService:
         session.add(pay)
         await session.commit()
         await session.refresh(pay)
+        await _log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({payload.month})")
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})

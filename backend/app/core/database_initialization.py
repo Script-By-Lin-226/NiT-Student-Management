@@ -55,23 +55,9 @@ async def _seed_admin_if_needed():
 
 
 async def init_db():
+    import app.models.model  # Ensure models are registered with Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Lightweight schema sync for existing DBs (create_all doesn't add columns).
-        # Safe for Postgres: IF NOT EXISTS guards against repeated runs.
-        await conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS start_date VARCHAR"))
-        await conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS room VARCHAR"))
-        await conn.execute(text("ALTER TABLE attendances ADD COLUMN IF NOT EXISTS attendance_date DATE"))
-        await conn.execute(text("ALTER TABLE attendances ADD COLUMN IF NOT EXISTS check_today BOOLEAN DEFAULT FALSE"))
-        await conn.execute(text("ALTER TABLE timetables ADD COLUMN IF NOT EXISTS room_name VARCHAR"))
-        await conn.execute(text("ALTER TABLE timetables ADD COLUMN IF NOT EXISTS course_id INTEGER"))
-        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS nrc VARCHAR"))
-        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR"))
-        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT"))
-        try:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN profile_picture TEXT"))
-        except:
-            pass # ignore if column already exists (sqlite fallback)
 
     # Seed admin account if env vars are configured
     await _seed_admin_if_needed()

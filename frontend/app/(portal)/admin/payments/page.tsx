@@ -31,7 +31,7 @@ function Modal({ title, open, onClose, children }: { title: string; open: boolea
 
 export default function AdminPaymentsPage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAuth();
+  const { isAdminOrSales, loading } = useAuth();
 
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
@@ -88,9 +88,9 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) load();
+    if (isAdminOrSales) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   const openRecordPayment = (enr: AdminEnrollment) => {
     setSelectedEnrollment(enr);
@@ -141,7 +141,7 @@ export default function AdminPaymentsPage() {
   };
 
   if (loading) return null;
-  if (!isAdmin) return null;
+  if (!isAdminOrSales) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">

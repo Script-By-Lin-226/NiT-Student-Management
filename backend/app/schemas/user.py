@@ -80,6 +80,26 @@ class AdminParentCreate(BaseModel):
             raise ValueError('Password must be at least 6 characters long')
         return v
 
+class AdminStaffCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    date_of_birth: date
+    role: str
+    is_active: Optional[bool] = True
+
+    @validator('password')
+    def password_length(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters long')
+        return v
+        
+    @validator('role')
+    def validate_role(cls, v):
+        if v not in ['sales', 'hr', 'manager', 'teacher']:
+            raise ValueError('Role must be sales, hr, manager, or teacher')
+        return v
+
 
 class AdminParentLinkChild(BaseModel):
     student_code: str

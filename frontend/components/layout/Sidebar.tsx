@@ -34,6 +34,7 @@ const adminNav = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Students", href: "/admin/students", icon: Users },
   { name: "Parents", href: "/admin/parents", icon: Users },
+  { name: "Staff", href: "/admin/users", icon: Shield },
   { name: "Academic Yrs", href: "/admin/academic-years", icon: CalendarDays },
   { name: "Courses", href: "/admin/courses", icon: BookOpen },
   { name: "Enrollments", href: "/admin/enrollments", icon: Award },
@@ -41,6 +42,7 @@ const adminNav = [
   { name: "Timetable", href: "/admin/timetables", icon: CalendarClock },
   { name: "Attendance", href: "/admin/attendance", icon: Clock },
   { name: "Payments", href: "/admin/payments", icon: CreditCard },
+  { name: "Activity Logs", href: "/admin/activity", icon: CalendarDays },
   { name: "Profile", href: "/profile", icon: User },
 ];
 
@@ -52,6 +54,7 @@ export default function Sidebar() {
   if (isStudent) navigation = studentNav;
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
+  if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff");
   if (isAdmin) navigation = adminNav;
 
   return (

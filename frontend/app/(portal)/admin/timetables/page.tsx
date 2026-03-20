@@ -41,7 +41,7 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 export default function AdminTimetablesPage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdmin, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminTimeTableRow[]>([]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
@@ -65,8 +65,8 @@ export default function AdminTimetablesPage() {
   const [eRoom, setERoom] = useState<string>("");
 
   useEffect(() => {
-    if (!loading && !isAdmin) router.replace("/dashboard");
-  }, [loading, isAdmin, router]);
+    if (!loading && !isAdminOrSales) router.replace("/dashboard");
+  }, [loading, isAdminOrSales, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -97,12 +97,12 @@ export default function AdminTimetablesPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) load();
+    if (isAdminOrSales) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   if (loading) return null;
-  if (!isAdmin) return null;
+  if (!isAdminOrSales) return null;
 
   const openCreate = () => {
     setCCourseCode(courses[0]?.course_code ?? "");
@@ -232,14 +232,18 @@ export default function AdminTimetablesPage() {
                   <td className="px-6 py-4">{r.room_name || "-"}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => openEdit(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
+                      {isAdmin && (
+<button onClick={() => openEdit(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
                         <Pencil className="w-4 h-4" />
                         Edit
                       </button>
+)}
+                      {isAdmin && (
                       <button onClick={() => doDelete(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
                         <Trash2 className="w-4 h-4" />
                         Delete
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>

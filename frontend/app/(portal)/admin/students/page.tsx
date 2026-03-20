@@ -45,7 +45,7 @@ function Modal({
 
 export default function AdminStudentsPage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdmin, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminStudent[]>([]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
@@ -96,8 +96,8 @@ export default function AdminStudentsPage() {
   const [eActive, setEActive] = useState(true);
 
   useEffect(() => {
-    if (!loading && !isAdmin) router.replace("/dashboard");
-  }, [loading, isAdmin, router]);
+    if (!loading && !isAdminOrSales) router.replace("/dashboard");
+  }, [loading, isAdminOrSales, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -129,9 +129,9 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) load();
+    if (isAdminOrSales) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   const openCreate = () => {
     setCUsername("");
@@ -249,7 +249,7 @@ export default function AdminStudentsPage() {
   };
 
   if (loading) return null;
-  if (!isAdmin) return null;
+  if (!isAdminOrSales) return null;
 
   const exportSelectedStudent = () => {
     if (!selected || !relations) return;
@@ -584,13 +584,16 @@ export default function AdminStudentsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
-                      <button
+                      {isAdmin && (
+<button
                         onClick={() => openEdit(s)}
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
                       >
                         <Pencil className="w-4 h-4" />
                         Edit
                       </button>
+)}
+                      {isAdmin && (
                       <button
                         onClick={() => doDelete(s)}
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
@@ -598,6 +601,7 @@ export default function AdminStudentsPage() {
                         <Trash2 className="w-4 h-4" />
                         Delete
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>

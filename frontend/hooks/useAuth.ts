@@ -53,5 +53,6 @@ export function useAuth() {
     isParent: user?.role === "parent",
     isStaff: ["hr", "manager", "sales", "teacher"].includes(user?.role || ""),
     isAdmin: user?.role === "admin",
+    isAdminOrSales: user?.role === "admin" || user?.role === "sales",
   };
 }

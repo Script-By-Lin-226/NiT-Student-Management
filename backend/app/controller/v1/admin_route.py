@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database_initialization import get_db
 from app.services.admin_panel import AdminPanelService
-from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild
+from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.course import AdminCourseCreate, AdminCourseUpdate
 from app.schemas.enrollment import AdminEnrollmentCreate, AdminEnrollmentUpdate
@@ -13,11 +13,21 @@ from app.schemas.payment import PaymentCreate, PaymentUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 
+# --- Activity Logs ---
+
+@router.get("/activity-logs")
+async def get_activity_logs(request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_activity_logs(request, session)
+
 # --- User CRUD ---
 
 @router.get("/users")
 async def get_all_users(request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_all_users(request, session)
+
+@router.post("/staff")
+async def create_staff(payload: AdminStaffCreate, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.create_staff(payload, request, session)
 
 @router.get("/students")
 async def get_students_details(request: Request, session: AsyncSession = Depends(get_db)):

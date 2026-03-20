@@ -54,7 +54,7 @@ interface BatchGroup {
 
 export default function AdminAttendancePage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAuth();
+  const { isAdminOrSales, loading } = useAuth();
 
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [attendance, setAttendance] = useState<AdminAttendanceRecord[]>([]);
@@ -92,8 +92,8 @@ export default function AdminAttendancePage() {
   }, [selectedStudentCode, selectedGroup, attendance, courses]);
 
   useEffect(() => {
-    if (!loading && !isAdmin) router.replace("/dashboard");
-  }, [loading, isAdmin, router]);
+    if (!loading && !isAdminOrSales) router.replace("/dashboard");
+  }, [loading, isAdminOrSales, router]);
 
   const load = async () => {
     setBusy(true);
@@ -117,9 +117,9 @@ export default function AdminAttendancePage() {
   };
 
   useEffect(() => {
-    if (isAdmin) load();
+    if (isAdminOrSales) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   const dateObj = useMemo(() => {
     const [y, m, d] = targetDate.split("-").map(Number);
@@ -253,7 +253,7 @@ export default function AdminAttendancePage() {
   }, [selectedGroup, timetables, currentDayName]);
 
   if (loading) return null;
-  if (!isAdmin) return null;
+  if (!isAdminOrSales) return null;
 
   const openGroup = (g: BatchGroup) => {
     setSelectedGroup(g);

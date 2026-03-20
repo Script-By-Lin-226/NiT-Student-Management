@@ -1,0 +1,9 @@
+﻿app/(portal)/admin/academic-years/page.tsx(86,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/attendance/page.tsx(122,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/courses/page.tsx(105,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/enrollments/page.tsx(107,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/parents/page.tsx(37,10): error TS2304: Cannot find name 'isAdminOrSales'.
+app/(portal)/admin/payments/page.tsx(93,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/rooms/page.tsx(102,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/students/page.tsx(134,7): error TS2304: Cannot find name 'isAdmin'.
+app/(portal)/admin/timetables/page.tsx(102,7): error TS2304: Cannot find name 'isAdmin'.

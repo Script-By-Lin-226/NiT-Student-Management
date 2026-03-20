@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Users, Link2, UserPlus } from "lucide-react";
 
 export default function AdminParentsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdminOrSales } = useAuth();
   const [parents, setParents] = useState<AdminParent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export default function AdminParentsPage() {
   }, [linkForm]);
 
   async function refresh() {
-    if (!isAdmin) return;
+    if (!isAdminOrSales) return;
     setLoading(true);
     setError(null);
     try {
@@ -50,7 +50,7 @@ export default function AdminParentsPage() {
   useEffect(() => {
     refresh().catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdminOrSales]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
