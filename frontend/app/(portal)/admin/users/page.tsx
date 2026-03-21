@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService, AdminUser } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, RefreshCw, X } from "lucide-react";
+import { Plus, Search, RefreshCw, X, Trash2 } from "lucide-react";
 
 function Modal({
   title,
@@ -114,6 +114,19 @@ export default function AdminStaffPage() {
     }
   };
 
+  const handleDeleteStaff = async (user_code: string) => {
+    if (!confirm("Are you sure you want to delete this staff member? This action cannot be undone.")) return;
+    setBusy(true);
+    setError("");
+    try {
+      await AdminService.deleteUser(user_code);
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e.message || "Failed to delete staff.");
+      setBusy(false);
+    }
+  };
+
   if (loading || !isAdmin) return null;
 
   return (
@@ -165,6 +178,7 @@ export default function AdminStaffPage() {
                 <th className="px-6 py-4">Email</th>
                 <th className="px-6 py-4">Role</th>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -179,11 +193,21 @@ export default function AdminStaffPage() {
                       {r.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => handleDeleteStaff(r.user_code)}
+                      disabled={busy}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                      title="Delete Staff"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400 font-medium">
                     {busy ? "Loading..." : "No staff found."}
                   </td>
                 </tr>
