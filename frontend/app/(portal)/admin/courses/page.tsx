@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAcademicYear, AdminCourse, AdminService } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+
 
 function Modal({
   title,
@@ -226,6 +228,30 @@ export default function AdminCoursesPage() {
           <button onClick={load} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60">
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={() => {
+              const dataToExport = filtered.map(c => ({
+                "Course Code": c.course_code,
+                "Course Name": c.course_name,
+                "Full Fee (MMK)": c.fee_full_payment || 0,
+                "Installment Fee (MMK)": c.fee_installment || 0,
+                "Exam Fee (GBP)": c.exam_fee_gbp || 0,
+                "Academic Year": yearNameById.get(c.academic_year_id) || "-",
+                "Instructor ID": c.instructor_id || "-",
+                "Start Date": c.start_date || "-",
+                "End Date": c.end_date || "-",
+                "Room": c.room || "-",
+                "FOC Items": c.foc_items || "-",
+                "Discount Plan": c.discount_plan || "-"
+              }));
+              exportToExcel(dataToExport, "Courses_List", "Courses");
+            }}
+            disabled={busy || filtered.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
           </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
             <Plus className="w-4 h-4" />

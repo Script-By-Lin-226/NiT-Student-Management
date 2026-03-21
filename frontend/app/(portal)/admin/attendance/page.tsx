@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminEnrollment, AdminCourse, AdminService } from "@/services/admin.service";
-import { Plus, Search, RefreshCw, X, Users, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Plus, Search, RefreshCw, X, Users, CheckCircle, XCircle, FileText, Download } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+
 
 function Modal({
   title,
@@ -478,7 +480,30 @@ export default function AdminAttendancePage() {
               </table>
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-between items-center pt-4">
+              <button
+                onClick={() => {
+                  if (!selectedGroup) return;
+                  const dataToExport = selectedGroup.students.map(stu => {
+                    // Try to find status for each slot
+                    const row: any = {
+                      "Student Name": stu.student_name,
+                      "Student Code": stu.student_code
+                    };
+                    currentSlots.forEach(slot => {
+                      const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && a.slot === slot);
+                      row[slot] = record ? (record.check_today ? "Present" : "Absent") : "Not Marked";
+                    });
+                    return row;
+                  });
+                  exportToExcel(dataToExport, `Attendance_${selectedGroup.course_code}_${selectedGroup.batch_no}_${targetDate}`, "Attendance");
+                }}
+                disabled={busy || !selectedGroup || selectedGroup.students.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Export Batch to Excel
+              </button>
               <button
                 onClick={() => setGroupModalOpen(false)}
                 className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800"

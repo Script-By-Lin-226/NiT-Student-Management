@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCourse, AdminEnrollment, AdminService } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+
 
 function Modal({
   title,
@@ -200,6 +202,31 @@ export default function AdminEnrollmentsPage() {
           <button onClick={load} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60">
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={() => {
+              const dataToExport = filtered.map(e => ({
+                "Enrollment Code": e.enrollment_code,
+                "Student Name": (e as any).student_name || "-",
+                "Student Code": (e as any).student_code || "-",
+                "Course Name": (e as any).course_name || "-",
+                "Course Code": (e as any).course_code || "-",
+                "Course Cost (MMK)": (e as any).course_cost || 0,
+                "Batch": e.batch_no || "-",
+                "Payment Plan": e.payment_plan || "-",
+                "Deposit (MMK)": e.downpayment || 0,
+                "Monthly Installment (MMK)": e.installment_amount || 0,
+                "FOC Items": (e as any).foc_items || "-",
+                "Status": e.status ? "Active" : "Inactive",
+                "Date": e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"
+              }));
+              exportToExcel(dataToExport, "Enrollments_List", "Enrollments");
+            }}
+            disabled={busy || filtered.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
           </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
             <Plus className="w-4 h-4" />

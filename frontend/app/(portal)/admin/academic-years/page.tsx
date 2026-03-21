@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAcademicYear, AdminService } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+
 
 function Modal({
   title,
@@ -167,6 +169,22 @@ export default function AdminAcademicYearsPage() {
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={() => {
+              const dataToExport = filtered.map(y => ({
+                "ID": y.academic_year_id,
+                "Name": y.academic_year_name,
+                "Start Date": y.start_date ? y.start_date.slice(0, 10) : "-",
+                "End Date": y.end_date ? y.end_date.slice(0, 10) : "-"
+              }));
+              exportToExcel(dataToExport, "Academic_Years", "AcademicYears");
+            }}
+            disabled={busy || filtered.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
           </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
             <Plus className="w-4 h-4" />

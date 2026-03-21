@@ -283,10 +283,13 @@ export default function AdminStudentsPage() {
         "Batch": e.batch_no || "-",
         "Payment Plan": e.payment_plan === "full" ? "Cash Down" : e.payment_plan === "installment" ? "Installment" : "-",
         "Course Amount (MMK)": courseCost,
-        "Downpayment (MMK)": e.downpayment || 0,
-        "Installment/Month (MMK)": e.installment_amount || 0,
+        "Deposit (MMK)": e.downpayment || 0,
+        "Monthly Installment (MMK)": e.installment_amount || 0,
         "Total Paid (MMK)": totalPaid,
-        "Left Amount (MMK)": leftAmount
+        "Left Amount (MMK)": leftAmount,
+        "FOC Items": (e as any).foc_items || "-",
+        "Discount Plan": (e as any).discount_plan || "-",
+        "Enrollment Date": e.enrollment_date ? e.enrollment_date.slice(0, 10) : "-"
       };
     });
 
@@ -309,7 +312,12 @@ export default function AdminStudentsPage() {
           "Method": p.payment_method || "N/A",
           "Course Amount (MMK)": courseCost,
           "Amount Paid (MMK)": p.amount,
-          "Total Paid (MMK)": totalPaidForEnrollment,
+          "Fine Amount (MMK)": p.fine_amount || 0,
+          "Extra Items Fee (MMK)": p.extra_items_fee || 0,
+          "Extra Items": p.extra_items || "-",
+          "Exam Fee Paid (GBP)": p.exam_fee_paid_gbp || 0,
+          "Exam Fee Paid (MMK)": p.exam_fee_paid_mmk || 0,
+          "Total Paid for Enrollment (MMK)": totalPaidForEnrollment,
           "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnrollment),
           "Status": p.status
         };
@@ -403,6 +411,11 @@ export default function AdminStudentsPage() {
           "Date": p.payment_date ? p.payment_date.slice(0, 10) : "-",
           "Course Amount (MMK)": courseCost,
           "Amount Paid (MMK)": p.amount,
+          "Fine Amount (MMK)": p.fine_amount || 0,
+          "Extra Items Fee (MMK)": p.extra_items_fee || 0,
+          "Extra Items": p.extra_items || "-",
+          "Exam Fee Paid (GBP)": p.exam_fee_paid_gbp || 0,
+          "Exam Fee Paid (MMK)": p.exam_fee_paid_mmk || 0,
           "Total Paid (MMK)": totalPaidForEnroll,
           "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnroll),
           "Status": p.status
@@ -436,10 +449,11 @@ export default function AdminStudentsPage() {
           "Batch": e.batch_no || "-",
           "Plan": e.payment_plan || "-",
           "Course Amount (MMK)": courseCost,
-          "Downpayment (MMK)": e.downpayment || 0,
-          "Installment/Month (MMK)": e.installment_amount || 0,
+          "Deposit (MMK)": e.downpayment || 0,
+          "Monthly Installment (MMK)": e.installment_amount || 0,
           "Total Paid (MMK)": totalPaid,
           "Left Amount (MMK)": Math.max(0, courseCost - totalPaid),
+          "FOC Items": e.foc_items || "-",
           "Status": e.status ? "Active" : "Inactive"
         };
       }) : [{"Info": "No enrollments found"}]);
@@ -500,7 +514,7 @@ export default function AdminStudentsPage() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm"
           >
             <Download className="w-4 h-4" />
-            Export Data
+            Export to Excel
           </button>
           {isAdmin && (
             <button

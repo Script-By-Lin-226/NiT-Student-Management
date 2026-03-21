@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Search, Plus, CreditCard, History, X } from "lucide-react";
+import { RefreshCw, Search, Plus, CreditCard, History, X, Download } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+
 import { AdminService, AdminEnrollment, AdminPayment } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 import { generateReceiptPDF } from "@/utils/pdfReceipt";
@@ -188,6 +190,41 @@ export default function AdminPaymentsPage() {
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={() => {
+              const dataToExport = filteredEnrollments.map(enr => {
+                  const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
+                  const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount, 0);
+                  const totalFine = enrPayments.reduce((sum, p) => sum + (p.fine_amount || 0), 0);
+                  const totalExtra = enrPayments.reduce((sum, p) => sum + (p.extra_items_fee || 0), 0);
+                  const totalExamGbp = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
+                  const totalExamMmk = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_mmk || 0), 0);
+                  
+                  return {
+                    "Student Name": enr.student_name,
+                    "Student Code": enr.student_code,
+                    "Course": enr.course_name,
+                    "Batch": enr.batch_no || "-",
+                    "Payment Plan": enr.payment_plan === 'full' ? 'Full Payment' : 'Installment',
+                    "Course Cost (MMK)": enr.course_cost || 0,
+                    "Total Paid (MMK)": totalPaid,
+                    "Total Fine Paid (MMK)": totalFine,
+                    "Total Extra Items Fee (MMK)": totalExtra,
+                    "Exam Fee Paid (GBP)": totalExamGbp,
+                    "Exam Fee Paid (MMK)": totalExamMmk,
+                    "Balance Due (MMK)": calculateLeftAmount(enr),
+                    "FOC Items": enr.foc_items || "-",
+                    "Status": calculateLeftAmount(enr) <= 0 ? "Fully Paid" : "Balance Due"
+                  };
+                });
+                exportToExcel(dataToExport, "Payments_Overview", "Payments");
+            }}
+            disabled={busy || filteredEnrollments.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
           </button>
         </div>
       </div>

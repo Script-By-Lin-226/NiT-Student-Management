@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { RefreshCw, Clock, Search } from "lucide-react";
+import { RefreshCw, Clock, Search, Download } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+
 
 export default function ActivityLogsPage() {
   const router = useRouter();
@@ -75,6 +77,23 @@ export default function ActivityLogsPage() {
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={() => {
+              const dataToExport = filteredLogs.map(log => ({
+                "Time": new Date(log.timestamp).toLocaleString(),
+                "User": log.username,
+                "Role": log.role,
+                "Action": log.action,
+                "Details": log.details
+              }));
+              exportToExcel(dataToExport, "Activity_Logs", "Logs");
+            }}
+            disabled={busy || filteredLogs.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
           </button>
         </div>
       </div>
