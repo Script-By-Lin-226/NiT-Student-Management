@@ -118,7 +118,10 @@ class Course(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     room = Column(String, nullable=True) # e.g. "room 6"
-    cost = Column(Float, nullable=True)
+    fee_full_payment = Column(Float, nullable=True)
+    fee_installment = Column(Float, nullable=True)
+    exam_fee_gbp = Column(Float, nullable=True) # Fee in Pounds (GBP) as mentioned by user
+    foc_items = Column(String, nullable=True)
     discount_plan = Column(String, nullable=True)
 
 
@@ -190,6 +193,13 @@ class Payment(Base):
     month = Column(String, nullable=False) # e.g., "March 2026", "April 2026"
     status = Column(String, default="Paid")
     payment_method = Column(String, nullable=True) # KBZPay, AYA Pay, Cash, MMQR, Banking
+    
+    fine_amount = Column(Float, nullable=True)
+    extra_items_fee = Column(Float, nullable=True)
+    extra_items = Column(String, nullable=True)
+    exam_fee_paid_gbp = Column(Float, nullable=True)
+    exam_fee_paid_mmk = Column(Float, nullable=True)
+    exam_fee_currency = Column(String, default="MMK")
 
     # Relationships
     enrollment = relationship("Enrollment", back_populates="payments")

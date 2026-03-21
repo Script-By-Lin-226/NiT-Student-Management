@@ -83,7 +83,10 @@ export interface AdminCourse {
   start_date?: string | null;
   end_date?: string | null;
   room?: string | null;
-  cost?: number | null;
+  fee_full_payment?: number | null;
+  fee_installment?: number | null;
+  exam_fee_gbp?: number | null;
+  foc_items?: string | null;
   discount_plan?: string | null;
 }
 
@@ -94,7 +97,10 @@ export interface AdminCourseCreate {
   start_date?: string | null;
   end_date?: string | null;
   room?: string | null;
-  cost?: number | null;
+  fee_full_payment?: number | null;
+  fee_installment?: number | null;
+  exam_fee_gbp?: number | null;
+  foc_items?: string | null;
   discount_plan?: string | null;
 }
 
@@ -105,7 +111,10 @@ export interface AdminCourseUpdate {
   start_date?: string | null;
   end_date?: string | null;
   room?: string | null;
-  cost?: number | null;
+  fee_full_payment?: number | null;
+  fee_installment?: number | null;
+  exam_fee_gbp?: number | null;
+  foc_items?: string | null;
   discount_plan?: string | null;
 }
 
@@ -127,6 +136,7 @@ export interface AdminEnrollment {
   downpayment?: number | null;
   installment_amount?: number | null;
   course_cost?: number | null;
+  foc_items?: string | null;
 }
 
 export interface AdminEnrollmentCreate {
@@ -270,8 +280,15 @@ export interface AdminPayment {
   payment_plan: string | null;
   payment_method?: string | null;
   course_cost?: number;
+  foc_items?: string | null;
   downpayment?: number;
   installment_amount?: number;
+  fine_amount?: number;
+  extra_items_fee?: number;
+  extra_items?: string | null;
+  exam_fee_paid_gbp?: number;
+  exam_fee_paid_mmk?: number;
+  exam_fee_currency?: string;
 }
 
 export interface AdminPaymentCreate {
@@ -280,6 +297,12 @@ export interface AdminPaymentCreate {
   month: string;
   payment_method?: string;
   status?: string;
+  fine_amount?: number | null;
+  extra_items_fee?: number | null;
+  extra_items?: string | null;
+  exam_fee_paid_gbp?: number | null;
+  exam_fee_paid_mmk?: number | null;
+  exam_fee_currency?: string | null;
 }
 
 export class AdminService {

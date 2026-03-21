@@ -37,6 +37,7 @@ export default function AdminPaymentsPage() {
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   
+  const [courses, setCourses] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
   const [q, setQ] = useState("");
@@ -50,14 +51,27 @@ export default function AdminPaymentsPage() {
   const [pMonth, setPMonth] = useState("");
   const [pYear, setPYear] = useState("");
   const [pMethod, setPMethod] = useState("");
+  const [pFine, setPFine] = useState<number | "">("")
+  const [pExtraFee, setPExtraFee] = useState<number | "">("")
+  const [pExtraItems, setPExtraItems] = useState("")
+  const [pExamFeePaidGbp, setPExamFeePaidGbp] = useState<number | "">("")
+  const [pExamFeePaidMmk, setPExamFeePaidMmk] = useState<number | "">("")
+  const [pExchangeRate, setPExchangeRate] = useState<number | "">("")
+  const [pExamFeeCurrency, setPExamFeeCurrency] = useState("MMK")
 
   const calculateLeftAmount = (enr: AdminEnrollment) => {
     const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
     const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount, 0);
     const cost = enr.course_cost || 0;
-    // We do NOT subtract downpayment (deposit) automatically here anymore
-    // It requires an approved "payment" record to reduce the Left balance
     return Math.max(0, cost - totalPaid);
+  };
+
+  const calculateLeftExamFeeGbp = (enr: AdminEnrollment) => {
+    const course = courses.find(c => c.course_id === enr.course_id);
+    const totalDue = course?.exam_fee_gbp || 0;
+    const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
+    const totalPaidGbp = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
+    return Math.max(0, totalDue - totalPaidGbp);
   };
 
   const filteredEnrollments = enrollments.filter((e) => {
@@ -75,12 +89,14 @@ export default function AdminPaymentsPage() {
     setBusy(true);
     setError("");
     try {
-      const [enrData, payData] = await Promise.all([
+      const [enrData, payData, courseData] = await Promise.all([
         AdminService.listEnrollments(),
-        AdminService.listPayments()
+        AdminService.listPayments(),
+        AdminService.listCourses()
       ]);
       setEnrollments(enrData);
       setPayments(payData);
+      setCourses(courseData);
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load data");
     } finally {
@@ -110,6 +126,13 @@ export default function AdminPaymentsPage() {
     }
     setPYear(d.getFullYear().toString());
     setPMethod("");
+    setPFine("");
+    setPExtraFee("");
+    setPExtraItems("");
+    setPExamFeePaidGbp("");
+    setPExamFeePaidMmk("");
+    setPExchangeRate("");
+    setPExamFeeCurrency("MMK");
     
     setPaymentModalOpen(true);
   };
@@ -125,7 +148,13 @@ export default function AdminPaymentsPage() {
         enrollment_id: selectedEnrollment.enrollment_id,
         amount: Number(pAmount),
         month: pYear ? `${pMonth} ${pYear}` : pMonth,
-        payment_method: pMethod || undefined
+        payment_method: pMethod || undefined,
+        fine_amount: pFine !== "" ? Number(pFine) : undefined,
+        extra_items_fee: pExtraFee !== "" ? Number(pExtraFee) : undefined,
+        extra_items: pExtraItems.trim() || undefined,
+        exam_fee_paid_gbp: pExamFeePaidGbp !== "" ? Number(pExamFeePaidGbp) : undefined,
+        exam_fee_paid_mmk: pExamFeePaidMmk !== "" ? Number(pExamFeePaidMmk) : undefined,
+        exam_fee_currency: pExamFeeCurrency || "MMK",
       });
       setPaymentModalOpen(false);
       await load();
@@ -216,6 +245,10 @@ export default function AdminPaymentsPage() {
                               <div>Deposit: <strong className="text-slate-700">{enr.downpayment || 0} MMK</strong></div>
                               <div>Monthly: <strong className="text-slate-700">{enr.installment_amount || 0} MMK</strong></div>
                               <div>Left: <strong className="text-rose-600">{calculateLeftAmount(enr)} MMK</strong></div>
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <span className="text-[10px] text-slate-400 uppercase font-bold">Exam Fee Left:</span>
+                                <strong className="text-indigo-600 font-bold">{calculateLeftExamFeeGbp(enr)} GBP</strong>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -246,7 +279,7 @@ export default function AdminPaymentsPage() {
                   <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => generateReceiptPDF(enr, enrPayments, calculateLeftAmount(enr), user?.username || "Admin")}
+                          onClick={() => generateReceiptPDF(enr, enrPayments, calculateLeftAmount(enr), user?.username || "Admin", true)}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 transition-colors text-xs"
                           title="Download/Print Receipt"
                         >
@@ -371,6 +404,76 @@ export default function AdminPaymentsPage() {
               </div>
             </div>
 
+            <div className="border-t border-slate-100 pt-4 mt-2">
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Additional Charges (Optional)</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fine (MMK)</label>
+                  <input
+                    type="number"
+                    value={pFine}
+                    onChange={(e) => setPFine(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-3 py-2.5 rounded-xl bg-red-50/50 border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+                    placeholder="e.g. late fee, rule violation"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Extra Items Fee (MMK)</label>
+                  <input
+                    type="number"
+                    value={pExtraFee}
+                    onChange={(e) => setPExtraFee(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-3 py-2.5 rounded-xl bg-amber-50/50 border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                    placeholder="e.g. uniform, book"
+                  />
+                </div>
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam GBP £ to Pay</label>
+                    <input
+                      type="number"
+                      value={pExamFeePaidGbp}
+                      onChange={(e) => {
+                        const gbp = e.target.value ? Number(e.target.value) : "";
+                        setPExamFeePaidGbp(gbp);
+                        if (gbp !== "" && pExchangeRate !== "") {
+                          setPExamFeePaidMmk(gbp * Number(pExchangeRate));
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl bg-blue-50/50 border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                      placeholder="e.g. 50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exchange Rate (MMK/£)</label>
+                    <input
+                      type="number"
+                      value={pExchangeRate}
+                      onChange={(e) => {
+                        const rate = e.target.value ? Number(e.target.value) : "";
+                        setPExchangeRate(rate);
+                        if (pExamFeePaidGbp !== "" && rate !== "") {
+                          setPExamFeePaidMmk(Number(pExamFeePaidGbp) * Number(rate));
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                      placeholder="e.g. 5000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Exam MMK</label>
+                    <input
+                      type="number"
+                      value={pExamFeePaidMmk}
+                      onChange={(e) => setPExamFeePaidMmk(e.target.value ? Number(e.target.value) : "")}
+                      className="w-full px-3 py-2.5 rounded-xl bg-indigo-50/50 border border-indigo-200"
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setPaymentModalOpen(false)}
@@ -407,17 +510,30 @@ export default function AdminPaymentsPage() {
                 {payments
                   .filter(p => p.enrollment_id === selectedEnrollment.enrollment_id)
                   .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
-                  .map(p => (
+                  .map(p => {
+                    const sortedPayments = payments
+                      .filter(pay => pay.enrollment_id === selectedEnrollment.enrollment_id)
+                      .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime());
+                    const isFirstPayment = sortedPayments.length > 0 && sortedPayments[0].payment_id === p.payment_id;
+
+                    return (
                     <div key={p.payment_id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-xl">
                       <div>
                         <div className="font-bold text-slate-800">{p.month}</div>
                         <div className="text-xs text-slate-500 mt-0.5">{new Date(p.payment_date).toLocaleString()}</div>
+                        {(p.fine_amount != null && p.fine_amount > 0) && <div className="text-xs text-red-600 mt-0.5 font-semibold">Fine: {p.fine_amount} MMK</div>}
+                        {(p.extra_items_fee != null && p.extra_items_fee > 0) && <div className="text-xs text-amber-600 mt-0.5 font-semibold">Extra: {p.extra_items_fee} MMK — {p.extra_items || "Items"}</div>}
+                        {((p.exam_fee_paid_gbp != null && p.exam_fee_paid_gbp > 0) || (p.exam_fee_paid_mmk != null && p.exam_fee_paid_mmk > 0)) && (
+                          <div className="text-xs text-blue-600 mt-0.5 font-semibold">
+                            Exam Fee: {p.exam_fee_paid_gbp || 0} GBP ({p.exam_fee_paid_mmk || 0} MMK)
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col sm:items-end mt-2 sm:mt-0">
                         <div className="font-extrabold text-emerald-600">{p.amount} MMK</div>
                         <div className="flex gap-1 mt-1 justify-end items-center">
                            <button 
-                             onClick={() => generateReceiptPDF(selectedEnrollment, [p], calculateLeftAmount(selectedEnrollment), user?.username || "Admin")}
+                             onClick={() => generateReceiptPDF(selectedEnrollment, [p], calculateLeftAmount(selectedEnrollment), user?.username || "Admin", isFirstPayment)}
                              className="inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 transition-colors"
                              title="Download Receipt for this payment"
                            >
@@ -428,7 +544,7 @@ export default function AdminPaymentsPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
               </div>
             )}
             

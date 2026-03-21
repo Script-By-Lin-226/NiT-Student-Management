@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { RefreshCw, Clock } from "lucide-react";
+import { RefreshCw, Clock, Search } from "lucide-react";
 
 export default function ActivityLogsPage() {
   const router = useRouter();
@@ -13,6 +13,8 @@ export default function ActivityLogsPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [q, setQ] = useState("");
+  const [dateQ, setDateQ] = useState("");
 
   useEffect(() => {
     if (!loading && !isAdmin) router.replace("/dashboard");
@@ -35,6 +37,23 @@ export default function ActivityLogsPage() {
     if (isAdmin) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
+
+  const filteredLogs = logs.filter((log) => {
+    const term = q.toLowerCase();
+    const dateTerm = dateQ; // YYYY-MM-DD
+    
+    // Search user and action
+    const matchesSearch = 
+      log.username.toLowerCase().includes(term) ||
+      log.action.toLowerCase().includes(term) ||
+      log.details?.toLowerCase().includes(term) ||
+      log.role.toLowerCase().includes(term);
+
+    // Search date
+    const matchesDate = !dateTerm || log.timestamp.startsWith(dateTerm);
+
+    return matchesSearch && matchesDate;
+  });
 
   if (loading) return null;
   if (!isAdmin) return null;
@@ -61,13 +80,31 @@ export default function ActivityLogsPage() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {error && (
-          <div className="px-6 py-4 border-b border-slate-100">
+        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input 
+              value={q} 
+              onChange={(e) => setQ(e.target.value)} 
+              placeholder="Search user, action or details..." 
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium" 
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <input 
+              type="date"
+              value={dateQ}
+              onChange={(e) => setDateQ(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium"
+            />
+          </div>
+          {error && (
             <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
               {error}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
@@ -80,7 +117,7 @@ export default function ActivityLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {logs.map((log) => (
+              {filteredLogs.map((log) => (
                 <tr key={log.log_id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-slate-500">
@@ -101,10 +138,10 @@ export default function ActivityLogsPage() {
                   <td className="px-6 py-4 text-slate-700">{log.details}</td>
                 </tr>
               ))}
-              {logs.length === 0 && (
+              {filteredLogs.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
-                    {busy ? "Loading logs..." : "No activity logs found."}
+                    {busy ? "Loading logs..." : "No matching activity logs found."}
                   </td>
                 </tr>
               )}

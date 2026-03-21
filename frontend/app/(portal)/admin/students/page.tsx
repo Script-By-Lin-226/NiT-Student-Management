@@ -758,7 +758,7 @@ export default function AdminStudentsPage() {
                 >
                   <option value="">No course (skip enrollment)</option>
                   {courses.map(c => (
-                    <option key={c.course_code} value={c.course_code}>{c.course_name} - {c.cost?.toLocaleString() || "Free"}</option>
+                    <option key={c.course_code} value={c.course_code}>{c.course_name}</option>
                   ))}
                 </select>
               </div>

@@ -16,7 +16,10 @@ class AdminCourseCreate(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     room: Optional[str] = None
-    cost: Optional[float] = None
+    fee_full_payment: Optional[float] = None
+    fee_installment: Optional[float] = None
+    exam_fee_gbp: Optional[float] = None
+    foc_items: Optional[str] = None
     discount_plan: Optional[str] = None
 
 
@@ -27,5 +30,8 @@ class AdminCourseUpdate(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     room: Optional[str] = None
-    cost: Optional[float] = None
+    fee_full_payment: Optional[float] = None
+    fee_installment: Optional[float] = None
+    exam_fee_gbp: Optional[float] = None
+    foc_items: Optional[str] = None
     discount_plan: Optional[str] = None
