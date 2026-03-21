@@ -9,6 +9,7 @@ class PaymentCreate(BaseModel):
     payment_method: Optional[str] = None
     status: Optional[str] = "Paid"
     fine_amount: Optional[float] = None
+    fine_reason: Optional[str] = None
     extra_items_fee: Optional[float] = None
     extra_items: Optional[str] = None
     exam_fee_paid_gbp: Optional[float] = None
@@ -21,6 +22,7 @@ class PaymentUpdate(BaseModel):
     status: Optional[str] = None
     payment_method: Optional[str] = None
     fine_amount: Optional[float] = None
+    fine_reason: Optional[str] = None
     extra_items_fee: Optional[float] = None
     extra_items: Optional[str] = None
     exam_fee_paid_gbp: Optional[float] = None

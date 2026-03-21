@@ -61,7 +61,7 @@ export default function Sidebar() {
     <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-slate-200 lg:bg-white lg:pt-5 lg:pb-4">
       <div className="flex items-center px-18">
         <div className="flex items-center gap-3">
-          <BrandLogo className="h-25 w-auto" />
+          <BrandLogo className="h-30 w-auto" />
         </div>
       </div>
 

@@ -195,6 +195,7 @@ class Payment(Base):
     payment_method = Column(String, nullable=True) # KBZPay, AYA Pay, Cash, MMQR, Banking
     
     fine_amount = Column(Float, nullable=True)
+    fine_reason = Column(String, nullable=True)
     extra_items_fee = Column(Float, nullable=True)
     extra_items = Column(String, nullable=True)
     exam_fee_paid_gbp = Column(Float, nullable=True)

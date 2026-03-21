@@ -284,6 +284,7 @@ export interface AdminPayment {
   downpayment?: number;
   installment_amount?: number;
   fine_amount?: number;
+  fine_reason?: string | null;
   extra_items_fee?: number;
   extra_items?: string | null;
   exam_fee_paid_gbp?: number;
@@ -298,6 +299,7 @@ export interface AdminPaymentCreate {
   payment_method?: string;
   status?: string;
   fine_amount?: number | null;
+  fine_reason?: string | null;
   extra_items_fee?: number | null;
   extra_items?: string | null;
   exam_fee_paid_gbp?: number | null;

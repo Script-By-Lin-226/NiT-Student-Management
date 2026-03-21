@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Search, Plus, CreditCard, History, X, Download } from "lucide-react";
+import { RefreshCw, Search, Plus, CreditCard, History, X, Download, AlertCircle, Receipt } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
 
 import { AdminService, AdminEnrollment, AdminPayment } from "@/services/admin.service";
@@ -54,6 +54,7 @@ export default function AdminPaymentsPage() {
   const [pYear, setPYear] = useState("");
   const [pMethod, setPMethod] = useState("");
   const [pFine, setPFine] = useState<number | "">("")
+  const [pFineReason, setPFineReason] = useState("")
   const [pExtraFee, setPExtraFee] = useState<number | "">("")
   const [pExtraItems, setPExtraItems] = useState("")
   const [pExamFeePaidGbp, setPExamFeePaidGbp] = useState<number | "">("")
@@ -129,6 +130,7 @@ export default function AdminPaymentsPage() {
     setPYear(d.getFullYear().toString());
     setPMethod("");
     setPFine("");
+    setPFineReason("");
     setPExtraFee("");
     setPExtraItems("");
     setPExamFeePaidGbp("");
@@ -152,6 +154,7 @@ export default function AdminPaymentsPage() {
         month: pYear ? `${pMonth} ${pYear}` : pMonth,
         payment_method: pMethod || undefined,
         fine_amount: pFine !== "" ? Number(pFine) : undefined,
+        fine_reason: pFineReason.trim() || undefined,
         extra_items_fee: pExtraFee !== "" ? Number(pExtraFee) : undefined,
         extra_items: pExtraItems.trim() || undefined,
         exam_fee_paid_gbp: pExamFeePaidGbp !== "" ? Number(pExamFeePaidGbp) : undefined,
@@ -210,6 +213,7 @@ export default function AdminPaymentsPage() {
                     "Course Cost (MMK)": enr.course_cost || 0,
                     "Total Paid (MMK)": totalPaid,
                     "Total Fine Paid (MMK)": totalFine,
+                    "Fine Reasons": enrPayments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ") || "-",
                     "Total Extra Items Fee (MMK)": totalExtra,
                     "Exam Fee Paid (GBP)": totalExamGbp,
                     "Exam Fee Paid (MMK)": totalExamMmk,
@@ -273,44 +277,72 @@ export default function AdminPaymentsPage() {
                     </td>
                     <td className="px-6 py-4">
                       {enr.payment_plan ? (
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex self-start items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${enr.payment_plan === 'full' ? 'bg-brand-50 text-brand-700 border-brand-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
-                            {enr.payment_plan === 'full' ? 'Full Payment' : 'Installment'}
-                          </span>
-                          {enr.payment_plan === 'installment' && (
-                            <div className="text-xs text-slate-500 mt-1">
-                              <div>Deposit: <strong className="text-slate-700">{enr.downpayment || 0} MMK</strong></div>
-                              <div>Monthly: <strong className="text-slate-700">{enr.installment_amount || 0} MMK</strong></div>
-                              <div>Left: <strong className="text-rose-600">{calculateLeftAmount(enr)} MMK</strong></div>
-                              <div className="mt-1 flex items-center gap-1.5">
-                                <span className="text-[10px] text-slate-400 uppercase font-bold">Exam Fee Left:</span>
-                                <strong className="text-indigo-600 font-bold">{calculateLeftExamFeeGbp(enr)} GBP</strong>
+                        <div className="flex flex-col gap-2 min-w-[max-content]">
+                          <div className="flex items-center justify-between">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border tracking-tight ${enr.payment_plan === 'full' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
+                              {enr.payment_plan === 'full' ? 'Full Plan' : 'Installment'}
+                            </span>
+                          </div>
+                          
+                          <div className="space-y-1.5 px-0.5">
+                            <div className="flex items-center gap-4">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Course Cost</span>
+                                <span className="text-xs font-semibold text-slate-700">{(enr.course_cost || 0).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">MMK</span></span>
                               </div>
+                              {enr.payment_plan === 'installment' && (
+                                <div className="flex flex-col border-l border-slate-100 pl-4">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Monthly</span>
+                                  <span className="text-xs font-semibold text-slate-700">{(enr.installment_amount || 0).toLocaleString()} <span className="text-[10px] font-normal text-slate-400 text-purple-400">MMK</span></span>
+                                </div>
+                              )}
                             </div>
-                          )}
+
+                            <div className="grid grid-cols-2 gap-3 pt-1.5 border-t border-slate-50">
+                               <div className="flex flex-col">
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Remaining</span>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-sm font-black text-rose-600 tracking-tight">{calculateLeftAmount(enr).toLocaleString()}</span>
+                                    <span className="text-[10px] font-bold text-rose-300">MMK</span>
+                                  </div>
+                               </div>
+                               <div className="flex flex-col border-l border-slate-100 pl-3">
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Exam Fee</span>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-sm font-black text-indigo-700 tracking-tight">{calculateLeftExamFeeGbp(enr)}</span>
+                                    <span className="text-[10px] font-bold text-indigo-300">GBP</span>
+                                  </div>
+                               </div>
+                            </div>
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic">No plan selected</span>
+                        <div className="flex items-center gap-1.5 text-slate-400 bg-slate-50 px-3 py-2 rounded-xl border border-dashed border-slate-200">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span className="text-xs italic font-medium">No active plan</span>
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col gap-2 items-start">
+                      <div className="flex flex-col gap-1.5 items-start">
                         {enr.payment_plan && calculateLeftAmount(enr) <= 0 ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider">
-                            Fully Paid
-                          </span>
+                          <div className="flex items-center gap-1.5 text-emerald-600 px-2 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Fully Paid</span>
+                          </div>
                         ) : enr.payment_plan ? (
-                          <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider">
-                            Balance Due
-                          </span>
+                          <div className="flex items-center gap-1.5 text-amber-600 px-2 py-1 bg-amber-50 rounded-lg border border-amber-100">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Due Balance</span>
+                          </div>
                         ) : null}
-                        {enrPayments.length > 0 ? (
-                          <span className="text-xs font-semibold text-slate-500">
-                            {enrPayments.length} payment(s) recorded
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">No payments yet</span>
-                        )}
+                        
+                        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50/50 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                            <Receipt className="w-3 h-3 text-slate-400" />
+                            <span className="text-xs font-bold text-slate-600 tracking-tight">
+                                {enrPayments.length} <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">Entries</span>
+                            </span>
+                        </div>
                       </div>
                     </td>
                   <td className="px-6 py-4">
@@ -453,6 +485,15 @@ export default function AdminPaymentsPage() {
                     className="w-full px-3 py-2.5 rounded-xl bg-red-50/50 border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
                     placeholder="e.g. late fee, rule violation"
                   />
+                  {pFine !== "" && (
+                    <input
+                      type="text"
+                      value={pFineReason}
+                      onChange={(e) => setPFineReason(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 rounded-xl bg-white border border-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/10 focus:border-red-300 text-xs"
+                      placeholder="Reason for fine..."
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Extra Items Fee (MMK)</label>
@@ -558,7 +599,7 @@ export default function AdminPaymentsPage() {
                       <div>
                         <div className="font-bold text-slate-800">{p.month}</div>
                         <div className="text-xs text-slate-500 mt-0.5">{new Date(p.payment_date).toLocaleString()}</div>
-                        {(p.fine_amount != null && p.fine_amount > 0) && <div className="text-xs text-red-600 mt-0.5 font-semibold">Fine: {p.fine_amount} MMK</div>}
+                        {(p.fine_amount != null && p.fine_amount > 0) && <div className="text-xs text-red-600 mt-0.5 font-semibold">Fine: {p.fine_amount} MMK {p.fine_reason ? `(${p.fine_reason})` : ""}</div>}
                         {(p.extra_items_fee != null && p.extra_items_fee > 0) && <div className="text-xs text-amber-600 mt-0.5 font-semibold">Extra: {p.extra_items_fee} MMK — {p.extra_items || "Items"}</div>}
                         {((p.exam_fee_paid_gbp != null && p.exam_fee_paid_gbp > 0) || (p.exam_fee_paid_mmk != null && p.exam_fee_paid_mmk > 0)) && (
                           <div className="text-xs text-blue-600 mt-0.5 font-semibold">

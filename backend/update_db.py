@@ -35,6 +35,7 @@ async def update_db():
         await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_gbp FLOAT")
         await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_mmk FLOAT")
         await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_currency VARCHAR DEFAULT 'MMK'")
+        await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS fine_reason TEXT")
         
         # Update existing records to default values if needed
         # (Already handled by DEFAULT in SQL for currency, floats will be NULL which is fine)

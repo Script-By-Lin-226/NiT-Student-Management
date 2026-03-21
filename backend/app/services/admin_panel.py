@@ -402,6 +402,7 @@ class AdminPanelService:
                     "fine_amount": getattr(p, "fine_amount", 0) or 0,
                     "extra_items_fee": getattr(p, "extra_items_fee", 0) or 0,
                     "extra_items": getattr(p, "extra_items", None),
+                    "fine_reason": getattr(p, "fine_reason", None),
                     "exam_fee_paid_gbp": getattr(p, "exam_fee_paid_gbp", 0) or 0,
                     "exam_fee_paid_mmk": getattr(p, "exam_fee_paid_mmk", 0) or 0,
                     "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK")
@@ -1483,6 +1484,7 @@ class AdminPanelService:
                 "fine_amount": getattr(p, "fine_amount", 0) or 0,
                 "extra_items_fee": getattr(p, "extra_items_fee", 0) or 0,
                 "extra_items": getattr(p, "extra_items", None),
+                "fine_reason": getattr(p, "fine_reason", None),
                 "exam_fee_paid_gbp": getattr(p, "exam_fee_paid_gbp", 0) or 0,
                 "exam_fee_paid_mmk": getattr(p, "exam_fee_paid_mmk", 0) or 0,
                 "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK")
@@ -1506,6 +1508,7 @@ class AdminPanelService:
             status=payload.status or "Paid",
             payment_method=payload.payment_method,
             fine_amount=getattr(payload, "fine_amount", None),
+            fine_reason=getattr(payload, "fine_reason", None),
             extra_items_fee=getattr(payload, "extra_items_fee", None),
             extra_items=getattr(payload, "extra_items", None),
             exam_fee_paid_gbp=getattr(payload, "exam_fee_paid_gbp", None),
