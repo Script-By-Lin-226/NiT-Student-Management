@@ -20,7 +20,19 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Database URL (asyncpg)
-DATABASE_URL = config.get_main_option("sqlalchemy.url")
+import os
+
+# Get URL from environment first, then alembic.ini
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = config.get_main_option("sqlalchemy.url")
+
+# Railway/Render provides postgresql:// but asyncpg needs +asyncpg
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 
 def run_migrations_offline() -> None:

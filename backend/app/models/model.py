@@ -120,6 +120,7 @@ class Course(Base):
     room = Column(String, nullable=True) # e.g. "room 6"
     fee_full_payment = Column(Float, nullable=True)
     fee_installment = Column(Float, nullable=True)
+    exam_fee = Column(Float, nullable=True)
     exam_fee_gbp = Column(Float, nullable=True) # Fee in Pounds (GBP) as mentioned by user
     foc_items = Column(String, nullable=True)
     discount_plan = Column(String, nullable=True)
