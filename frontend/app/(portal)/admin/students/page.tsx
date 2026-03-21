@@ -502,26 +502,28 @@ export default function AdminStudentsPage() {
             <Download className="w-4 h-4" />
             Export Data
           </button>
-          <button
-            onClick={async () => {
-              const ok = window.confirm("This will DELETE all data (students/courses/enrollments/attendance/rooms/etc.) except admin accounts. Continue?");
-              if (!ok) return;
-              try {
-                setBusy(true);
-                setError("");
-                await AdminService.purgeData();
-                await load();
-              } catch (e: any) {
-                handleError(e, "Failed to purge data");
-              } finally {
-                setBusy(false);
-              }
-            }}
-            disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-sm disabled:opacity-60"
-          >
-            Purge data
-          </button>
+          {isAdmin && (
+            <button
+              onClick={async () => {
+                const ok = window.confirm("This will DELETE all data (students/courses/enrollments/attendance/rooms/etc.) except admin accounts. Continue?");
+                if (!ok) return;
+                try {
+                  setBusy(true);
+                  setError("");
+                  await AdminService.purgeData();
+                  await load();
+                } catch (e: any) {
+                  handleError(e, "Failed to purge data");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={busy}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-sm disabled:opacity-60"
+            >
+              Purge data
+            </button>
+          )}
           <button
             onClick={openCreate}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm"
