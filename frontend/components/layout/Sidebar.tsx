@@ -59,15 +59,15 @@ export default function Sidebar() {
 
   return (
     <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-slate-200 lg:bg-white lg:pt-5 lg:pb-4">
-      <div className="flex items-center px-6">
+      <div className="flex items-center px-18">
         <div className="flex items-center gap-3">
-          <BrandLogo className="h-11 w-auto" />
+          <BrandLogo className="h-25 w-auto" />
         </div>
       </div>
 
-      <div className="mt-8 flex flex-col flex-1 gap-y-1">
-        <div className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Menu</div>
-        <nav className="flex-1 px-4 space-y-1">
+      <div className="mt-6 flex flex-col flex-1 gap-y-1 overflow-hidden">
+        <div className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 shrink-0">Menu</div>
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-2">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -95,7 +95,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div className="px-4">
+      <div className="px-4 shrink-0">
         <button
           onClick={logout}
           className="w-full group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 transition-all"

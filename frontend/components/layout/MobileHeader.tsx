@@ -64,7 +64,7 @@ export default function MobileHeader() {
       <header className="lg:hidden flex items-center justify-between px-4 py-4 bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <Menu className="h-6 w-6 text-slate-600 cursor-pointer" onClick={() => setIsOpen(true)} />
-          <BrandLogo className="h-8 w-auto" />
+          <BrandLogo className="h-10 w-auto" />
         </div>
         {user?.profile_picture ? (
           <img 
@@ -97,7 +97,7 @@ export default function MobileHeader() {
             </div>
 
             <div className="flex flex-shrink-0 items-center px-4">
-              <BrandLogo className="h-10 w-auto" />
+              <BrandLogo className="h-14 w-auto" />
             </div>
             
             <div className="mt-5 h-0 flex-1 overflow-y-auto">

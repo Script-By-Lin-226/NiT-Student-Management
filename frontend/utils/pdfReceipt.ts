@@ -1,0 +1,117 @@
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { AdminEnrollment, AdminPayment } from "@/services/admin.service";
+
+const loadImage = (url: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = url;
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+  });
+};
+
+export const generateReceiptPDF = async (
+  enrollment: AdminEnrollment,
+  payments: AdminPayment[],
+  leftAmount: number
+) => {
+  const doc = new jsPDF();
+
+  let startY = 20;
+
+  try {
+    const logo = await loadImage("/icons/logo_png.png");
+    // Draw the logo centered. Make it a bit bigger: 45x45
+    doc.addImage(logo, "PNG", 105 - 22.5, 10, 45, 45);
+    startY = 65; // move text down if logo is present
+  } catch (e) {
+    console.warn("Could not load logo", e);
+  }
+
+  // Header
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("Networking and Information Technology", 105, startY, { align: "center" });
+
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "normal");
+  doc.text("Payment Receipt", 105, startY + 8, { align: "center" });
+
+  doc.setLineWidth(0.5);
+  doc.line(14, startY + 14, 196, startY + 14);
+
+  let contentY = startY + 24;
+
+  // Student & Course Info
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Student Details", 14, contentY);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Name: ${enrollment.student_name || "N/A"}`, 14, contentY + 7);
+  doc.text(`Student Code: ${enrollment.student_code || "N/A"}`, 14, contentY + 14);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Course Details", 120, contentY);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Course Name: ${enrollment.course_name || "N/A"}`, 120, contentY + 7);
+  doc.text(`Course Code: ${enrollment.course_code || "N/A"}`, 120, contentY + 14);
+
+  contentY += 26;
+
+  // Payment Plan Info
+  doc.setFont("helvetica", "bold");
+  doc.text("Payment Plan Info", 14, contentY);
+  doc.setFont("helvetica", "normal");
+  const planName = enrollment.payment_plan === 'full' ? 'Full Payment' : (enrollment.payment_plan === 'installment' ? 'Installment' : 'N/A');
+  doc.text(`Plan: ${planName}`, 14, contentY + 7);
+  doc.text(`Course Cost: ${enrollment.course_cost ? enrollment.course_cost.toLocaleString() + ' MMK' : 'N/A'}`, 14, contentY + 14);
+  if (enrollment.payment_plan === 'installment') {
+    doc.text(`Monthly Installment: ${enrollment.installment_amount ? enrollment.installment_amount.toLocaleString() + ' MMK' : '0 MMK'}`, 120, contentY + 7);
+  }
+  doc.text(`Remaining Balance: ${leftAmount.toLocaleString()} MMK`, 120, contentY + 14);
+
+  contentY += 22;
+
+  // Table Data
+  const tableData = payments
+    .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime())
+    .map((p, index) => [
+      index + 1,
+      new Date(p.payment_date).toLocaleDateString(),
+      p.month || "N/A",
+      p.payment_method || "N/A",
+      p.status || "Completed",
+      `${p.amount.toLocaleString()} MMK`
+    ]);
+
+  autoTable(doc, {
+    startY: contentY,
+    head: [["#", "Date", "Month / For", "Method", "Status", "Amount"]],
+    body: tableData,
+    theme: "striped",
+    headStyles: { fillColor: [63, 81, 181] },
+    styles: { font: "helvetica", fontSize: 10 },
+    columnStyles: {
+      5: { halign: "right" }
+    }
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || contentY + 10;
+
+  // Summary
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  
+  doc.setFont("helvetica", "bold");
+  doc.text(`Total Paid: ${totalPaid.toLocaleString()} MMK`, 196, finalY + 15, { align: "right" });
+
+  // Footer
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 280);
+  doc.text("This is a computer-generated receipt, no signature is required.", 105, 280, { align: "center" });
+
+  // Download PDF
+  doc.save(`Receipt_${enrollment.student_code}_${(enrollment.course_name || "").replace(/\s+/g, "_")}.pdf`);
+};

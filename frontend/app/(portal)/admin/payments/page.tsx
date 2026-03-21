@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, Search, Plus, CreditCard, History, X } from "lucide-react";
 import { AdminService, AdminEnrollment, AdminPayment } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
+import { generateReceiptPDF } from "@/utils/pdfReceipt";
 
 function Modal({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null;
@@ -245,9 +246,9 @@ export default function AdminPaymentsPage() {
                   <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => alert("Receipt generation feature coming soon! You will be able to print/download the payment history.")}
+                          onClick={() => generateReceiptPDF(enr, enrPayments, calculateLeftAmount(enr))}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 transition-colors text-xs"
-                          title="Generate Receipt (Coming Soon)"
+                          title="Download/Print Receipt"
                         >
                           Receipt
                         </button>
