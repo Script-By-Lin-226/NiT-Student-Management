@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService, AdminUser } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, RefreshCw, X, Trash2 } from "lucide-react";
+import { Plus, Search, RefreshCw, X, Trash2, Edit2 } from "lucide-react";
 
 function Modal({
   title,
@@ -53,6 +53,13 @@ export default function AdminStaffPage() {
   const [cDob, setCDob] = useState("");
   const [cRole, setCRole] = useState("sales");
   const [cActive, setCActive] = useState(true);
+
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [uCode, setUCode] = useState("");
+  const [uUsername, setUUsername] = useState("");
+  const [uEmail, setUEmail] = useState("");
+  const [uDob, setUDob] = useState("");
+  const [uActive, setUActive] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAdmin) router.replace("/dashboard");
@@ -127,6 +134,34 @@ export default function AdminStaffPage() {
     }
   };
 
+  const openUpdate = (u: AdminUser) => {
+    setUCode(u.user_code);
+    setUUsername(u.username);
+    setUEmail(u.email);
+    setUDob(u.data_of_birth || "");
+    setUActive(u.is_active);
+    setUpdateOpen(true);
+  };
+
+  const submitUpdate = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await AdminService.updateUser(uCode, {
+        username: uUsername,
+        email: uEmail,
+        date_of_birth: uDob,
+        is_active: uActive,
+      });
+      setUpdateOpen(false);
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e.message || "Failed to update staff.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading || !isAdmin) return null;
 
   return (
@@ -193,7 +228,15 @@ export default function AdminStaffPage() {
                       {r.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right flex justify-end gap-2">
+                    <button
+                      onClick={() => openUpdate(r)}
+                      disabled={busy}
+                      className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-colors disabled:opacity-50"
+                      title="Edit Staff"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleDeleteStaff(r.user_code)}
                       disabled={busy}
@@ -247,6 +290,38 @@ export default function AdminStaffPage() {
           <div className="flex justify-end mt-4">
             <button onClick={submitCreate} disabled={busy} className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700">
               {busy ? "Creating..." : "Create"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal title="Edit Staff Account" open={updateOpen} onClose={() => setUpdateOpen(false)}>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
+            <input value={uUsername} onChange={e => setUUsername(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+            <input type="email" value={uEmail} onChange={e => setUEmail(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date of Birth</label>
+            <input type="date" value={uDob} onChange={e => setUDob(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" />
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="uActive"
+              checked={uActive}
+              onChange={(e) => setUActive(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-600"
+            />
+            <label htmlFor="uActive" className="text-sm font-semibold text-slate-700">Account Active</label>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button onClick={submitUpdate} disabled={busy} className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700">
+              {busy ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>

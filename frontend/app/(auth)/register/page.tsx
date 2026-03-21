@@ -313,22 +313,28 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div className="pt-2 flex justify-between items-center">
+          <div className="pt-2 flex flex-col md:flex-row gap-4 items-center justify-between">
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center justify-center py-2 px-6 font-medium rounded text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 disabled:opacity-50 transition-colors mr-auto shadow-sm"
+              className="w-full md:w-auto inline-flex items-center justify-center py-3 px-6 font-medium rounded-xl text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 disabled:opacity-50 transition-colors shadow-sm"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Submitting...
                 </>
               ) : (
-                "Submit"
+                "Submit Registration"
               )}
             </button>
-           
+
+            <a
+              href="/login"
+              className="text-sm font-semibold text-brand-600 hover:text-brand-700 underline text-center w-full md:w-auto mt-2 md:mt-0"
+            >
+              Already have an account? Log in
+            </a>
           </div>
           
         </form>

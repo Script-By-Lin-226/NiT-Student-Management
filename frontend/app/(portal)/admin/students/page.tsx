@@ -468,7 +468,24 @@ export default function AdminStudentsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Students</h1>
           <p className="text-slate-500 font-medium text-sm mt-1">Create, update, and delete student accounts.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              const link = `${window.location.origin}/register`;
+              if (navigator.share) {
+                navigator.share({
+                  title: 'NiT Student Registration',
+                  text: 'Please register using this link:',
+                  url: link,
+                }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(link).then(() => alert("Registration link copied to clipboard!"));
+              }
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold hover:bg-indigo-100 shadow-sm"
+          >
+            Share/Copy Register Link
+          </button>
           <button
             onClick={load}
             disabled={busy}
