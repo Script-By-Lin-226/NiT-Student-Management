@@ -2,7 +2,6 @@ from app.security.jwt_tok import create_access_token, create_refresh_token
 from app.models.model import User
 from app.schemas.user import UserBase, LoginUser, StudentRegister
 from app.services.admin_panel import _next_student_code
-# from datetime import datetime, time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi.responses import JSONResponse  
@@ -10,11 +9,14 @@ from fastapi import Request, HTTPException
 from app.security.password_hashing import verify_password , hash_password
 from app.security.rate_limiter import limiter
 from app.core.config import settings
+from app.repositories.token_repository import TokenRepository
+from app.core.database_initialization import AsyncSessionLocal
+from datetime import datetime, timedelta, timezone
 
 class AuthenticationService:
 
-    async def register_user(user: StudentRegister, session:AsyncSession):
-        #Query to check user existent
+    @staticmethod
+    async def register_user(user: StudentRegister, session: AsyncSession):
         from datetime import datetime, time
         
         query = select(User).where(User.email == user.email)
@@ -24,8 +26,7 @@ class AuthenticationService:
         if existent_user:
             raise HTTPException(status_code=400, detail="User already exists")
         
-        # Use a default password since students won't provide one on registration page
-        hashed = await hash_password(user.phone) # Using phone number as default password
+        hashed = await hash_password(user.phone) 
         user_code = await _next_student_code(session, getattr(user, "department", "College"))
         dob_dt = datetime.combine(user.date_of_birth, time.min)
         
@@ -51,8 +52,9 @@ class AuthenticationService:
         
         return JSONResponse({"status_code": 201, "message": "Student registered successfully", "data": {"user_code": new_user.user_code, "username": new_user.username}})
 
+    @staticmethod
     @limiter.limit("5/minute")
-    async def login(request: Request, user: LoginUser, session:AsyncSession):
+    async def login(request: Request, user: LoginUser, session: AsyncSession):
         query = select(User).where(User.email == user.email)
         result = await session.execute(query)
         existent_user = result.scalar_one_or_none()
@@ -78,6 +80,15 @@ class AuthenticationService:
             "role": existent_user.role,
         })
         
+        # Save refresh token in DB
+        refresh_token_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        await TokenRepository.create_token(
+            session=session,
+            user_id=existent_user.user_id,
+            token=refresh_token,
+            expires_at=refresh_token_expires_at
+        )
+
         response = JSONResponse({
             "access_token": access_token,
             "refresh_token": refresh_token,
@@ -87,7 +98,6 @@ class AuthenticationService:
             "profile_picture": existent_user.profile_picture
         })
         
-        # Cookie settings: use secure cookies for HTTPS deployments
         is_production = not settings.FRONTEND_URL.startswith("http://localhost")
         cookie_secure = is_production
         cookie_samesite = "none" if is_production else "lax"
@@ -97,20 +107,74 @@ class AuthenticationService:
         response.headers["Authorization"] = f"Bearer {access_token}"
         
         return response   
+
+    @staticmethod
+    async def rotate_token(refresh_token_str: str):
+        from app.security.jwt_tok import decode_token, create_access_token, create_refresh_token
+        from app.models.model import User
+        
+        async with AsyncSessionLocal() as session:
+            try:
+                payload = await decode_token(refresh_token_str)
+                if payload.get("type") != "refresh":
+                    raise HTTPException(status_code=401, detail="Invalid token type")
+            except Exception:
+                raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+            token_record = await TokenRepository.get_token(session, refresh_token_str)
+            
+            if not token_record or token_record.is_revoked:
+                if token_record:
+                    await TokenRepository.revoke_all_user_tokens(session, token_record.user_id)
+                raise HTTPException(status_code=401, detail="Token has been revoked or reused")
+            
+            if token_record.expires_at < datetime.utcnow():
+                raise HTTPException(status_code=401, detail="Refresh token expired")
+
+            user_query = select(User).where(User.user_id == token_record.user_id)
+            result = await session.execute(user_query)
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=401, detail="User not found")
+
+            new_access_token = await create_access_token(data={
+                "sub": str(user.user_code).lower(),
+                "role": user.role,
+                "user_code": user.user_code,
+            })
+            new_refresh_token = await create_refresh_token(data={
+                "sub": str(user.user_code).lower(),
+                "role": user.role,
+            })
+
+            await TokenRepository.revoke_token(session, token_record.id)
+            new_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+            await TokenRepository.create_token(session, user.user_id, new_refresh_token, new_expires_at)
+
+            return {
+                "access_token": new_access_token,
+                "refresh_token": new_refresh_token,
+                "payload": {
+                    "sub": str(user.user_code).lower(),
+                    "role": user.role,
+                    "user_code": user.user_code,
+                }
+            }
     
-    async def logout(request :Request):
-        user = getattr(request.state , "user" , None)
-        
+    @staticmethod
+    async def logout(request: Request):
+        user = getattr(request.state, "user", None)
         if not user:
-            return JSONResponse(    {
-                "message": "User not found"
-            } , status_code=404)
+            return JSONResponse({"message": "User not found"}, status_code=404)
         
-        response = JSONResponse({
-            "message": "User logged out successfully"
-        })
-        
+        refresh_token = request.cookies.get("refresh_token")
+        if refresh_token:
+            async with AsyncSessionLocal() as session:
+                token_record = await TokenRepository.get_token(session, refresh_token)
+                if token_record:
+                    await TokenRepository.revoke_token(session, token_record.id)
+
+        response = JSONResponse({"message": "User logged out successfully"})
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
-        
-        return response   
+        return response
