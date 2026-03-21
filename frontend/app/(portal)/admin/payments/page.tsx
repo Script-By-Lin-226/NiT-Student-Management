@@ -32,7 +32,7 @@ function Modal({ title, open, onClose, children }: { title: string; open: boolea
 
 export default function AdminPaymentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, loading } = useAuth();
+  const { isAdminOrSales, loading, user } = useAuth();
 
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
@@ -246,7 +246,7 @@ export default function AdminPaymentsPage() {
                   <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => generateReceiptPDF(enr, enrPayments, calculateLeftAmount(enr))}
+                          onClick={() => generateReceiptPDF(enr, enrPayments, calculateLeftAmount(enr), user?.username || "Admin")}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 transition-colors text-xs"
                           title="Download/Print Receipt"
                         >
