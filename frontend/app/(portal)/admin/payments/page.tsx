@@ -415,7 +415,14 @@ export default function AdminPaymentsPage() {
                       </div>
                       <div className="flex flex-col sm:items-end mt-2 sm:mt-0">
                         <div className="font-extrabold text-emerald-600">{p.amount} MMK</div>
-                        <div className="flex gap-1 mt-1 justify-end">
+                        <div className="flex gap-1 mt-1 justify-end items-center">
+                           <button 
+                             onClick={() => generateReceiptPDF(selectedEnrollment, [p], calculateLeftAmount(selectedEnrollment), user?.username || "Admin")}
+                             className="inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 transition-colors"
+                             title="Download Receipt for this payment"
+                           >
+                             Receipt
+                           </button>
                            {p.payment_method && <span className="inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border bg-blue-50 text-blue-700 border-blue-100">{p.payment_method}</span>}
                            <span className="inline-flex px-2 py-0.5 rounded text-[10px] uppercase font-bold border bg-emerald-50 text-emerald-700 border-emerald-100">{p.status}</span>
                         </div>

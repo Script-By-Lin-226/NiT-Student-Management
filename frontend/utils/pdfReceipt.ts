@@ -115,5 +115,6 @@ export const generateReceiptPDF = async (
   doc.text("This is a computer-generated receipt, no signature is required.", 105, 280, { align: "center" });
 
   // Download PDF
-  doc.save(`Receipt_${enrollment.student_code}_${(enrollment.course_name || "").replace(/\s+/g, "_")}.pdf`);
+  const filenameSuffix = payments.length === 1 && payments[0].month ? `_${payments[0].month.replace(/\s+/g, "_")}` : "";
+  doc.save(`Receipt_${enrollment.student_code}_${(enrollment.course_name || "").replace(/\s+/g, "_")}${filenameSuffix}.pdf`);
 };
