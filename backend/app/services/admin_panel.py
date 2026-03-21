@@ -444,7 +444,7 @@ class AdminPanelService:
         response = JSONResponse({
             "status_code": 200,
             "message": "Teachers details fetched successfully",
-            "data": teachers
+            "data": [_serialize_user(t) for t in teachers]
         })
         return response
     
@@ -458,7 +458,7 @@ class AdminPanelService:
         response = JSONResponse({
             "status_code": 200,
             "message": "Teacher details fetched successfully",
-            "data": teachers
+            "data": [_serialize_user(t) for t in teachers]
         })
         return response
     

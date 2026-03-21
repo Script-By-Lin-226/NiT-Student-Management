@@ -105,12 +105,14 @@ class Course(Base):
     academicyear_id = Column(
         Integer,
         ForeignKey("academic_years.academic_year_id"),
+        index=True,
         nullable=False
     )
 
     instructor_id = Column(
         Integer,
-        ForeignKey("users.user_id")
+        ForeignKey("users.user_id"),
+        index=True
     )
 
     start_date = Column(Date, nullable=True)
@@ -144,12 +146,14 @@ class Enrollment(Base):
 
     student_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE")
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True
     )
 
     course_id = Column(
         Integer,
-        ForeignKey("courses.course_id", ondelete="CASCADE")
+        ForeignKey("courses.course_id", ondelete="CASCADE"),
+        index=True
     )
 
     enrollment_date = Column(DateTime, default=func.now())
@@ -177,6 +181,7 @@ class Payment(Base):
     enrollment_id = Column(
         Integer,
         ForeignKey("enrollments.enrollment_id", ondelete="CASCADE"),
+        index=True,
         nullable=False
     )
 
@@ -201,7 +206,8 @@ class TimeTable(Base):
 
     course_id = Column(
         Integer,
-        ForeignKey("courses.course_id", ondelete="CASCADE")
+        ForeignKey("courses.course_id", ondelete="CASCADE"),
+        index=True
     )
 
     day_of_week = Column(String, nullable=False)
@@ -224,12 +230,14 @@ class Grade(Base):
 
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE")
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True
     )
 
     course_id = Column(
         Integer,
-        ForeignKey("courses.course_id", ondelete="CASCADE")
+        ForeignKey("courses.course_id", ondelete="CASCADE"),
+        index=True
     )
 
     grade = Column(String, nullable=False)
@@ -245,7 +253,7 @@ class Attendance(Base):
     __tablename__ = 'attendances'
 
     attendance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
     attendance_date = Column(Date, nullable=False, default=date.today)
     slot = Column(String, nullable=False, default="Morning") # "Morning", "Afternoon", "Evening"
     check_today = Column(Boolean, nullable=False, default=False)
@@ -270,11 +278,13 @@ class ParentStudent(Base):
     parent_id = Column(
         Integer,
         ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True,
         nullable=False
     )
     student_id = Column(
         Integer,
         ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True,
         nullable=False
     )
     relationship_label = Column(String, default="parent")  # e.g. mother, father, guardian
@@ -297,7 +307,7 @@ class StaffAttendance(Base):
     __tablename__ = "staff_attendances"
 
     attendance_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True, nullable=False)
     attendance_date = Column(Date, nullable=False, default=date.today)
     check_in_time = Column(String, nullable=True)   # e.g. "09:05"
     check_out_time = Column(String, nullable=True)  # e.g. "17:30"
@@ -318,7 +328,7 @@ class ActivityLog(Base):
     __tablename__ = "activity_logs"
 
     log_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True, nullable=False)
     action = Column(String, nullable=False)
     details = Column(String, nullable=True)
     timestamp = Column(DateTime, default=func.now())
