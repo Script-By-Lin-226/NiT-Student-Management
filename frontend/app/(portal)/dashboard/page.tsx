@@ -285,8 +285,8 @@ export default function DashboardPage() {
                 Today’s rate: {adminKpis.attendanceRate}%
               </div>
             </div>
-            <div className="flex-1 w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="flex-1 w-full relative min-h-0">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={attendanceTrend} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2ff" />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} dy={15} />
@@ -326,8 +326,8 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 flex flex-col">
             <h3 className="font-bold text-slate-900 text-lg mb-2">Top courses (enrollments)</h3>
             <p className="text-sm text-slate-500 mb-6">Active enrollments grouped by course</p>
-            <div className="flex-1 min-h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="flex-1 min-h-[240px] relative w-full">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={enrollmentsByCourse} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="course" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
@@ -353,8 +353,8 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-500 mt-1">Current load vs capacity (from `/admin/rooms`)</p>
             </div>
           </div>
-          <div className="w-full h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full h-[280px] relative">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={roomsLoad} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="room" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
@@ -470,8 +470,8 @@ export default function DashboardPage() {
               No attendance records in the last 7 days.
             </div>
           ) : (
-            <div className="flex-1 w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="flex-1 w-full relative min-h-0">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={trend} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2ff" />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} dy={15} />
@@ -548,8 +548,8 @@ export default function DashboardPage() {
               <option>Weekly</option>
             </select>
           </div>
-          <div className="flex-1 w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 w-full relative min-h-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={studentChartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={15} />
                 <Tooltip 
