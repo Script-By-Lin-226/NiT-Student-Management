@@ -68,6 +68,7 @@ export default function AdminStudentsPage() {
   const [relationsLoading, setRelationsLoading] = useState(false);
 
   // Create form
+  const [cUserCode, setCUserCode] = useState("");
   const [cUsername, setCUsername] = useState("");
   const [cEmail, setCEmail] = useState("");
   const [cPassword, setCPassword] = useState("");
@@ -145,6 +146,7 @@ export default function AdminStudentsPage() {
   }, [isAdminOrSales]);
 
   const openCreate = () => {
+    setCUserCode("");
     setCUsername("");
     setCEmail("");
     setCPassword("");
@@ -170,6 +172,7 @@ export default function AdminStudentsPage() {
     setError("");
     try {
       await AdminService.createStudent({
+        user_code: cUserCode.trim() || undefined,
         username: cUsername.trim(),
         email: cEmail.trim(),
         password: cPassword,
@@ -688,6 +691,15 @@ export default function AdminStudentsPage() {
                 className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer"
               />
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Student Code (Optional)</label>
+            <input
+              value={cUserCode}
+              onChange={(e) => setCUserCode(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="Leave empty to auto-calculate (e.g. CO0011226)"
+            />
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name</label>

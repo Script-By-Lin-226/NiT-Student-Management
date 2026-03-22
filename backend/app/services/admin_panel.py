@@ -278,7 +278,15 @@ class AdminPanelService:
         if existing.scalars().first():
             return JSONResponse({"status_code": 409, "message": "Email already exists"}, status_code=409)
 
-        user_code = await _next_student_code(session, getattr(payload, "department", "College"))
+        if payload.user_code and payload.user_code.strip():
+            user_code = payload.user_code.strip()
+            # Verify uniqueness of user_code
+            existing_code = await session.execute(select(User).where(User.user_code == user_code))
+            if existing_code.scalars().first():
+                return JSONResponse({"status_code": 409, "message": "Student code already exists"}, status_code=409)
+        else:
+            user_code = await _next_student_code(session, getattr(payload, "department", "College"))
+            
         hashed = await hash_password(payload.password)
 
         dob_dt = datetime.combine(payload.date_of_birth, time.min)

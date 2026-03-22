@@ -1,0 +1,2 @@
+DATABASE_URL = postgresql://nit_db_yca1_user:qoECkymDXjpIC4QAXcuyTur0zNkwk4Xc@dpg-d6vavjfkijhs73coa82g-a.singapore-postgres.render.com/nit_db_yca1
+postgresql+asyncpg://db_tester:dbadmin@localhost:5432/db_test

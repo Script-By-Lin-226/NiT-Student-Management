@@ -30,6 +30,7 @@ export interface AdminStudent {
 }
 
 export interface AdminStudentCreate {
+  user_code?: string | null;
   username: string;
   email: string;
   password: string;

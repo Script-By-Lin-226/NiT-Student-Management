@@ -44,6 +44,9 @@ class AdminStudentCreate(BaseModel):
     date_of_birth: date
     is_active: Optional[bool] = True
     
+    # Optional manual code
+    user_code: Optional[str] = None
+    
     # Contact info
     nrc: Optional[str] = None
     phone: Optional[str] = None
