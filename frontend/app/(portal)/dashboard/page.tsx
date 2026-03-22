@@ -350,7 +350,6 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-bold text-slate-900 text-lg">Room load</h3>
-              <p className="text-sm text-slate-500 mt-1">Current load vs capacity (from `/admin/rooms`)</p>
             </div>
           </div>
           <div className="w-full h-[280px] relative">
