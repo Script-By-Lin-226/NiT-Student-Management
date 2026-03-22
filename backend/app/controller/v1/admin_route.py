@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database_initialization import get_db
 from app.services.admin_panel import AdminPanelService
+from app.services.backup_service import BackupService
 from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.course import AdminCourseCreate, AdminCourseUpdate
@@ -210,4 +211,15 @@ async def list_payments(request: Request, session: AsyncSession = Depends(get_db
 @router.post("/payments")
 async def create_payment(payload: PaymentCreate, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.create_payment(request, session, payload)
+
+# --- Backup and Restore ---
+
+@router.get("/backup/export")
+async def export_backup(request: Request, session: AsyncSession = Depends(get_db)):
+    return await BackupService.export_to_excel(request, session)
+
+from fastapi import UploadFile, File
+@router.post("/backup/import")
+async def import_backup(file: UploadFile = File(...), request: Request = None, session: AsyncSession = Depends(get_db)):
+    return await BackupService.import_from_excel(file, request, session)
 

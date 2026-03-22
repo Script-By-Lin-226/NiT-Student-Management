@@ -507,5 +507,22 @@ export class AdminService {
     const res = await api.get("/admin/activity-logs");
     return res.data.data;
   }
+
+  // Backup and Restore
+  static async exportBackup(): Promise<Blob> {
+    const res = await api.get("/admin/backup/export", { responseType: 'blob' });
+    return res.data;
+  }
+
+  static async importBackup(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post("/admin/backup/import", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return res.data;
+  }
 }
 
