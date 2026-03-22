@@ -359,8 +359,8 @@ export class AdminService {
     return res.data.data;
   }
 
-  static async updateEnrollment(enrollment_id: number, payload: any): Promise<void> {
-    await api.put(`/admin/enrollments/${enrollment_id}`, payload);
+  static async updateEnrollment(enrollment_code: string, payload: any): Promise<void> {
+    await api.put(`/admin/enrollments/${enrollment_code}`, payload);
   }
 
   // Parents
@@ -429,8 +429,8 @@ export class AdminService {
     return res.data.data;
   }
 
-  static async deleteEnrollment(enrollment_id: number): Promise<void> {
-    await api.delete(`/admin/enrollments/${enrollment_id}`);
+  static async deleteEnrollment(enrollment_code: string): Promise<void> {
+    await api.delete(`/admin/enrollments/${enrollment_code}`);
   }
 
   // Attendance

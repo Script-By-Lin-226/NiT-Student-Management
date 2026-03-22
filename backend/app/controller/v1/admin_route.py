@@ -50,9 +50,7 @@ async def approve_student(user_id: int, payload: AdminStudentApprove, request: R
 async def get_student_relations(user_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_student_relations(user_code, request, session)
 
-@router.put("/enrollments/{enrollment_id}")
-async def update_enrollment_route(request: Request, enrollment_id: int, payload: AdminEnrollmentUpdate, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.update_enrollment(request, session, enrollment_id, payload)
+
 
 @router.get("/teachers")
 async def get_teachers_details(request: Request, session: AsyncSession = Depends(get_db)):

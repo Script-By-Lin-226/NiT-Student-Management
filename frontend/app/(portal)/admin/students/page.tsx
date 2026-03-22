@@ -325,7 +325,7 @@ export default function AdminStudentsPage() {
     setBusy(true);
     setError("");
     try {
-      await AdminService.updateEnrollment(enrollToEdit.enrollment_id, {
+      await AdminService.updateEnrollment(enrollToEdit.enrollment_code, {
         batch_no: eBatch.trim() || null,
         payment_plan: ePlan || null,
         downpayment: eDown !== "" ? Number(eDown) : null,
