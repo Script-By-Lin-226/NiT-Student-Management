@@ -27,6 +27,8 @@ export interface AdminStudent {
   created_at?: string | null;
   updated_at?: string | null;
   profile_picture?: string | null;
+  how_did_you_hear?: string | null;
+  student_type?: string | null;
 }
 
 export interface AdminStudentCreate {
@@ -48,6 +50,8 @@ export interface AdminStudentCreate {
   installment_amount?: number | null;
   department?: string;
   profile_picture?: string | null;
+  how_did_you_hear?: string | null;
+  student_type?: string | null;
 }
 
 export interface AdminStudentUpdate {
@@ -56,6 +60,8 @@ export interface AdminStudentUpdate {
   date_of_birth?: string | null;
   is_active?: boolean;
   profile_picture?: string | null;
+  how_did_you_hear?: string | null;
+  student_type?: string | null;
 }
 
 export interface AdminAcademicYear {

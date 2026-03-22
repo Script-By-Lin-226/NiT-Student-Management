@@ -43,6 +43,8 @@ class AuthenticationService:
             phone=user.phone,
             address=user.address,
             profile_picture=user.profile_picture,
+            how_did_you_hear=user.how_did_you_hear,
+            student_type=user.student_type,
             is_active=True
         )
         

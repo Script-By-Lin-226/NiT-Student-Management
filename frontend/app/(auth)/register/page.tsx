@@ -18,7 +18,10 @@ export default function RegisterPage() {
     address: "",
     profile_picture: "",
     department: "College",
+    student_type: "New Student",
   });
+  const [howDidYouHear, setHowDidYouHear] = useState<string[]>([]);
+  const [otherHearAbout, setOtherHearAbout] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +31,15 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/register", formData);
+      const finalFormData = {
+        ...formData,
+        how_did_you_hear: [
+          ...howDidYouHear.filter((item) => item !== "Other (Please Specify)"),
+          ...(howDidYouHear.includes("Other (Please Specify)") && otherHearAbout ? [`Other: ${otherHearAbout}`] : [])
+        ].join(", ")
+      };
+      
+      const res = await api.post("/auth/register", finalFormData);
       if (res.status === 200 || res.status === 201) {
         alert("Registration successful! We will contact you shortly.");
         window.location.reload();
@@ -49,6 +60,15 @@ export default function RegisterPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleHearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value, checked } = e.target;
+    if (checked) {
+      setHowDidYouHear((prev) => [...prev, value]);
+    } else {
+      setHowDidYouHear((prev) => prev.filter((item) => item !== value));
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,6 +197,55 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Student Type Selection */}
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col gap-4 transition-shadow hover:shadow-md focus-within:shadow-md focus-within:border-l-4 focus-within:border-l-brand-600 relative">
+            <label className="text-base text-slate-800">
+              Student Type <span className="text-red-600">*</span>
+            </label>
+            <div className="flex flex-col gap-3 mt-1">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  formData.student_type === "New Student"
+                    ? "border-brand-600"
+                    : "border-slate-300 group-hover:border-slate-400"
+                }`}>
+                  {formData.student_type === "New Student" && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-600" />
+                  )}
+                </span>
+                <input
+                  type="radio"
+                  name="student_type"
+                  value="New Student"
+                  checked={formData.student_type === "New Student"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-sm text-slate-700">New Student</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  formData.student_type === "Old Student"
+                    ? "border-brand-600"
+                    : "border-slate-300 group-hover:border-slate-400"
+                }`}>
+                  {formData.student_type === "Old Student" && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-600" />
+                  )}
+                </span>
+                <input
+                  type="radio"
+                  name="student_type"
+                  value="Old Student"
+                  checked={formData.student_type === "Old Student"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-sm text-slate-700">Old Student</span>
+              </label>
+            </div>
+          </div>
+
           {/* Full Name */}
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col gap-4 transition-shadow hover:shadow-md focus-within:shadow-md focus-within:border-l-4 focus-within:border-l-brand-600 relative">
             <label className="text-base text-slate-800" htmlFor="username">
@@ -290,6 +359,50 @@ export default function RegisterPage() {
               value={formData.parent_phone}
               onChange={handleChange}
             />
+          </div>
+
+          {/* How Did You Hear About Us? */}
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col gap-4 transition-shadow hover:shadow-md focus-within:shadow-md focus-within:border-l-4 focus-within:border-l-brand-600 relative">
+            <label className="text-base text-slate-800">
+              How Did You Hear About Us? <span className="text-red-600">*</span>
+              <div className="text-xs text-slate-500 mt-1 font-normal">Please check all that apply:</div>
+            </label>
+            <div className="flex flex-col gap-3 mt-1">
+              {["Facebook", "TikTok", "Friend Referral", "Family Referral", "Online Search", "NiT Event", "Other (Please Specify)"].map((option) => (
+                <div key={option} className="flex flex-col gap-2">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      howDidYouHear.includes(option)
+                        ? "border-brand-600 bg-brand-600"
+                        : "border-slate-300 bg-white group-hover:border-slate-400"
+                    }`}>
+                      {howDidYouHear.includes(option) && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      value={option}
+                      checked={howDidYouHear.includes(option)}
+                      onChange={handleHearChange}
+                      className="sr-only"
+                    />
+                    <span className="text-sm text-slate-700">{option}</span>
+                  </label>
+                  {option === "Other (Please Specify)" && howDidYouHear.includes(option) && (
+                    <input
+                      type="text"
+                      className="ml-8 w-full md:w-1/2 border-b border-slate-300 pb-1 focus:border-b-2 focus:border-b-brand-600 focus:outline-none bg-transparent transition-colors text-slate-900 text-sm"
+                      placeholder="Please specify"
+                      value={otherHearAbout}
+                      onChange={(e) => setOtherHearAbout(e.target.value)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Address */}

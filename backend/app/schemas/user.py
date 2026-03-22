@@ -16,6 +16,8 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     role: str
     is_active: Optional[bool] = True
+    how_did_you_hear: Optional[str] = None
+    student_type: Optional[str] = None
     
     @validator('password')
     def password_length(cls, v):
@@ -66,6 +68,10 @@ class AdminStudentCreate(BaseModel):
 
     # Profile integration
     profile_picture: Optional[str] = None
+    
+    # Tracking
+    how_did_you_hear: Optional[str] = None
+    student_type: Optional[str] = None
 
     @validator('password')
     def password_length(cls, v):
@@ -127,3 +133,7 @@ class StudentRegister(BaseModel):
     
     # Division
     department: Optional[str] = "College"
+    
+    # Tracking
+    how_did_you_hear: Optional[str] = None
+    student_type: Optional[str] = None

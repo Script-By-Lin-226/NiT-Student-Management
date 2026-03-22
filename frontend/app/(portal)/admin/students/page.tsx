@@ -75,6 +75,9 @@ export default function AdminStudentsPage() {
   const [cDob, setCDob] = useState<string>("");
   const [cActive, setCActive] = useState(true);
   const [cDepartment, setCDepartment] = useState("College");
+  const [cStudentType, setCStudentType] = useState("New Student");
+  const [cHowDidYouHear, setCHowDidYouHear] = useState<string[]>([]);
+  const [cOtherHear, setCOtherHear] = useState("");
 
   // Additional Contact Info
   const [cNrc, setCNrc] = useState("");
@@ -153,6 +156,9 @@ export default function AdminStudentsPage() {
     setCDob("");
     setCActive(true);
     setCDepartment("College");
+    setCStudentType("New Student");
+    setCHowDidYouHear([]);
+    setCOtherHear("");
     setCNrc("");
     setCPhone("");
     setCParentName("");
@@ -179,6 +185,11 @@ export default function AdminStudentsPage() {
         date_of_birth: cDob,
         is_active: cActive,
         department: cDepartment,
+        student_type: cStudentType,
+        how_did_you_hear: [
+          ...cHowDidYouHear.filter((item) => item !== "Other (Please Specify)"),
+          ...(cHowDidYouHear.includes("Other (Please Specify)") && cOtherHear ? [`Other: ${cOtherHear}`] : [])
+        ].join(", ") || null,
         nrc: cNrc.trim() || null,
         phone: cPhone.trim() || null,
         parent_name: cParentName.trim() || null,
@@ -769,6 +780,45 @@ export default function AdminStudentsPage() {
             </select>
           </div>
           <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Student Type</label>
+            <select
+              value={cStudentType}
+              onChange={(e) => setCStudentType(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium cursor-pointer"
+            >
+              <option value="New Student">New Student</option>
+              <option value="Old Student">Old Student</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">How Did You Hear About Us?</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {["Facebook", "TikTok", "Friend Referral", "Family Referral", "Online Search", "NiT Event", "Other (Please Specify)"].map((option) => (
+                <label key={option} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cHowDidYouHear.includes(option)}
+                    onChange={(e) => {
+                      if (e.target.checked) setCHowDidYouHear((prev) => [...prev, option]);
+                      else setCHowDidYouHear((prev) => prev.filter((item) => item !== option));
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span className="text-sm text-slate-700">{option}</span>
+                </label>
+              ))}
+            </div>
+            {cHowDidYouHear.includes("Other (Please Specify)") && (
+              <input
+                type="text"
+                value={cOtherHear}
+                onChange={(e) => setCOtherHear(e.target.value)}
+                placeholder="Please specify"
+                className="mt-2 w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm"
+              />
+            )}
+          </div>
+          <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Address</label>
             <input
               value={cAddress}
@@ -1022,6 +1072,10 @@ export default function AdminStudentsPage() {
                   </span>
                 </div>
               </div>
+              <div className="col-span-2">
+                <div className="text-xs font-semibold text-slate-500 uppercase">Student Type</div>
+                <div className="font-semibold text-slate-800 mt-1">{selected.student_type || "New Student"}</div>
+              </div>
             </div>
             </div>
 
@@ -1037,6 +1091,10 @@ export default function AdminStudentsPage() {
               <div className="col-span-2">
                 <div className="text-xs font-semibold text-slate-500 uppercase">Address</div>
                 <div className="font-semibold text-slate-800 mt-1">{selected.address || "-"}</div>
+              </div>
+              <div className="col-span-2">
+                <div className="text-xs font-semibold text-slate-500 uppercase">How Did You Hear About Us?</div>
+                <div className="font-semibold text-slate-800 mt-1">{selected.how_did_you_hear || "-"}</div>
               </div>
             </div>
 

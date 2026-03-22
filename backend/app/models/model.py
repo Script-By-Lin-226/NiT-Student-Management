@@ -46,6 +46,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     data_of_birth = Column(DateTime, nullable=False)
     role = Column(String, nullable=False, default="student")
+    
+    how_did_you_hear = Column(String, nullable=True)
+    student_type = Column(String, nullable=True) # Old Student or New Student
 
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

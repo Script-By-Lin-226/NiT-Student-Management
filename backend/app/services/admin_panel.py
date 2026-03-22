@@ -303,6 +303,8 @@ class AdminPanelService:
             parent_phone=payload.parent_phone,
             address=payload.address,
             profile_picture=payload.profile_picture,
+            how_did_you_hear=payload.how_did_you_hear,
+            student_type=payload.student_type,
             is_active=payload.is_active if payload.is_active is not None else True,
         )
         session.add(new_user)
