@@ -1,0 +1,20 @@
+name: Keep Alive Render
+
+on:
+  schedule:
+    # Run every 10 minutes (* on minute 0, 10, 20, 30, 40, 50)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health
+        run: |
+          # Use the RENDER_EXTERNAL_URL if set as a secret, or fall back to the known URL
+          # If the user has not set a secret, this will fail or skip if not configured correctly.
+          # We recommend adding RENDER_EXTERNAL_URL to your GitHub Repo Secrets.
+          URL="${{ secrets.RENDER_EXTERNAL_URL || 'https://nit-student-management-yca1.onrender.com' }}"
+          echo "Pinging $URL/health..."
+          curl -f -s "$URL/health" || echo "Ping failed, but that might be expected if the URL is not configured yet."

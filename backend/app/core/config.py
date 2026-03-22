@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     ADMIN_EMAIL: str = "NiT@gmail.com"
     ADMIN_PASSWORD: str = "NiT@2026"
+    RENDER_EXTERNAL_URL: str | None = None
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

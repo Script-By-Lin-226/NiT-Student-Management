@@ -11,12 +11,19 @@ from app.core.config import settings
 from app.security.rate_limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from app.services.uptime_service import keep_alive_task
 import os
+import asyncio
 
 @asynccontextmanager
 async def life_cycle(app: FastAPI):
     print("Starting the application...")
     await init_db()
+    
+    # Start the keep-alive background task if RENDER_EXTERNAL_URL is configured
+    if settings.RENDER_EXTERNAL_URL:
+        asyncio.create_task(keep_alive_task())
+    
     yield
     print("Stopping the application...")
 
@@ -55,4 +62,8 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
