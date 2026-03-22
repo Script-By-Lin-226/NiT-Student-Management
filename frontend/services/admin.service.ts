@@ -46,6 +46,7 @@ export interface AdminStudentCreate {
   downpayment?: number | null;
   installment_amount?: number | null;
   department?: string;
+  profile_picture?: string | null;
 }
 
 export interface AdminStudentUpdate {
@@ -53,6 +54,7 @@ export interface AdminStudentUpdate {
   email?: string;
   date_of_birth?: string | null;
   is_active?: boolean;
+  profile_picture?: string | null;
 }
 
 export interface AdminAcademicYear {

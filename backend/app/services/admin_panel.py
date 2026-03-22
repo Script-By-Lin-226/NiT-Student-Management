@@ -294,6 +294,7 @@ class AdminPanelService:
             parent_name=payload.parent_name,
             parent_phone=payload.parent_phone,
             address=payload.address,
+            profile_picture=payload.profile_picture,
             is_active=payload.is_active if payload.is_active is not None else True,
         )
         session.add(new_user)

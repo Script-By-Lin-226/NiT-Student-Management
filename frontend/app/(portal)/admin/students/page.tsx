@@ -81,6 +81,17 @@ export default function AdminStudentsPage() {
   const [cParentName, setCParentName] = useState("");
   const [cParentPhone, setCParentPhone] = useState("");
   const [cAddress, setCAddress] = useState("");
+  const [cProfilePicture, setCProfilePicture] = useState("");
+
+  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCProfilePicture(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Enrollment form integration
   const [cCourseCode, setCCourseCode] = useState("");
@@ -145,6 +156,7 @@ export default function AdminStudentsPage() {
     setCParentName("");
     setCParentPhone("");
     setCAddress("");
+    setCProfilePicture("");
     setCCourseCode("");
     setCBatchNo("");
     setCPaymentPlan("");
@@ -169,6 +181,7 @@ export default function AdminStudentsPage() {
         parent_name: cParentName.trim() || null,
         parent_phone: cParentPhone.trim() || null,
         address: cAddress.trim() || null,
+        profile_picture: cProfilePicture || null,
         course_code: cCourseCode || null,
         batch_no: cBatchNo || null,
         payment_plan: cPaymentPlan || null,
@@ -653,6 +666,29 @@ export default function AdminStudentsPage() {
 
       <Modal title="Create Student" open={createOpen} onClose={() => setCreateOpen(false)}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Profile Picture</label>
+            <div className="flex items-center gap-4">
+              {cProfilePicture ? (
+                <div className="relative group w-12 h-12 shrink-0">
+                  <img src={cProfilePicture} alt="Preview" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                  <button onClick={() => setCProfilePicture("")} className="absolute inset-0 bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Remove image">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-12 h-12 shrink-0 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                  <Plus className="w-5 h-5" />
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePicChange}
+                className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer"
+              />
+            </div>
+          </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name</label>
             <input

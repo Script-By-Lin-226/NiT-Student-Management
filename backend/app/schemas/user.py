@@ -34,6 +34,7 @@ class UserUpdate(BaseModel):
     date_of_birth: Optional[date] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None
+    profile_picture: Optional[str] = None
 
 
 class AdminStudentCreate(BaseModel):
@@ -59,6 +60,9 @@ class AdminStudentCreate(BaseModel):
     
     # Division
     department: Optional[str] = "College"
+
+    # Profile integration
+    profile_picture: Optional[str] = None
 
     @validator('password')
     def password_length(cls, v):
