@@ -1,7 +1,7 @@
 from app.security.jwt_tok import create_access_token, create_refresh_token
-from app.models.model import User
+from app.models.model import User, Course, Enrollment
 from app.schemas.user import UserBase, LoginUser, StudentRegister
-from app.services.admin_panel import _next_student_code
+from app.services.admin_panel import _next_student_code, _next_enrollment_code
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi.responses import JSONResponse  
@@ -26,26 +26,31 @@ class AuthenticationService:
         if existent_user:
             raise HTTPException(status_code=400, detail="User already exists")
         
-        hashed = await hash_password(user.phone) 
+        raw_password = getattr(user, 'password', None) or user.phone
+        hashed_password = await hash_password(raw_password)
         user_code = await _next_student_code(session, getattr(user, "department", "College"))
+        
+        from datetime import time
         dob_dt = datetime.combine(user.date_of_birth, time.min)
         
         new_user = User(
             user_code=user_code,
             username=user.username,
             email=user.email,
-            password_hash=hashed,
+            password_hash=hashed_password,
             data_of_birth=dob_dt,
-            role="student",
+            phone=user.phone,
             nrc=user.nrc,
+            gender=user.gender,
+            address=user.address,
             parent_name=user.parent_name,
             parent_phone=user.parent_phone,
-            phone=user.phone,
-            address=user.address,
             profile_picture=user.profile_picture,
+            role="student",
+            is_active=False,
             how_did_you_hear=user.how_did_you_hear,
             student_type=user.student_type,
-            is_active=True
+            intended_course_code=user.course_code
         )
         
         session.add(new_user)
@@ -63,6 +68,9 @@ class AuthenticationService:
         
         if not existent_user:
             raise HTTPException(status_code=404, detail="User not found")
+            
+        if not existent_user.is_active:
+            raise HTTPException(status_code=403, detail="Account is not active yet. Please contact admin for approval.")
         
         try:
             password_valid = await verify_password(user.password, existent_user.password_hash)

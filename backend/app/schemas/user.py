@@ -126,14 +126,20 @@ class StudentRegister(BaseModel):
     # Contact info
     phone: str
     nrc: Optional[str] = None
+    gender: Optional[str] = None
     parent_name: Optional[str] = None
     parent_phone: Optional[str] = None
     address: Optional[str] = None
     profile_picture: Optional[str] = None
     
-    # Division
+    # Division & Enrollment
     department: Optional[str] = "College"
+    course_code: Optional[str] = None
     
     # Tracking
     how_did_you_hear: Optional[str] = None
     student_type: Optional[str] = None
+
+class AdminStudentApprove(BaseModel):
+    user_code: Optional[str] = None
+    auto_prefix: Optional[str] = None # "CO" or "IN"

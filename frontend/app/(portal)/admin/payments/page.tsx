@@ -364,10 +364,10 @@ export default function AdminPaymentsPage() {
                         {(enr.payment_plan === 'installment' || enr.payment_plan === 'full') && calculateLeftAmount(enr) > 0 && (
                           <button
                             onClick={() => openRecordPayment(enr)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm whitespace-nowrap"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm whitespace-nowrap"
                           >
                             <CreditCard className="w-4 h-4" />
-                            Approve
+                            Pay Now
                           </button>
                         )}
                       </div>

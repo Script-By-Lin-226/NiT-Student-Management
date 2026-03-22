@@ -49,6 +49,7 @@ class User(Base):
     
     how_did_you_hear = Column(String, nullable=True)
     student_type = Column(String, nullable=True) # Old Student or New Student
+    intended_course_code = Column(String, nullable=True) # Selected on registration but for info only
 
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

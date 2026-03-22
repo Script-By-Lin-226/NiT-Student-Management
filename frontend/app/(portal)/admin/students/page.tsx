@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AdminService, AdminStudent, AdminStudentRelations, AdminCourse } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check } from "lucide-react";
 import * as XLSX from "xlsx";
 
 function Modal({
@@ -66,6 +66,9 @@ export default function AdminStudentsPage() {
   const [selected, setSelected] = useState<AdminStudent | null>(null);
   const [relations, setRelations] = useState<AdminStudentRelations | null>(null);
   const [relationsLoading, setRelationsLoading] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approveManualCode, setApproveManualCode] = useState("");
+  const [approvePrefix, setApprovePrefix] = useState<"CO" | "IN" | "">("");
 
   // Create form
   const [cUserCode, setCUserCode] = useState("");
@@ -109,6 +112,14 @@ export default function AdminStudentsPage() {
   const [eEmail, setEEmail] = useState("");
   const [eDob, setEDob] = useState<string>("");
   const [eActive, setEActive] = useState(true);
+
+  // Enrollment edit state
+  const [enrollToEdit, setEnrollToEdit] = useState<any | null>(null);
+  const [enrollEditOpen, setEnrollEditOpen] = useState(false);
+  const [eBatch, setEBatch] = useState("");
+  const [ePlan, setEPlan] = useState("");
+  const [eDown, setEDown] = useState("");
+  const [eInst, setEInst] = useState("");
 
   useEffect(() => {
     if (!loading && !isAdminOrSales) router.replace("/dashboard");
@@ -270,6 +281,83 @@ export default function AdminStudentsPage() {
       await load();
     } catch (e: any) {
       handleError(e, "Failed to delete student");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleApprove = (s: AdminStudent) => {
+    setSelected(s);
+    setApproveManualCode(s.user_code);
+    setApprovePrefix("");
+    setApproveOpen(true);
+  };
+
+  const submitApprove = async () => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+        await AdminService.approveStudent(selected.user_id, {
+            user_code: approvePrefix === "" ? approveManualCode : undefined,
+            auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
+        });
+        setApproveOpen(false);
+        await load();
+    } catch (e: any) {
+        handleError(e, "Failed to approve student");
+    } finally {
+        setBusy(false);
+    }
+  };
+
+  const openEnrollEdit = (enr: any) => {
+    setEnrollToEdit(enr);
+    setEBatch(enr.batch_no || "");
+    setEPlan(enr.payment_plan || "");
+    setEDown(enr.downpayment ? String(enr.downpayment) : "");
+    setEInst(enr.installment_amount ? String(enr.installment_amount) : "");
+    setEnrollEditOpen(true);
+  };
+
+  const submitEnrollEdit = async () => {
+    if (!enrollToEdit || !selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      await AdminService.updateEnrollment(enrollToEdit.enrollment_id, {
+        batch_no: eBatch.trim() || null,
+        payment_plan: ePlan || null,
+        downpayment: eDown !== "" ? Number(eDown) : null,
+        installment_amount: eInst !== "" ? Number(eInst) : null,
+      });
+
+      // Refresh relations
+      const updated = await AdminService.getStudentRelations(selected.user_code);
+      setRelations(updated);
+      setEnrollEditOpen(false);
+    } catch (e: any) {
+      handleError(e, "Failed to update enrollment");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleFastEnroll = async (uCode: string, cCode: string) => {
+    const ok = window.confirm(`Create a formal enrollment for ${cCode}? You can configure payment details after creation.`);
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await AdminService.createEnrollment({
+        student_code: uCode,
+        course_code: cCode,
+        status: false, // Start as inactive/pending
+      });
+      // Refresh relations
+      const updated = await AdminService.getStudentRelations(uCode);
+      setRelations(updated);
+    } catch (e: any) {
+      handleError(e, "Failed to create enrollment");
     } finally {
       setBusy(false);
     }
@@ -644,23 +732,33 @@ export default function AdminStudentsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
+                      {!s.is_active && (
+                        <button
+                          onClick={() => handleApprove(s)}
+                          disabled={busy}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60"
+                        >
+                          <Check className="w-4 h-4" />
+                          Approve
+                        </button>
+                      )}
                       {isAdmin && (
-<button
-                        onClick={() => openEdit(s)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
-                      >
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                      </button>
-)}
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </button>
+                      )}
                       {isAdmin && (
-                      <button
-                        onClick={() => doDelete(s)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+                        <button
+                          onClick={() => doDelete(s)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                       )}
                     </div>
                   </td>
@@ -1028,6 +1126,69 @@ export default function AdminStudentsPage() {
         </div>
       </Modal>
 
+      <Modal title={`Configure Enrollment${enrollToEdit ? ` — ${enrollToEdit.course_name}` : ""}`} open={enrollEditOpen} onClose={() => setEnrollEditOpen(false)}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch Number</label>
+            <input
+              value={eBatch}
+              onChange={(e) => setEBatch(e.target.value)}
+              placeholder="e.g. Batch 1"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Plan</label>
+            <select
+              value={ePlan}
+              onChange={(e) => setEPlan(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            >
+              <option value="full">Cash Down</option>
+              <option value="installment">Installment</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Downpayment (MMK)</label>
+              <input
+                value={eDown}
+                onChange={(e) => setEDown(e.target.value)}
+                type="number"
+                placeholder="0"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Monthly Paid (MMK)</label>
+              <input
+                value={eInst}
+                onChange={(e) => setEInst(e.target.value)}
+                type="number"
+                placeholder="0"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
+          </div>
+
+          <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
+            <button
+              onClick={() => setEnrollEditOpen(false)}
+              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitEnrollEdit}
+              disabled={busy}
+              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60"
+            >
+              Update Info
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal title="Student Details" open={viewOpen} onClose={() => setViewOpen(false)}>
         {selected && (
           <div className="space-y-4">
@@ -1060,23 +1221,45 @@ export default function AdminStudentsPage() {
                   <div className="text-xs font-semibold text-slate-500 uppercase">Email</div>
                   <div className="font-semibold text-slate-800 mt-1">{selected.email}</div>
                 </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-500 uppercase">Date of Birth</div>
-                <div className="font-semibold text-slate-800 mt-1">{selected.data_of_birth ? selected.data_of_birth.slice(0, 10) : "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-500 uppercase">Status</div>
-                <div className="mt-1">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${selected.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
-                    {selected.is_active ? "Active" : "Inactive"}
-                  </span>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Date of Birth</div>
+                  <div className="font-semibold text-slate-800 mt-1">{selected.data_of_birth ? selected.data_of_birth.slice(0, 10) : "-"}</div>
                 </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Status</div>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${selected.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                      {selected.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Student Type</div>
+                  <div className="font-semibold text-slate-800 mt-1">{selected.student_type || "New Student"}</div>
+                </div>
+                {selected.intended_course_code && (
+                  <div className="col-span-2 mt-2">
+                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm transition-all hover:bg-amber-100/50">
+                      <div>
+                        <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Interest Showcase (From Register)</div>
+                        <div className="font-bold text-slate-800 mt-1 flex items-center gap-2 text-lg">
+                          <Check className="w-5 h-5 text-amber-500" />
+                          {selected.intended_course_code}
+                        </div>
+                      </div>
+                      {(!relations || relations.enrollments.length === 0) && (
+                        <button 
+                          onClick={() => handleFastEnroll(selected.user_code, selected.intended_course_code!)}
+                          className="w-full sm:w-auto bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-amber-700 shadow-lg shadow-amber-200/50 flex items-center justify-center gap-2 transition-all active:scale-95"
+                        >
+                          <Plus className="w-4 h-4" strokeWidth={3} />
+                          Formalize Enrollment
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="col-span-2">
-                <div className="text-xs font-semibold text-slate-500 uppercase">Student Type</div>
-                <div className="font-semibold text-slate-800 mt-1">{selected.student_type || "New Student"}</div>
-              </div>
-            </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -1120,9 +1303,23 @@ export default function AdminStudentsPage() {
                     <div key={i} className="bg-white p-3 rounded-lg border border-slate-200">
                       <div className="font-semibold text-slate-800 flex items-center justify-between">
                         <span>{enr.course_name || enr.course_code}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${enr.status ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                          {enr.status ? 'Active' : 'Inactive'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEnrollEdit(enr)}
+                            className="bg-brand-50 text-brand-700 px-2 py-1 rounded text-[10px] uppercase font-bold border border-brand-100 hover:bg-brand-100"
+                          >
+                            Settings
+                          </button>
+                          <button
+                            onClick={() => router.push(`/admin/payments?q=${selected?.user_code}`)}
+                            className="bg-brand-50 text-brand-700 px-2 py-1 rounded text-[10px] uppercase font-bold border border-brand-100 hover:bg-brand-100"
+                          >
+                            Add Payment
+                          </button>
+                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${enr.status ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                            {enr.status ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
                       </div>
                       <div className="mt-2 text-sm grid grid-cols-2 gap-2 text-slate-600">
                         <div><span className="font-semibold text-slate-500">Batch:</span> {enr.batch_no || "-"}</div>
@@ -1172,6 +1369,16 @@ export default function AdminStudentsPage() {
             </div>
             
             <div className="flex justify-end gap-2 pt-2">
+              {!selected.is_active && (
+                <button
+                  onClick={() => handleApprove(selected)}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60"
+                >
+                  <Check className="w-4 h-4" />
+                  Approve Student
+                </button>
+              )}
               <button
                 onClick={exportSelectedStudent}
                 disabled={relationsLoading}
@@ -1189,6 +1396,83 @@ export default function AdminStudentsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Approval Modal */}
+      <Modal 
+          title="Approve Student Account" 
+          open={approveOpen} 
+          onClose={() => setApproveOpen(false)}
+      >
+          <div className="space-y-6">
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-sm text-amber-800">
+                  Review or change the student code before activating the account. 
+                  You can either set a manual code or auto-generate one with a prefix.
+              </div>
+
+              <div className="space-y-4">
+                  <label className="block text-sm font-bold text-slate-700">Code Assignment Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                      <button 
+                          onClick={() => setApprovePrefix("")}
+                          className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                      >
+                          Manual
+                      </button>
+                      <button 
+                          onClick={() => setApprovePrefix("CO")}
+                          className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "CO" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                      >
+                          Auto CO
+                      </button>
+                      <button 
+                          onClick={() => setApprovePrefix("IN")}
+                          className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "IN" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                      >
+                          Auto IN
+                      </button>
+                  </div>
+              </div>
+
+              {approvePrefix === "" && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                      <label className="block text-sm font-bold text-slate-700">Student Code (Manual)</label>
+                      <input 
+                          value={approveManualCode}
+                          onChange={(e) => setApproveManualCode(e.target.value)}
+                          className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all font-mono tracking-wider text-slate-900"
+                      />
+                  </div>
+              )}
+
+              {approvePrefix !== "" && (
+                  <div className="p-5 bg-[#0d4d4d]/5 rounded-3xl border border-[#0d4d4d]/10 flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
+                      <div className="w-12 h-12 bg-[#0d4d4d] text-white rounded-2xl flex items-center justify-center font-bold text-xl">
+                          {approvePrefix}
+                      </div>
+                      <div className="text-sm text-[#0d4d4d]">
+                          <p className="font-bold">System Managed</p>
+                          <p className="opacity-70">A new sequence number will be generated for prefix <span className="font-mono">{approvePrefix}</span></p>
+                      </div>
+                  </div>
+              )}
+
+              <div className="pt-4 border-t border-slate-100 flex gap-3">
+                  <button 
+                        onClick={() => setApproveOpen(false)}
+                        className="flex-1 py-4 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all border-2 border-transparent"
+                  >
+                      Cancel
+                  </button>
+                  <button 
+                        onClick={submitApprove}
+                        disabled={busy}
+                        className="flex-[2] py-4 bg-[#0d4d4d] text-white font-bold rounded-2xl hover:bg-[#0d4d4d]/90 active:scale-95 transition-all shadow-lg shadow-[#0d4d4d]/20 disabled:opacity-50"
+                  >
+                      Confirm Approval
+                  </button>
+              </div>
+          </div>
       </Modal>
     </div>
   );

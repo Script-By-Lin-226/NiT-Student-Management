@@ -6,7 +6,7 @@ from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateReques
 from sqlalchemy import and_, select, update, delete
 from fastapi.responses import JSONResponse
 from fastapi import Request
-from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate
+from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove
 from datetime import datetime, date, time
 from app.security.password_hashing import hash_password
 from sqlalchemy import func
@@ -33,16 +33,19 @@ def _serialize_user(u: User) -> dict:
         "address": getattr(u, "address", None),
         "profile_picture": getattr(u, "profile_picture", None),
         "data_of_birth": u.data_of_birth.isoformat() if getattr(u, "data_of_birth", None) else None,
+        "how_did_you_hear": getattr(u, "how_did_you_hear", None),
+        "student_type": getattr(u, "student_type", None),
+        "intended_course_code": getattr(u, "intended_course_code", None),
         "created_at": u.created_at.isoformat() if getattr(u, "created_at", None) else None,
         "updated_at": u.updated_at.isoformat() if getattr(u, "updated_at", None) else None,
     }
 
 
-async def _next_student_code(session: AsyncSession, department: str = "College") -> str:
+async def _next_student_code(session: AsyncSession, department: str = "College", manual_prefix: str = None) -> str:
     """
-    Generate a student_code like CO001226 or IN001226 based on department.
+    Generate a student_code like CO001226 or IN001226 based on department or manual prefix.
     """
-    prefix = "IN" if department == "Institute" else "CO"
+    prefix = manual_prefix if manual_prefix else ("IN" if department == "Institute" else "CO")
     
     # Get all student codes for this prefix to find the max sequence number
     result = await session.execute(
@@ -1072,6 +1075,39 @@ class AdminPanelService:
         await _log_activity(request, session, "Delete Enrollment", f"Enrollment {enrollment_code} deleted")
         return JSONResponse({"status_code": 200, "message": "Enrollment deleted successfully"})
 
+    async def approve_student(request: Request, session: AsyncSession, user_id: int, payload: AdminStudentApprove):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        r = await session.execute(select(User).where(User.user_id == user_id))
+        u = r.scalars().first()
+        if not u:
+            return JSONResponse({"status_code": 404, "message": "Student not found"}, status_code=404)
+        
+        old_code = u.user_code
+        # Apply new code if provided or auto-generated
+        if payload.user_code:
+            # Check for conflict
+            dup = await session.execute(select(User).where(and_(User.user_code == payload.user_code, User.user_id != user_id)))
+            if dup.scalars().first():
+                 return JSONResponse({"status_code": 409, "message": f"Student code {payload.user_code} already exists"}, status_code=409)
+            u.user_code = payload.user_code
+        elif payload.auto_prefix:
+            new_code = await _next_student_code(session, manual_prefix=payload.auto_prefix)
+            u.user_code = new_code
+            
+        u.is_active = True
+        
+        # Also activate all their enrollments
+        en_r = await session.execute(select(Enrollment).where(Enrollment.student_id == u.user_id))
+        enrollments = en_r.scalars().all()
+        for e in enrollments:
+            e.status = True
+            
+        await session.commit()
+        await _log_activity(request, session, "Approve Student", f"Student {u.user_code} (was {old_code}) and their enrollments were approved and activated")
+        return JSONResponse({"status_code": 200, "message": "Student approved successfully", "data": {"user_code": u.user_code}})
+
     # CRUD - Attendance
 
     async def mark_attendance(request: Request, session: AsyncSession, payload: AttendanceMarkRequest):
@@ -1531,3 +1567,27 @@ class AdminPanelService:
         await session.refresh(pay)
         await _log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({payload.month})")
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})
+    async def update_enrollment(request: Request, session: AsyncSession, enrollment_id: int, payload: AdminEnrollmentUpdate):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        enroll_r = await session.execute(select(Enrollment).where(Enrollment.enrollment_id == enrollment_id))
+        enroll = enroll_r.scalars().first()
+        if not enroll:
+            return JSONResponse({"status_code": 404, "message": "Enrollment not found"}, status_code=404)
+
+        if payload.batch_no is not None:
+            enroll.batch_no = payload.batch_no
+        if payload.payment_plan is not None:
+            enroll.payment_plan = payload.payment_plan
+        if payload.downpayment is not None:
+            enroll.downpayment = payload.downpayment
+        if payload.installment_amount is not None:
+            enroll.installment_amount = payload.installment_amount
+        if payload.status is not None:
+            enroll.status = payload.status
+
+        await session.commit()
+        await session.refresh(enroll)
+        await _log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_id} updated with new plan/batch details")
+        return JSONResponse({"status_code": 200, "message": "Enrollment updated successfully"})

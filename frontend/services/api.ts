@@ -45,7 +45,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       if (typeof window !== "undefined") {
-        if (!window.location.pathname.startsWith("/login")) {
+        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
           localStorage.removeItem("token");
           localStorage.removeItem("role");
           localStorage.removeItem("user_code");

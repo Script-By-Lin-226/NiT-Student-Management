@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database_initialization import get_db
 from app.services.admin_panel import AdminPanelService
 from app.services.backup_service import BackupService
-from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate
+from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.course import AdminCourseCreate, AdminCourseUpdate
 from app.schemas.enrollment import AdminEnrollmentCreate, AdminEnrollmentUpdate
@@ -42,9 +42,17 @@ async def create_student(payload: AdminStudentCreate, request: Request, session:
 async def get_specific_student(user_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_specific_student(user_code, request, session)
 
+@router.post("/students/{user_id}/approve")
+async def approve_student(user_id: int, payload: AdminStudentApprove, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.approve_student(request, session, user_id, payload)
+
 @router.get("/students/{user_code}/relations")
 async def get_student_relations(user_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_student_relations(user_code, request, session)
+
+@router.put("/enrollments/{enrollment_id}")
+async def update_enrollment_route(request: Request, enrollment_id: int, payload: AdminEnrollmentUpdate, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.update_enrollment(request, session, enrollment_id, payload)
 
 @router.get("/teachers")
 async def get_teachers_details(request: Request, session: AsyncSession = Depends(get_db)):

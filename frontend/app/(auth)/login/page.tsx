@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/services/api";
+import { AuthService } from "@/services/auth.service";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -21,8 +21,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/login", { email: email.trim(), password });
-      const { access_token, role, user_code, username, profile_picture } = res.data;
+      const data = await AuthService.login({ email: email.trim(), password });
+      const { access_token, role, user_code, username, profile_picture } = data;
       
       localStorage.setItem("token", access_token);
       localStorage.setItem("role", String(role || "").toLowerCase());

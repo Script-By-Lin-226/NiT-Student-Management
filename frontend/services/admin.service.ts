@@ -29,6 +29,7 @@ export interface AdminStudent {
   profile_picture?: string | null;
   how_did_you_hear?: string | null;
   student_type?: string | null;
+  intended_course_code?: string | null;
 }
 
 export interface AdminStudentCreate {
@@ -341,6 +342,10 @@ export class AdminService {
     return res.data.data;
   }
 
+  static async approveStudent(userId: number, payload: { user_code?: string, auto_prefix?: string }): Promise<void> {
+    await api.post(`/admin/students/${userId}/approve`, payload);
+  }
+
   static async updateUser(user_code: string, payload: AdminStudentUpdate): Promise<void> {
     await api.put(`/admin/users/${encodeURIComponent(user_code)}`, payload);
   }
@@ -352,6 +357,10 @@ export class AdminService {
   static async getStudentRelations(user_code: string): Promise<AdminStudentRelations> {
     const res = await api.get(`/admin/students/${encodeURIComponent(user_code)}/relations`);
     return res.data.data;
+  }
+
+  static async updateEnrollment(enrollment_id: number, payload: any): Promise<void> {
+    await api.put(`/admin/enrollments/${enrollment_id}`, payload);
   }
 
   // Parents
@@ -420,13 +429,8 @@ export class AdminService {
     return res.data.data;
   }
 
-  static async updateEnrollment(enrollment_code: string, payload: AdminEnrollmentUpdate): Promise<AdminEnrollment> {
-    const res = await api.put(`/admin/enrollments/${encodeURIComponent(enrollment_code)}`, payload);
-    return res.data.data;
-  }
-
-  static async deleteEnrollment(enrollment_code: string): Promise<void> {
-    await api.delete(`/admin/enrollments/${encodeURIComponent(enrollment_code)}`);
+  static async deleteEnrollment(enrollment_id: number): Promise<void> {
+    await api.delete(`/admin/enrollments/${enrollment_id}`);
   }
 
   // Attendance

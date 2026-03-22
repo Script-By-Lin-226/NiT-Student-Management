@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { AuthService } from "@/services/auth.service";
 
 export interface AuthUser {
   token: string;
@@ -28,14 +29,19 @@ export function useAuth() {
       setUser({ token, role, user_code, username, profile_picture });
     } else {
       setUser(null);
-      if (!pathname?.startsWith("/login")) {
+      if (pathname && !pathname.startsWith("/login") && !pathname.startsWith("/register")) {
         router.replace("/login");
       }
     }
     setLoading(false);
   }, [pathname, router]);
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await AuthService.logout();
+    } catch (e) {
+      console.error("Backend logout failed", e);
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user_code");
