@@ -143,3 +143,22 @@ class StudentRegister(BaseModel):
 class AdminStudentApprove(BaseModel):
     user_code: Optional[str] = None
     auto_prefix: Optional[str] = None # "CO" or "IN"
+
+class UserPasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+    @validator('new_password')
+    def password_length(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters long')
+        return v
+
+class AdminUserPasswordChange(BaseModel):
+    new_password: str
+
+    @validator('new_password')
+    def password_length(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters long')
+        return v

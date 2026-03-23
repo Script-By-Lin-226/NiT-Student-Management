@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database_initialization import get_db
 from app.services.admin_panel import AdminPanelService
 from app.services.backup_service import BackupService
-from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove
+from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove, UserPasswordChange, AdminUserPasswordChange
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.course import AdminCourseCreate, AdminCourseUpdate
 from app.schemas.enrollment import AdminEnrollmentCreate, AdminEnrollmentUpdate
@@ -91,6 +91,14 @@ async def update_user(user_code: str, user_update: UserUpdate, request: Request,
 @router.delete("/users/{user_code}")
 async def delete_user(user_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.delete_user(user_code, request, session)
+
+@router.put("/users/{user_code}/password")
+async def change_user_password(user_code: str, payload: AdminUserPasswordChange, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.change_user_password(user_code, payload, request, session)
+
+@router.put("/profile/password")
+async def change_self_password(payload: UserPasswordChange, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.change_self_password(payload, request, session)
 
 # --- Sample Data (dev helper) ---
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X, Home, BookOpen, Clock, CalendarDays, Award, User, LogOut, Users, Shield, DoorOpen, CalendarClock, CreditCard } from "lucide-react";
+import { Menu, X, Home, BookOpen, Clock, CalendarDays, Award, User, LogOut, Users, Shield, DoorOpen, CalendarClock, CreditCard, Database } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -43,6 +43,7 @@ const adminNav = [
   { name: "Timetable", href: "/admin/timetables", icon: CalendarClock },
   { name: "Attendance", href: "/admin/attendance", icon: Clock },
   { name: "Payments", href: "/admin/payments", icon: CreditCard },
+  { name: "Backup", href: "/admin/backup", icon: Database },
   { name: "Activity Logs", href: "/admin/activity", icon: CalendarDays },
   { name: "Profile", href: "/profile", icon: User },
 ];
@@ -56,7 +57,7 @@ export default function MobileHeader() {
   if (isStudent) navigation = studentNav;
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
-  if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff");
+  if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 
   return (

@@ -3,17 +3,54 @@
 import { useEffect, useState } from "react";
 import { PortalService, PortalUser } from "@/services/portal.service";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Mail, Shield, Activity, Fingerprint, LogOut } from "lucide-react";
+import { User, Mail, Shield, Activity, Fingerprint, LogOut, Key, Loader2 } from "lucide-react";
+import { AdminService } from "@/services/admin.service";
 
 export default function ProfilePage() {
   const { user, logout, isStudent, isStaff } = useAuth();
   const [profile, setProfile] = useState<PortalUser | null>(null);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (isStudent) {
       PortalService.getStudentMe().then(setProfile).catch(console.error);
     }
   }, [isStudent]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError("New password must be at least 6 characters.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    try {
+      await AdminService.changeSelfPassword({
+        old_password: oldPassword,
+        new_password: newPassword,
+      });
+      setSuccess("Your password has been changed successfully.");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || "Failed to change password.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
@@ -85,6 +122,75 @@ export default function ProfilePage() {
              </button>
            </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <Key className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">Security</h3>
+            <p className="text-xs text-slate-500 font-medium tracking-tight">Update your account password.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleChangePassword} className="p-6 sm:p-8 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-100 text-red-600 text-xs font-bold py-3 px-4 rounded-xl">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-bold py-3 px-4 rounded-xl">
+              {success}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Current Password</label>
+              <input
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-bold text-sm rounded-xl hover:bg-slate-800 transition-all disabled:opacity-50"
+            >
+              {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+              Save Password
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService, AdminUser } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, RefreshCw, X, Trash2, Edit2 } from "lucide-react";
+import { Plus, Search, RefreshCw, X, Trash2, Edit2, Key } from "lucide-react";
 
 function Modal({
   title,
@@ -60,6 +60,11 @@ export default function AdminStaffPage() {
   const [uEmail, setUEmail] = useState("");
   const [uDob, setUDob] = useState("");
   const [uActive, setUActive] = useState(true);
+  
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [pCode, setPCode] = useState("");
+  const [pUsername, setPUsername] = useState("");
+  const [pNewPassword, setPNewPassword] = useState("");
 
   useEffect(() => {
     if (!loading && !isAdmin) router.replace("/dashboard");
@@ -162,6 +167,31 @@ export default function AdminStaffPage() {
     }
   };
 
+  const openPassword = (u: AdminUser) => {
+    setPCode(u.user_code);
+    setPUsername(u.username);
+    setPNewPassword("");
+    setPasswordOpen(true);
+  };
+
+  const submitPassword = async () => {
+    if (!pNewPassword || pNewPassword.length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await AdminService.changeUserPassword(pCode, { new_password: pNewPassword });
+      setPasswordOpen(false);
+      alert("Password updated successfully.");
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e.message || "Failed to change password.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading || !isAdmin) return null;
 
   return (
@@ -229,6 +259,14 @@ export default function AdminStaffPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right flex justify-end gap-2">
+                    <button
+                      onClick={() => openPassword(r)}
+                      disabled={busy}
+                      className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors disabled:opacity-50"
+                      title="Change Password"
+                    >
+                      <Key className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => openUpdate(r)}
                       disabled={busy}
@@ -322,6 +360,27 @@ export default function AdminStaffPage() {
           <div className="flex justify-end mt-4">
             <button onClick={submitUpdate} disabled={busy} className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700">
               {busy ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal title={`Change Password: ${pUsername}`} open={passwordOpen} onClose={() => setPasswordOpen(false)}>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">New Password</label>
+            <input 
+              type="password" 
+              value={pNewPassword} 
+              onChange={e => setPNewPassword(e.target.value)} 
+              placeholder="Min 6 characters"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" 
+            />
+          </div>
+          <p className="text-xs text-slate-500">Updating the password will not log the user out of their current session, but will take effect upon their next login.</p>
+          <div className="flex justify-end mt-4">
+            <button onClick={submitPassword} disabled={busy} className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700">
+              {busy ? "Updating..." : "Update Password"}
             </button>
           </div>
         </div>

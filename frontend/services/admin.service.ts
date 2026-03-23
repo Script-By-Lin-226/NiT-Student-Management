@@ -551,5 +551,13 @@ export class AdminService {
     });
     return res.data;
   }
+
+  static async changeUserPassword(userCode: string, payload: { new_password: string }): Promise<void> {
+    await api.put(`/admin/users/${encodeURIComponent(userCode)}/password`, payload);
+  }
+
+  static async changeSelfPassword(payload: { old_password: string, new_password: string }): Promise<void> {
+    await api.put("/admin/profile/password", payload);
+  }
 }
 

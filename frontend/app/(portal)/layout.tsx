@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import MobileNav from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/guards/AuthGuard";
 import BrandLogo from "@/components/BrandLogo";
 import { ParentOnlyDashboardGuard } from "@/components/guards/ParentOnlyDashboardGuard";
@@ -20,13 +19,10 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
           {/* Mobile Header */}
           <MobileHeader />
 
-          <main className="flex-1 pb-20 lg:pb-8 pt-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+          <main className="flex-1 pb-8 pt-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
             {children}
           </main>
         </div>
-
-        {/* Mobile bottom nav */}
-        <MobileNav />
       </div>
       </ParentOnlyDashboardGuard>
     </AuthGuard>

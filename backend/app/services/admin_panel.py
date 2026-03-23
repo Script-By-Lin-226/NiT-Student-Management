@@ -6,7 +6,7 @@ from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateReques
 from sqlalchemy import and_, select, update, delete
 from fastapi.responses import JSONResponse
 from fastapi import Request
-from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove
+from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove, UserPasswordChange, AdminUserPasswordChange
 from datetime import datetime, date, time
 from app.security.password_hashing import hash_password
 from sqlalchemy import func
@@ -730,6 +730,55 @@ class AdminPanelService:
         await session.commit()
         await _log_activity(request, session, "Delete User", f"User {user_code} deleted")
         return JSONResponse({"status_code": 200, "message": "User deleted successfully"})
+
+    async def change_user_password(user_code: str, payload: AdminUserPasswordChange, request: Request, session: AsyncSession):
+        if not await validating_admin_role(request, allow_sales=False):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+            
+        # Find user
+        query = select(User).where(User.user_code == user_code)
+        result = await session.execute(query)
+        user = result.scalars().first()
+        
+        if not user:
+            return JSONResponse({"status_code": 404, "message": "User not found"}, status_code=404)
+            
+        hashed = await hash_password(payload.new_password)
+        user.password_hash = hashed
+        await session.commit()
+        
+        await _log_activity(request, session, "Change Password", f"Password changed for user {user_code}")
+        
+        return JSONResponse({"status_code": 200, "message": "Password updated successfully"})
+
+    async def change_self_password(payload: UserPasswordChange, request: Request, session: AsyncSession):
+        from app.services.rbac_portal import _get_user
+        from app.security.password_hashing import verify_password
+        
+        user_info = _get_user(request)
+        user_code = user_info.get("user_code")
+        
+        if not user_code:
+            return JSONResponse({"status_code": 401, "message": "Not authenticated"}, status_code=401)
+            
+        query = select(User).where(User.user_code == user_code)
+        result = await session.execute(query)
+        user = result.scalars().first()
+        
+        if not user:
+            return JSONResponse({"status_code": 404, "message": "User not found"}, status_code=404)
+            
+        # Verify old password
+        if not await verify_password(payload.old_password, user.password_hash):
+            return JSONResponse({"status_code": 400, "message": "Incorrect old password"}, status_code=400)
+            
+        hashed = await hash_password(payload.new_password)
+        user.password_hash = hashed
+        await session.commit()
+        
+        await _log_activity(request, session, "Change Self Password", "Changed own password")
+        
+        return JSONResponse({"status_code": 200, "message": "Your password has been changed successfully"})
 
     async def seed_sample_data(request: Request, session: AsyncSession):
         """Create a small set of sample records for quickly testing admin CRUD."""
