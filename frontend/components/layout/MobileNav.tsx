@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Clock, CalendarDays, Award, User, Users, DoorOpen, CalendarClock } from "lucide-react";
+import { Home, BookOpen, Clock, CalendarDays, Award, User, Users, DoorOpen, CalendarClock, LogOut } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -15,6 +15,7 @@ const studentNav = [
 
 const parentNav = [
   { name: "Home", href: "/dashboard", icon: Home },
+  { name: "Me", href: "/profile", icon: User },
 ];
 
 const staffNav = [
@@ -28,13 +29,12 @@ const adminNav = [
   { name: "Students", href: "/admin/students", icon: Users },
   { name: "Parents", href: "/admin/parents", icon: Users },
   { name: "Courses", href: "/admin/courses", icon: BookOpen },
-  { name: "Rooms", href: "/admin/rooms", icon: DoorOpen },
-  { name: "TT", href: "/admin/timetables", icon: CalendarClock },
+  { name: "Me", href: "/profile", icon: User },
 ];
 
 export default function MobileNav() {
   const pathname = usePathname();
-  const { isStudent, isParent, isStaff, isAdmin } = useAuth();
+  const { isStudent, isParent, isStaff, isAdmin, logout } = useAuth();
 
   let navigation = studentNav;
   if (isParent) navigation = parentNav;
@@ -73,6 +73,13 @@ export default function MobileNav() {
             </Link>
           );
         })}
+        <button
+          onClick={logout}
+          className="flex flex-col items-center justify-center min-w-[64px] sm:w-full focus:outline-none transition-all py-1 rounded-xl text-red-500 hover:text-red-600"
+        >
+          <LogOut className="h-5 w-5 mb-0.5 text-red-400" />
+          <span className="text-[10px] font-bold tracking-tight text-red-500">Log out</span>
+        </button>
       </nav>
     </div>
   );

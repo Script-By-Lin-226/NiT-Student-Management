@@ -66,17 +66,27 @@ export default function MobileHeader() {
           <Menu className="h-6 w-6 text-slate-600 cursor-pointer" onClick={() => setIsOpen(true)} />
           <BrandLogo className="h-10 w-auto" />
         </div>
-        {user?.profile_picture ? (
-          <img 
-            src={user.profile_picture} 
-            alt="Profile" 
-            className="h-8 w-8 rounded-full object-cover ring-2 ring-white" 
-          />
-        ) : (
-          <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold uppercase ring-2 ring-white">
-            {user?.username?.[0] || user?.user_code?.[0] || 'N'}
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={logout}
+            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            title="Log out"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+          
+          {user?.profile_picture ? (
+            <img 
+              src={user.profile_picture} 
+              alt="Profile" 
+              className="h-8 w-8 rounded-full object-cover ring-2 ring-white" 
+            />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold uppercase ring-2 ring-white">
+              {user?.username?.[0] || user?.user_code?.[0] || 'N'}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Mobile Drawer */}
