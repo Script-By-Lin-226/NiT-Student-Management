@@ -16,6 +16,7 @@ from app.schemas.room import AdminRoomCreate, AdminRoomUpdate
 from collections import defaultdict
 from app.schemas.time_table import AdminTimeTableCreate, AdminTimeTableUpdate
 from app.schemas.payment import PaymentCreate, PaymentUpdate
+from app.core.timezone_utils import get_now_local
 
 
 def _serialize_user(u: User) -> dict:
@@ -36,8 +37,8 @@ def _serialize_user(u: User) -> dict:
         "how_did_you_hear": getattr(u, "how_did_you_hear", None),
         "student_type": getattr(u, "student_type", None),
         "intended_course_code": getattr(u, "intended_course_code", None),
-        "created_at": u.created_at.isoformat() if getattr(u, "created_at", None) else None,
-        "updated_at": u.updated_at.isoformat() if getattr(u, "updated_at", None) else None,
+        "created_at": f"{u.created_at.isoformat()}Z" if getattr(u, "created_at", None) else None,
+        "updated_at": f"{u.updated_at.isoformat()}Z" if getattr(u, "updated_at", None) else None,
     }
 
 
@@ -67,7 +68,7 @@ async def _next_student_code(session: AsyncSession, department: str = "College",
                 
     seq = max_seq + 1
     
-    now = datetime.now()
+    now = get_now_local()
     month_str = str(now.month)
     year_str = str(now.year)[-2:]
     
@@ -171,7 +172,7 @@ def _serialize_enrollment(e: Enrollment) -> dict:
         "enrollment_code": e.enrollment_code,
         "student_id": e.student_id,
         "course_id": e.course_id,
-        "enrollment_date": str(e.enrollment_date) if getattr(e, "enrollment_date", None) else None,
+        "enrollment_date": f"{e.enrollment_date.isoformat()}Z" if getattr(e, "enrollment_date", None) else None,
         "status": bool(e.status),
         "batch_no": getattr(e, "batch_no", None),
         "payment_plan": getattr(e, "payment_plan", None),
@@ -186,8 +187,8 @@ def _serialize_room(r: Room) -> dict:
         "room_name": r.room_name,
         "capacity": r.capacity,
         "is_active": r.is_active,
-        "created_at": r.created_at.isoformat() if getattr(r, "created_at", None) else None,
-        "updated_at": r.updated_at.isoformat() if getattr(r, "updated_at", None) else None,
+        "created_at": f"{r.created_at.isoformat()}Z" if getattr(r, "created_at", None) else None,
+        "updated_at": f"{r.updated_at.isoformat()}Z" if getattr(r, "updated_at", None) else None,
     }
 
 
@@ -236,10 +237,26 @@ class AdminPanelService:
                 "role": log.user.role if log.user else "Unknown",
                 "action": log.action,
                 "details": log.details,
-                "timestamp": log.timestamp.isoformat() if log.timestamp else None
+                "timestamp": f"{log.timestamp.isoformat()}Z" if log.timestamp else None
             })
             
         return JSONResponse({"status_code": 200, "message": "Activity logs fetched", "data": data})
+            
+    async def delete_activity_log(request: Request, session: AsyncSession, log_id: int):
+        if not await validating_admin_role(request):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+            
+        await session.execute(delete(ActivityLog).where(ActivityLog.log_id == log_id))
+        await session.commit()
+        return JSONResponse({"status_code": 200, "message": f"Log {log_id} deleted successfully"})
+
+    async def clear_all_activity_logs(request: Request, session: AsyncSession):
+        if not await validating_admin_role(request):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+            
+        await session.execute(delete(ActivityLog))
+        await session.commit()
+        return JSONResponse({"status_code": 200, "message": "All activity logs cleared successfully"})
 
 
     
@@ -402,7 +419,7 @@ class AdminPanelService:
                     "enrollment_id": p.enrollment_id,
                     "enrollment_code": e.enrollment_code,
                     "amount": p.amount,
-                    "payment_date": str(p.payment_date),
+                    "payment_date": f"{p.payment_date.isoformat()}Z" if p.payment_date else None,
                     "month": p.month,
                     "status": p.status,
                     "payment_method": getattr(p, "payment_method", None),
@@ -681,7 +698,8 @@ class AdminPanelService:
         created = {"academic_years": 0, "teachers": 0, "courses": 0, "students": 0, "enrollments": 0, "attendance": 0}
 
         # Academic year
-        year_name = f"{date.today().year}/{date.today().year + 1}"
+        local_now = get_now_local()
+        year_name = f"{local_now.year}/{local_now.year + 1}"
         yr_r = await session.execute(select(AcademicYear).where(AcademicYear.year_name == year_name))
         year = yr_r.scalars().first()
         if not year:
@@ -724,7 +742,7 @@ class AdminPanelService:
                     course_name=name,
                     academicyear_id=year.academic_year_id,
                     instructor_id=teacher.user_id,
-                    start_date=date.today(),
+                    start_date=get_now_local().date(),
                     end_date=date.today().replace(month=12, day=31),
                     room="Room 1",
                 )
@@ -764,9 +782,9 @@ class AdminPanelService:
                     session.add(e)
                     created["enrollments"] += 1
 
-            att_dup = await session.execute(select(Attendance).where(and_(Attendance.user_id == s.user_id, Attendance.attendance_date == date.today())))
+            att_dup = await session.execute(select(Attendance).where(and_(Attendance.user_id == s.user_id, Attendance.attendance_date == get_now_local().date())))
             if not att_dup.scalars().first():
-                session.add(Attendance(user_id=s.user_id, attendance_date=date.today(), check_today=True))
+                session.add(Attendance(user_id=s.user_id, attendance_date=get_now_local().date(), check_today=True))
                 created["attendance"] += 1
 
         await session.commit()
@@ -1122,7 +1140,7 @@ class AdminPanelService:
         if not student:
             return JSONResponse({"status_code": 404, "message": "Student not found"}, status_code=404)
 
-        today = date.today()
+        today = get_now_local().date()
         if getattr(payload, "attendance_date", None):
             try:
                 today = datetime.strptime(payload.attendance_date, "%Y-%m-%d").date()

@@ -20,6 +20,14 @@ router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 async def get_activity_logs(request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_activity_logs(request, session)
 
+@router.delete("/activity-logs/{log_id}")
+async def delete_activity_log(log_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.delete_activity_log(request, session, log_id)
+
+@router.delete("/activity-logs")
+async def clear_all_activity_logs(request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.clear_all_activity_logs(request, session)
+
 # --- User CRUD ---
 
 @router.get("/users")

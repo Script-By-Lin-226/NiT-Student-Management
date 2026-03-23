@@ -511,6 +511,14 @@ export class AdminService {
     const res = await api.get("/admin/activity-logs");
     return res.data.data;
   }
+  
+  static async deleteActivityLog(logId: number): Promise<void> {
+    await api.delete(`/admin/activity-logs/${logId}`);
+  }
+
+  static async clearAllActivityLogs(): Promise<void> {
+    await api.delete("/admin/activity-logs");
+  }
 
   // Backup and Restore
   static async exportBackup(): Promise<Blob> {

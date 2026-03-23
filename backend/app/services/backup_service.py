@@ -11,6 +11,7 @@ from app.models.model import (
     ParentStudent, ActivityLog
 )
 from app.services.rbac_portal import validating_admin_role
+from app.core.timezone_utils import get_now_local
 import json
 
 class BackupService:
@@ -60,7 +61,7 @@ class BackupService:
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         output.seek(0)
-        filename = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"backup_{get_now_local().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
         return StreamingResponse(
             output,

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from datetime import date
 from app.models.model import User, StaffAttendance
+from app.core.timezone_utils import get_now_local
 from app.services.rbac_portal import validating_staff_role, validating_admin_role
 from app.schemas.attendance import AttendanceMarkRequest
 
@@ -33,7 +34,7 @@ class StaffService:
         if not staff:
             raise HTTPException(status_code=404, detail="Staff member not found")
 
-        today = date.today()
+        today = get_now_local().date()
         dup_q = select(StaffAttendance).where(
             and_(StaffAttendance.user_id == staff.user_id, StaffAttendance.attendance_date == today)
         )
@@ -49,7 +50,7 @@ class StaffService:
         record = StaffAttendance(
             user_id=staff.user_id,
             attendance_date=today,
-            check_in_time=datetime.now().strftime("%H:%M"),
+            check_in_time=get_now_local().strftime("%H:%M"),
             status="present"
         )
         session.add(record)
@@ -77,7 +78,7 @@ class StaffService:
         if not staff:
             raise HTTPException(status_code=404, detail="Staff member not found")
 
-        today = date.today()
+        today = get_now_local().date()
         q = select(StaffAttendance).where(
             and_(StaffAttendance.user_id == staff.user_id, StaffAttendance.attendance_date == today)
         )
@@ -90,7 +91,7 @@ class StaffService:
             }, status_code=404)
 
         from datetime import datetime
-        record.check_out_time = datetime.now().strftime("%H:%M")
+        record.check_out_time = get_now_local().strftime("%H:%M")
         await session.commit()
         return JSONResponse({
             "success": True,
@@ -211,7 +212,7 @@ class StaffService:
         if not staff:
             raise HTTPException(status_code=404, detail="Staff not found")
 
-        today = date.today()
+        today = get_now_local().date()
         dup_q = select(StaffAttendance).where(
             and_(StaffAttendance.user_id == staff.user_id, StaffAttendance.attendance_date == today)
         )

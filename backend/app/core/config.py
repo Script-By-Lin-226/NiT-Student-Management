@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "NiT@gmail.com"
     ADMIN_PASSWORD: str = "NiT@2026"
     RENDER_EXTERNAL_URL: str | None = None
+    TZ_OFFSET: float = 6.5  # Myanmar timezone by default
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

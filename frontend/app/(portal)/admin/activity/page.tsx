@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { RefreshCw, Clock, Search, Download } from "lucide-react";
+import { RefreshCw, Clock, Search, Download, Trash2 } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
 
 
@@ -40,6 +40,32 @@ export default function ActivityLogsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
+  const handleDelete = async (logId: number) => {
+    if (!confirm("Are you sure you want to delete this log entry?")) return;
+    setBusy(true);
+    try {
+      await AdminService.deleteActivityLog(logId);
+      setLogs(prev => prev.filter(l => l.log_id !== logId));
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "Failed to delete log.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm("Are you sure you want to CLEAR ALL activity logs? This cannot be undone.")) return;
+    setBusy(true);
+    try {
+      await AdminService.clearAllActivityLogs();
+      setLogs([]);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "Failed to clear logs.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const filteredLogs = logs.filter((log) => {
     const term = q.toLowerCase();
     const dateTerm = dateQ; // YYYY-MM-DD
@@ -52,7 +78,9 @@ export default function ActivityLogsPage() {
       log.role.toLowerCase().includes(term);
 
     // Search date
-    const matchesDate = !dateTerm || log.timestamp.startsWith(dateTerm);
+    const logDate = new Date(log.timestamp);
+    const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
+    const matchesDate = !dateTerm || logDateStr === dateTerm;
 
     return matchesSearch && matchesDate;
   });
@@ -77,6 +105,14 @@ export default function ActivityLogsPage() {
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={handleClearAll}
+            disabled={busy || logs.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-red-100 text-red-600 font-semibold hover:bg-red-50 disabled:opacity-60"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear All
           </button>
           <button
             onClick={() => {
@@ -133,6 +169,7 @@ export default function ActivityLogsPage() {
                 <th className="px-6 py-4">Role</th>
                 <th className="px-6 py-4">Action</th>
                 <th className="px-6 py-4">Details</th>
+                <th className="px-6 py-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -155,11 +192,21 @@ export default function ActivityLogsPage() {
                   </td>
                   <td className="px-6 py-4 font-semibold text-brand-600">{log.action}</td>
                   <td className="px-6 py-4 text-slate-700">{log.details}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button 
+                      onClick={() => handleDelete(log.log_id)}
+                      disabled={busy}
+                      className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      title="Delete log entry"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filteredLogs.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400 font-medium">
                     {busy ? "Loading logs..." : "No matching activity logs found."}
                   </td>
                 </tr>

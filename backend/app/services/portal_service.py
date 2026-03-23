@@ -62,7 +62,7 @@ class StudentPortalService:
             {
                 "enrollment_id": e.enrollment_id,
                 "enrollment_code": e.enrollment_code,
-                "enrollment_date": str(e.enrollment_date),
+                "enrollment_date": f"{e.enrollment_date.isoformat()}Z" if e.enrollment_date else None,
                 "status": "Active" if e.status else "Inactive",
                 "course": {
                     "course_id": c.course_id,
