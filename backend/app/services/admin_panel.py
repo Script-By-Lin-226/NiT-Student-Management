@@ -219,14 +219,20 @@ async def _log_activity(request: Request, session: AsyncSession, action: str, de
 
 class AdminPanelService:
 
-    async def get_activity_logs(request: Request, session: AsyncSession):
+    async def get_activity_logs(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request):
-            return {"message": "You are not authorized to perform this action"}
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
             
         from sqlalchemy.orm import joinedload
-        query = select(ActivityLog).options(joinedload(ActivityLog.user)).order_by(ActivityLog.timestamp.desc())
+        offset = (page - 1) * limit
+        query = select(ActivityLog).options(joinedload(ActivityLog.user)).order_by(ActivityLog.timestamp.desc()).offset(offset).limit(limit)
         result = await session.execute(query)
         logs = result.scalars().all()
+        
+        # Also get total count for pagination metadata
+        count_query = select(func.count(ActivityLog.log_id))
+        count_result = await session.execute(count_query)
+        total_count = count_result.scalar()
         
         data = []
         for log in logs:
@@ -240,7 +246,17 @@ class AdminPanelService:
                 "timestamp": f"{log.timestamp.isoformat()}Z" if log.timestamp else None
             })
             
-        return JSONResponse({"status_code": 200, "message": "Activity logs fetched", "data": data})
+        return JSONResponse({
+            "status_code": 200, 
+            "message": "Activity logs fetched", 
+            "data": data,
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": (total_count + limit - 1) // limit,
+                "current_page": page,
+                "limit": limit
+            }
+        })
             
     async def delete_activity_log(request: Request, session: AsyncSession, log_id: int):
         if not await validating_admin_role(request):
@@ -274,18 +290,43 @@ class AdminPanelService:
             }
         )
 
-    async def get_students_details(request: Request , session:AsyncSession):
+    async def get_students_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request, allow_sales=True):
-            return {"message": "You are not authorized to perform this action"}
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        query = select(User).where(User.role == "student")
+        # Base query
+        base_query = select(User).where(User.role == "student")
+        
+        # Paginated query
+        if limit > 0:
+            offset = (page - 1) * limit
+            query = base_query.order_by(User.created_at.desc()).offset(offset).limit(limit)
+        else:
+            query = base_query.order_by(User.created_at.desc())
+            
         result = await session.execute(query)
         students = result.scalars().all()
+        
+        # Total count for pagination metadata
+        count_query = select(func.count(User.user_id)).where(User.role == "student") # Changed from User.id to User.user_id to match existing code
+        count_result = await session.execute(count_query)
+        total_count = count_result.scalar() or 0
+        
+        total_pages = 0
+        if limit > 0:
+            total_pages = (total_count + limit - 1) // limit
+        
         return JSONResponse(
             {
                 "status_code": 200,
                 "message": "Students details fetched successfully",
                 "data": [_serialize_user(s) for s in students],
+                "pagination": {
+                    "total_count": total_count,
+                    "total_pages": total_pages,
+                    "current_page": page,
+                    "limit": limit
+                }
             }
         )
 

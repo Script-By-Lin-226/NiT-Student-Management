@@ -45,7 +45,7 @@ class User(Base):
 
     is_active = Column(Boolean, default=True)
     data_of_birth = Column(DateTime, nullable=False)
-    role = Column(String, nullable=False, default="student")
+    role = Column(String, nullable=False, default="student", index=True)
     
     how_did_you_hear = Column(String, nullable=True)
     student_type = Column(String, nullable=True) # Old Student or New Student
@@ -164,7 +164,7 @@ class Enrollment(Base):
         index=True
     )
 
-    enrollment_date = Column(DateTime, default=func.now())
+    enrollment_date = Column(DateTime, default=func.now(), index=True)
     status = Column(Boolean, default=True)
     
     batch_no = Column(String, nullable=True)
@@ -270,7 +270,7 @@ class Attendance(Base):
 
     attendance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
-    attendance_date = Column(Date, nullable=False, default=date.today)
+    attendance_date = Column(Date, nullable=False, default=date.today, index=True)
     slot = Column(String, nullable=False, default="Morning") # "Morning", "Afternoon", "Evening"
     check_today = Column(Boolean, nullable=False, default=False)
 
@@ -324,7 +324,7 @@ class StaffAttendance(Base):
 
     attendance_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True, nullable=False)
-    attendance_date = Column(Date, nullable=False, default=date.today)
+    attendance_date = Column(Date, nullable=False, default=date.today, index=True)
     check_in_time = Column(String, nullable=True)   # e.g. "09:05"
     check_out_time = Column(String, nullable=True)  # e.g. "17:30"
     status = Column(String, nullable=False, default="present")  # present | absent | late
@@ -347,7 +347,7 @@ class ActivityLog(Base):
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True, nullable=False)
     action = Column(String, nullable=False)
     details = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=func.now())
+    timestamp = Column(DateTime, default=func.now(), index=True)
 
     user = relationship("User")
 

@@ -327,9 +327,9 @@ export class AdminService {
     const res = await api.post<{ data: AdminUser }>("/admin/staff", payload);
     return res.data.data;
   }
-  static async listStudents(): Promise<AdminStudent[]> {
-    const res = await api.get("/admin/students");
-    return res.data.data;
+  static async listStudents(page: number = 1, limit: number = 50): Promise<any> {
+    const res = await api.get("/admin/students", { params: { page, limit } });
+    return res.data;
   }
 
   static async getStudent(user_code: string): Promise<AdminStudent> {
@@ -507,9 +507,9 @@ export class AdminService {
     await api.post("/admin/payments", payload);
   }
 
-  static async getActivityLogs(): Promise<any[]> {
-    const res = await api.get("/admin/activity-logs");
-    return res.data.data;
+  static async getActivityLogs(page: number = 1, limit: number = 50): Promise<any> {
+    const res = await api.get("/admin/activity-logs", { params: { page, limit } });
+    return res.data;
   }
   
   static async deleteActivityLog(logId: number): Promise<void> {

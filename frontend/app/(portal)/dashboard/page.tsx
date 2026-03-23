@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [parentError, setParentError] = useState<string | null>(null);
 
   const [adminStudents, setAdminStudents] = useState<AdminStudent[]>([]);
+  const [totalStudents, setTotalStudents] = useState(0);
   const [adminCourses, setAdminCourses] = useState<AdminCourse[]>([]);
   const [adminEnrollments, setAdminEnrollments] = useState<AdminEnrollment[]>([]);
   const [adminAttendance, setAdminAttendance] = useState<AdminAttendanceRecord[]>([]);
@@ -139,7 +140,8 @@ export default function DashboardPage() {
     ])
       .then(([students, courses, enrollments, attendance, rooms]) => {
         if (cancelled) return;
-        setAdminStudents(students);
+        setAdminStudents(students.data || []);
+        setTotalStudents(students.pagination?.total_count || 0);
         setAdminCourses(courses);
         setAdminEnrollments(enrollments);
         setAdminAttendance(attendance);
@@ -174,7 +176,7 @@ export default function DashboardPage() {
     const fullRooms = adminRooms.filter((r) => r.is_full).length;
 
     return {
-      students: adminStudents.length,
+      students: totalStudents,
       courses: adminCourses.length,
       enrollments: activeEnrollments,
       attendanceRate,

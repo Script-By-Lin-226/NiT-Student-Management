@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check } from "lucide-react";
 import * as XLSX from "xlsx";
+import { useStudents, useCourses } from "@/hooks/useAdmin";
 
 function Modal({
   title,
@@ -45,10 +46,17 @@ function Modal({
 
 export default function AdminStudentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdmin, loading: authLoading } = useAuth();
 
-  const [rows, setRows] = useState<AdminStudent[]>([]);
-  const [courses, setCourses] = useState<AdminCourse[]>([]);
+  const [page, setPage] = useState(1);
+  const limit = 50;
+
+  const { data: studentResponse, isLoading: studentsLoading, refetch: refetchStudents } = useStudents(page, limit);
+  const { data: courses = [], isLoading: coursesLoading } = useCourses();
+
+  const rows = studentResponse?.data || [];
+  const pagination = studentResponse?.pagination;
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
   const [q, setQ] = useState("");
@@ -122,13 +130,13 @@ export default function AdminStudentsPage() {
   const [eInst, setEInst] = useState("");
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!authLoading && !isAdminOrSales) router.replace("/dashboard");
+  }, [authLoading, isAdminOrSales, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return rows;
-    return rows.filter((s) => {
+    return rows.filter((s: AdminStudent) => {
       return (
         s.user_code.toLowerCase().includes(term) ||
         s.username.toLowerCase().includes(term) ||
@@ -138,26 +146,10 @@ export default function AdminStudentsPage() {
   }, [q, rows]);
 
   const load = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const [studentData, courseData] = await Promise.all([
-        AdminService.listStudents(),
-        AdminService.listCourses()
-      ]);
-      setRows(studentData);
-      setCourses(courseData);
-    } catch (e: any) {
-      handleError(e, "Failed to load data");
-    } finally {
-      setBusy(false);
-    }
+    await refetchStudents();
   };
 
-  useEffect(() => {
-    if (isAdminOrSales) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+  const combinedLoading = authLoading || studentsLoading || coursesLoading || busy;
 
   const openCreate = () => {
     setCUserCode("");
@@ -363,7 +355,7 @@ export default function AdminStudentsPage() {
     }
   };
 
-  if (loading) return null;
+  if (authLoading) return null;
   if (!isAdminOrSales) return null;
 
   const exportSelectedStudent = () => {
@@ -484,16 +476,18 @@ export default function AdminStudentsPage() {
   const exportAllData = async () => {
     try {
       setBusy(true);
-      const [students, enrollments, attendance, payments] = await Promise.all([
-        AdminService.listStudents(),
+      const [studentsRes, enrollments, attendance, payments] = await Promise.all([
+        AdminService.listStudents(1, -1),
         AdminService.listEnrollments(),
         AdminService.listAttendance(),
         AdminService.listPayments()
       ]);
 
+      const students = studentsRes.data || [];
+
       const wb = XLSX.utils.book_new();
 
-      const wsStudents = XLSX.utils.json_to_sheet(students.length ? students.map(s => ({
+      const wsStudents = XLSX.utils.json_to_sheet(students.length ? students.map((s: AdminStudent) => ({
         "User Code": s.user_code,
         "Name": s.username,
         "Email": s.email,
@@ -513,7 +507,7 @@ export default function AdminStudentsPage() {
         paidPerEnrollment[p.enrollment_id] = (paidPerEnrollment[p.enrollment_id] || 0) + (p.amount || 0);
       }
 
-      const wsPayments = XLSX.utils.json_to_sheet(payments.length ? payments.map(p => {
+      const wsPayments = XLSX.utils.json_to_sheet(payments.length ? payments.map((p: any) => {
         const courseCost = p.course_cost || 0;
         const totalPaidForEnroll = paidPerEnrollment[p.enrollment_id] || 0;
         return {
@@ -554,7 +548,7 @@ export default function AdminStudentsPage() {
       const wsMonthlySummary = XLSX.utils.json_to_sheet(monthlySummary.length ? monthlySummary : [{"Info": "No monthly data"}]);
       XLSX.utils.book_append_sheet(wb, wsMonthlySummary, "Monthly Summary");
 
-      const wsEnrollments = XLSX.utils.json_to_sheet(enrollments.length ? enrollments.map(e => {
+      const wsEnrollments = XLSX.utils.json_to_sheet(enrollments.length ? enrollments.map((e: any) => {
         const courseCost = e.course_cost || 0;
         const totalPaid = paidPerEnrollment[e.enrollment_id] || 0;
         return {
@@ -574,7 +568,7 @@ export default function AdminStudentsPage() {
       }) : [{"Info": "No enrollments found"}]);
       XLSX.utils.book_append_sheet(wb, wsEnrollments, "All Enrollments");
 
-      const wsAttendance = XLSX.utils.json_to_sheet(attendance.length ? attendance.map(a => ({
+      const wsAttendance = XLSX.utils.json_to_sheet(attendance.length ? attendance.map((a: any) => ({
         "Date": a.attendance_date,
         "Student Name": a.username,
         "Slot": a.slot,
@@ -774,6 +768,57 @@ export default function AdminStudentsPage() {
             </tbody>
           </table>
         </div>
+        {pagination && (pagination.total_pages || 0) > 1 && (
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="text-sm text-slate-500">
+              Showing <span className="font-semibold text-slate-900">{((page - 1) * limit) + 1}</span> to <span className="font-semibold text-slate-900">{Math.min(page * limit, pagination.total_count || 0)}</span> of <span className="font-semibold text-slate-900">{pagination.total_count || 0}</span> students
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                  let pageNum: number;
+                  if (pagination.total_pages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= (pagination.total_pages || 0) - 2) {
+                    pageNum = (pagination.total_pages || 0) - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  if (pageNum <= 0) return null;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        page === pageNum
+                          ? "bg-brand-600 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setPage(p => Math.min(pagination.total_pages || 1, p + 1))}
+                disabled={page === pagination.total_pages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal title="Create Student" open={createOpen} onClose={() => setCreateOpen(false)}>

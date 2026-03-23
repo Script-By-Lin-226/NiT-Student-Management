@@ -17,8 +17,8 @@ router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 # --- Activity Logs ---
 
 @router.get("/activity-logs")
-async def get_activity_logs(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.get_activity_logs(request, session)
+async def get_activity_logs(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_activity_logs(request, session, page, limit)
 
 @router.delete("/activity-logs/{log_id}")
 async def delete_activity_log(log_id: int, request: Request, session: AsyncSession = Depends(get_db)):
@@ -39,8 +39,8 @@ async def create_staff(payload: AdminStaffCreate, request: Request, session: Asy
     return await AdminPanelService.create_staff(payload, request, session)
 
 @router.get("/students")
-async def get_students_details(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.get_students_details(request, session)
+async def get_students_details(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_students_details(request, session, page, limit)
 
 @router.post("/students")
 async def create_student(payload: AdminStudentCreate, request: Request, session: AsyncSession = Depends(get_db)):

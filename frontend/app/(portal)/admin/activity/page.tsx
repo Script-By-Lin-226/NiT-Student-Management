@@ -8,65 +8,61 @@ import { RefreshCw, Clock, Search, Download, Trash2 } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
 
 
+import { useActivityLogs, useDeleteActivityLog, useClearActivityLogs } from "@/hooks/useAdmin";
+
+interface LogEntry {
+  log_id: number;
+  user_id: number;
+  username: string;
+  role: string;
+  action: string;
+  details: string;
+  timestamp: string;
+}
+
 export default function ActivityLogsPage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   
-  const [logs, setLogs] = useState<any[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 50;
+  
+  const { data: logResponse, isLoading: logsLoading, error: queryError, refetch } = useActivityLogs(page, limit);
+  const logs = logResponse?.data || [];
+  const pagination = logResponse?.pagination;
+  
+  const deleteMutation = useDeleteActivityLog();
+  const clearMutation = useClearActivityLogs();
+  
   const [q, setQ] = useState("");
   const [dateQ, setDateQ] = useState("");
 
-  useEffect(() => {
-    if (!loading && !isAdmin) router.replace("/dashboard");
-  }, [loading, isAdmin, router]);
-
-  const load = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const data = await AdminService.getActivityLogs();
-      setLogs(data);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || e.message || "Failed to load activity logs.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const busy = logsLoading || deleteMutation.isPending || clearMutation.isPending;
+  const error = (queryError as any)?.response?.data?.message || (queryError as any)?.message || "";
 
   useEffect(() => {
-    if (isAdmin) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+    if (!authLoading && !isAdmin) router.replace("/dashboard");
+  }, [authLoading, isAdmin, router]);
 
   const handleDelete = async (logId: number) => {
     if (!confirm("Are you sure you want to delete this log entry?")) return;
-    setBusy(true);
     try {
-      await AdminService.deleteActivityLog(logId);
-      setLogs(prev => prev.filter(l => l.log_id !== logId));
+      await deleteMutation.mutateAsync(logId);
     } catch (e: any) {
       alert(e?.response?.data?.message || "Failed to delete log.");
-    } finally {
-      setBusy(false);
     }
   };
 
   const handleClearAll = async () => {
     if (!confirm("Are you sure you want to CLEAR ALL activity logs? This cannot be undone.")) return;
-    setBusy(true);
     try {
-      await AdminService.clearAllActivityLogs();
-      setLogs([]);
+      await clearMutation.mutateAsync();
     } catch (e: any) {
       alert(e?.response?.data?.message || "Failed to clear logs.");
-    } finally {
-      setBusy(false);
     }
   };
 
-  const filteredLogs = logs.filter((log) => {
+  const filteredLogs = (logs as LogEntry[]).filter((log: LogEntry) => {
     const term = q.toLowerCase();
     const dateTerm = dateQ; // YYYY-MM-DD
     
@@ -85,7 +81,7 @@ export default function ActivityLogsPage() {
     return matchesSearch && matchesDate;
   });
 
-  if (loading) return null;
+  if (authLoading) return null;
   if (!isAdmin) return null;
 
   return (
@@ -99,7 +95,7 @@ export default function ActivityLogsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={load}
+            onClick={() => refetch()}
             disabled={busy}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60"
           >
@@ -116,7 +112,7 @@ export default function ActivityLogsPage() {
           </button>
           <button
             onClick={() => {
-              const dataToExport = filteredLogs.map(log => ({
+              const dataToExport = filteredLogs.map((log: LogEntry) => ({
                 "Time": new Date(log.timestamp).toLocaleString(),
                 "User": log.username,
                 "Role": log.role,
@@ -173,7 +169,7 @@ export default function ActivityLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredLogs.map((log) => (
+              {filteredLogs.map((log: LogEntry) => (
                 <tr key={log.log_id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-slate-500">
@@ -214,6 +210,30 @@ export default function ActivityLogsPage() {
             </tbody>
           </table>
         </div>
+
+        {pagination && pagination.total_pages > 1 && (
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="text-sm font-medium text-slate-500">
+              Showing page <span className="text-slate-900">{page}</span> of <span className="text-slate-900">{pagination.total_pages}</span> ({pagination.total} total logs)
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || busy}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(pagination.total_pages, p + 1))}
+                disabled={page === pagination.total_pages || busy}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
