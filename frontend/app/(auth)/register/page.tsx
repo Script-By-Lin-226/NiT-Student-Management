@@ -133,8 +133,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center md:py-12 md:px-4 selection:bg-[#0d4d4d]/20">
-      <div className="w-full max-w-[1000px] h-full min-h-screen md:h-[720px] md:min-h-0 bg-white md:rounded-[40px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] flex flex-col md:flex-row overflow-hidden ring-1 ring-black/5">
+    <div className="min-h-screen bg-white md:bg-[#f3f4f6] flex items-center justify-center md:py-12 md:px-4 selection:bg-[#0d4d4d]/20">
+      <div className="w-full max-w-[1000px] h-full min-h-screen md:h-[720px] md:min-h-0 bg-white md:rounded-[40px] md:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] flex flex-col md:flex-row overflow-hidden md:ring-1 md:ring-black/5">
         
         {isSuccess ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-24 text-center animate-in fade-in zoom-in duration-500">

@@ -47,8 +47,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f4f6] px-4 py-8 font-sans selection:bg-slate-200">
-      <div className="w-full max-w-[440px] bg-white rounded-[32px] md:rounded-[48px] p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-100/50">
+    <div className="min-h-screen flex items-center justify-center bg-white md:bg-[#f3f4f6] md:px-4 md:py-8 font-sans selection:bg-slate-200">
+      <div className="w-full min-h-screen md:min-h-0 md:max-w-[440px] bg-white md:rounded-[48px] p-8 md:p-12 md:shadow-[0_8px_30px_rgb(0,0,0,0.04)] md:ring-1 md:ring-slate-100/50 flex flex-col justify-center">
         <div className="flex flex-col items-center mb-10">
           <div className="w-32 h-32 relative mb-8 group transition-transform duration-500 hover:scale-110">
             <Image 
