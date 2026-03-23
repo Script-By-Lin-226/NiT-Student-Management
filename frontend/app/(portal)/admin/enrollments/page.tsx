@@ -198,10 +198,10 @@ export default function AdminEnrollmentsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Enrollments</h1>
           <p className="text-slate-500 font-medium text-sm mt-1">Enroll students into courses and manage enrollment status.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={load} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={load} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95">
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
-            Refresh
+            <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
             onClick={() => {
@@ -223,28 +223,29 @@ export default function AdminEnrollmentsPage() {
               exportToExcel(dataToExport, "Enrollments_List", "Enrollments");
             }}
             disabled={busy || filtered.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap"
           >
             <Download className="w-4 h-4" />
-            Export to Excel
+            <span className="hidden xs:inline">Export</span>
           </button>
-          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
+          <button onClick={openCreate} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap">
             <Plus className="w-4 h-4" />
-            New Enrollment
+            <span>New Enrollment</span>
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by enrollment code…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by student or course…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" />
           </div>
-          {error && <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">{error}</div>}
+          {error && <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">{error}</div>}
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
@@ -276,19 +277,19 @@ export default function AdminEnrollmentsPage() {
                       {e.status ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2 text-xs">
                       {isAdmin && (
-<button onClick={() => openEdit(e)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                      </button>
-)}
+                        <button onClick={() => openEdit(e)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95">
+                          <Pencil className="w-3.5 h-3.5" />
+                          Edit
+                        </button>
+                      )}
                       {isAdmin && (
-                      <button onClick={() => doDelete(e)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+                        <button onClick={() => doDelete(e)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all active:scale-95">
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
                       )}
                     </div>
                   </td>
@@ -304,6 +305,67 @@ export default function AdminEnrollmentsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile/Tablet Card View */}
+        <div className="block lg:hidden divide-y divide-slate-100">
+          {filtered.map((e) => (
+            <div key={e.enrollment_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{e.enrollment_code}</div>
+                  <div className="text-base font-bold text-slate-900 leading-tight">{(e as any).student_name || "Unknown Student"}</div>
+                  <div className="text-xs text-slate-500 font-medium">{(e as any).student_code || `ID ${e.student_id}`}</div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={["inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"].join(" ")}>
+                    {e.status ? "Active" : "Inactive"}
+                  </span>
+                    <div className="flex gap-2">
+                      {isAdmin && (
+                        <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
+                          <Pencil className="w-5 h-5" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button onClick={() => doDelete(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90" title="Delete">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100/50">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Enrolled Course</div>
+                  <div className="font-bold text-slate-800">{(e as any).course_name || "-"}</div>
+                  <div className="text-xs text-slate-500 font-medium">{(e as any).course_code || `ID ${e.course_id}`} • Room: {(e as any).room || "-"}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Date</div>
+                    <div className="font-semibold text-slate-700">
+                      {e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"}
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Batch</div>
+                    <div className="font-semibold text-slate-700 truncate">
+                      {e.batch_no || "-"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="p-10 text-center text-slate-400 font-medium text-sm">
+              {busy ? "Loading…" : "No enrollments found."}
+            </div>
+          )}
+        </div>
+
       </div>
 
       <Modal title="Create Enrollment" open={createOpen} onClose={() => setCreateOpen(false)}>

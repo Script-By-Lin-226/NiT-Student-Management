@@ -304,19 +304,19 @@ export default function AdminAttendancePage() {
               `View and manage historical attendance for courses that have already ended.`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
             <button 
               onClick={() => setFilterMode("scheduled")}
-              className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${filterMode === "scheduled" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-lg transition-all active:scale-95 ${filterMode === "scheduled" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
-              Active Schedule
+              Active
             </button>
             <button 
               onClick={() => setFilterMode("ended")}
-              className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${filterMode === "ended" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-lg transition-all active:scale-95 ${filterMode === "ended" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
-              Ended Courses
+              Ended
             </button>
           </div>
           {filterMode === "scheduled" && (
@@ -324,26 +324,26 @@ export default function AdminAttendancePage() {
               type="date"
               value={targetDate}
               onChange={e => setTargetDate(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white font-semibold outline-none focus:ring-2 focus:ring-brand-500/20"
+              className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white font-semibold outline-none focus:ring-2 focus:ring-brand-500/20 text-sm sm:text-base"
             />
           )}
-          <button onClick={load} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60">
+          <button onClick={load} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 transition-all active:scale-95 text-sm">
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
-            Refresh
+            <span className="hidden xs:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search batches by course or ID…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search batches by course or ID…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" />
           </div>
-          {error && <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">{error}</div>}
+          {error && <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">{error}</div>}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-6 bg-slate-50/50">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 bg-slate-50/50">
           {groups.map((g) => (
             <div key={g.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-4">
@@ -359,11 +359,12 @@ export default function AdminAttendancePage() {
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
                 <div className="flex items-center text-sm font-semibold text-slate-600">
                   <Users className="w-4 h-4 mr-2 text-slate-400" />
-                  {g.students.length} Student{g.students.length !== 1 ? "s" : ""}
+                  {g.students.length} <span className="hidden sm:inline">Student{g.students.length !== 1 ? "s" : ""}</span>
+                  <span className="sm:hidden">{g.students.length} S</span>
                 </div>
                 <button
                   onClick={() => openGroup(g)}
-                  className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+                  className="px-6 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
                 >
                   Manage
                 </button>
@@ -373,7 +374,7 @@ export default function AdminAttendancePage() {
           
           {groups.length === 0 && (
             <div className="col-span-full py-12 text-center">
-              <div className="text-slate-400 font-medium">{busy ? "Loading batches..." : q ? "No batches matched your search." : filterMode === "ended" ? "No ended courses found." : `No active batches found on schedule for ${currentDayName}.`}</div>
+              <div className="text-slate-400 font-medium text-sm sm:text-base">{busy ? "Loading batches..." : q ? "No batches matched your search." : filterMode === "ended" ? "No ended courses found." : `No active batches found on schedule for ${currentDayName}.`}</div>
             </div>
           )}
         </div>
@@ -381,21 +382,22 @@ export default function AdminAttendancePage() {
 
       <Modal title={`Attendance: ${selectedGroup?.course_name} (${selectedGroup?.batch_no})`} open={groupModalOpen} onClose={() => setGroupModalOpen(false)}>
         {selectedGroup && (
-          <div className="space-y-4 pt-2 relative">
+          <div className="space-y-4 pt-1 relative">
             {busy && (
               <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] flex items-center justify-center rounded-xl">
                 <RefreshCw className="w-6 h-6 animate-spin text-brand-600" />
               </div>
             )}
             
-            <div className="flex justify-between items-center bg-brand-50 border border-brand-100 rounded-xl p-4 mb-4">
+            <div className="flex justify-between items-center bg-brand-50 border border-brand-100 rounded-2xl p-4 mb-2">
               <div>
-                <p className="text-xs font-bold text-brand-600 uppercase tracking-wider">Date</p>
-                <p className="font-semibold text-brand-900 text-lg mt-0.5">{dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest leading-none mb-1">Attendance Date</p>
+                <p className="font-bold text-brand-900 text-base sm:text-lg leading-tight">{dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-2xl">
               <table className="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                 <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                   <tr>
@@ -480,12 +482,79 @@ export default function AdminAttendancePage() {
               </table>
             </div>
 
-            <div className="flex justify-between items-center pt-4">
+            {/* Mobile View */}
+            <div className="sm:hidden space-y-3">
+              {selectedGroup.students.map((stu) => (
+                <div key={stu.student_code} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                     <div className="flex flex-col">
+                        <div className="text-sm font-bold text-slate-800">{stu.student_name}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stu.student_code}</div>
+                     </div>
+                     <button
+                        onClick={() => {
+                          setSelectedStudentName(stu.student_name);
+                          setSelectedStudentCode(stu.student_code);
+                          setStudentReportOpen(true);
+                        }}
+                        className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-2">
+                    {currentSlots.map(slot => {
+                      const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && a.slot === slot);
+                      return (
+                        <div key={slot} className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200/60">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{slot}</span>
+                          <div className="flex items-center gap-2">
+                            {record ? (
+                              <>
+                                <span className={`px-2 py-0.5 rounded-lg font-bold text-[10px] border ${record.check_today ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-red-700 bg-red-50 border-red-100'}`}>
+                                  {record.check_today ? "Present" : "Absent"}
+                                </span>
+                                <button 
+                                  onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
+                                  className="text-[10px] text-brand-600 font-bold underline"
+                                >
+                                  Change
+                                </button>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => doMarkAttendance(stu.student_code, slot, true)}
+                                  className="px-3 py-1 bg-white border border-slate-200 text-slate-700 rounded-lg text-[10px] font-black hover:border-emerald-300 hover:text-emerald-600 active:scale-95 transition-all"
+                                >
+                                  PRESENT
+                                </button>
+                                <button
+                                  onClick={() => doMarkAttendance(stu.student_code, slot, false)}
+                                  className="px-3 py-1 bg-white border border-slate-200 text-slate-700 rounded-lg text-[10px] font-black hover:border-red-300 hover:text-red-600 active:scale-95 transition-all"
+                                >
+                                  ABSENT
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {selectedGroup.students.length === 0 && (
+                <div className="py-8 text-center text-slate-400 font-medium text-sm">No active students in this batch.</div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100">
               <button
                 onClick={() => {
                   if (!selectedGroup) return;
                   const dataToExport = selectedGroup.students.map(stu => {
-                    // Try to find status for each slot
                     const row: any = {
                       "Student Name": stu.student_name,
                       "Student Code": stu.student_code
@@ -499,14 +568,14 @@ export default function AdminAttendancePage() {
                   exportToExcel(dataToExport, `Attendance_${selectedGroup.course_code}_${selectedGroup.batch_no}_${targetDate}`, "Attendance");
                 }}
                 disabled={busy || !selectedGroup || selectedGroup.students.length === 0}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm"
               >
                 <Download className="w-4 h-4" />
-                Export Batch to Excel
+                Export Batch
               </button>
               <button
                 onClick={() => setGroupModalOpen(false)}
-                className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800"
+                className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all active:scale-95 text-sm"
               >
                 Close
               </button>
@@ -514,6 +583,7 @@ export default function AdminAttendancePage() {
           </div>
         )}
       </Modal>
+
 
       <Modal title={`Attendance Detail: ${selectedStudentName}`} open={studentReportOpen} onClose={() => setStudentReportOpen(false)}>
          <div className="space-y-4 pt-2">

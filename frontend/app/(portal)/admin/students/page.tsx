@@ -591,7 +591,7 @@ export default function AdminStudentsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Students</h1>
           <p className="text-slate-500 font-medium text-sm mt-1">Create, update, and delete student accounts.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               const link = `${window.location.origin}/register`;
@@ -605,25 +605,26 @@ export default function AdminStudentsPage() {
                 navigator.clipboard.writeText(link).then(() => alert("Registration link copied to clipboard!"));
               }
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold hover:bg-indigo-100 shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-100 shadow-sm text-sm transition-all active:scale-95 whitespace-nowrap"
           >
-            Share/Copy Register Link
+            <span className="hidden xs:inline">Share Link</span>
+            <span className="xs:hidden">Link</span>
           </button>
           <button
             onClick={load}
             disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95"
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
-            Refresh
+            <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
             onClick={exportAllData}
             disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm text-sm transition-all active:scale-95"
           >
             <Download className="w-4 h-4" />
-            Export to Excel
+            <span className="hidden xs:inline">Export</span>
           </button>
           {isAdmin && (
             <button
@@ -642,40 +643,42 @@ export default function AdminStudentsPage() {
                 }
               }}
               disabled={busy}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-sm disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-sm disabled:opacity-60 text-sm transition-all active:scale-95"
             >
-              Purge data
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Purge</span>
             </button>
           )}
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm text-sm transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
-            New Student
+            <span className="whitespace-nowrap">New Student</span>
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by code, name, or email…"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base"
             />
           </div>
           {error && (
-            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">
               {error}
             </div>
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
@@ -730,27 +733,27 @@ export default function AdminStudentsPage() {
                         <button
                           onClick={() => handleApprove(s)}
                           disabled={busy}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
                         >
-                          <Check className="w-4 h-4" />
+                          <Check className="w-3.5 h-3.5" />
                           Approve
                         </button>
                       )}
                       {isAdmin && (
                         <button
                           onClick={() => openEdit(s)}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95 text-xs"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                           Edit
                         </button>
                       )}
                       {isAdmin && (
                         <button
                           onClick={() => doDelete(s)}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all active:scale-95 text-xs"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                           Delete
                         </button>
                       )}
@@ -760,7 +763,7 @@ export default function AdminStudentsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400 font-medium">
                     {busy ? "Loading…" : "No students found."}
                   </td>
                 </tr>
@@ -768,6 +771,91 @@ export default function AdminStudentsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile/Tablet Card View */}
+        <div className="block lg:hidden divide-y divide-slate-100">
+          {filtered.map((s: AdminStudent) => (
+            <div key={s.user_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  {s.profile_picture ? (
+                    <img src={s.profile_picture} alt="Profile" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-400 uppercase">
+                      {s.username?.[0] || "?"}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{s.user_code}</div>
+                    <div className="text-base font-bold text-brand-600 cursor-pointer hover:underline" onClick={() => openView(s)}>{s.username}</div>
+                    <div className="text-xs text-slate-500 truncate max-w-[150px]">{s.email}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                   <span
+                      className={[
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                        s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
+                      ].join(" ")}
+                    >
+                      {s.is_active ? "Active" : "Inactive"}
+                    </span>
+                    <div className="flex gap-2">
+                      {!s.is_active && (
+                        <button
+                          onClick={() => handleApprove(s)}
+                          disabled={busy}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
+                          title="Approve"
+                        >
+                          <Check className="w-5 h-5" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
+                          title="Edit"
+                        >
+                          <Pencil className="w-5 h-5" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => doDelete(s)}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm pt-1">
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">DOB</div>
+                  <div className="font-semibold text-slate-700">
+                    {s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}
+                  </div>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Phone</div>
+                  <div className="font-semibold text-slate-700 truncate">
+                    {s.phone || "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="p-10 text-center text-slate-400 font-medium text-sm">
+              {busy ? "Loading…" : "No students found."}
+            </div>
+          )}
+        </div>
+
         {pagination && (pagination.total_pages || 0) > 1 && (
           <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="text-sm text-slate-500">

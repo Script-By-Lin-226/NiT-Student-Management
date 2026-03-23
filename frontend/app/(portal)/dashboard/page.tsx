@@ -595,12 +595,14 @@ export default function DashboardPage() {
         
       </div>
 
-      {/* Recent Enrollments Table */}
+      {/* Recent Enrollments Section */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
           <h3 className="font-bold text-slate-900 text-lg">Your Enrollments</h3>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Desktop Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
@@ -639,7 +641,36 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-slate-100">
+          {courses.map((c, i) => (
+            <div key={i} className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold">
+                    {c.course.course_name[0]}
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900 leading-tight">{c.course.course_name}</div>
+                    <div className="text-xs text-slate-500 font-medium mt-0.5">Enrolled: {c.enrollment_date.split(" ")[0]}</div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {c.status}
+                </span>
+              </div>
+            </div>
+          ))}
+          {courses.length === 0 && (
+            <div className="p-10 text-center text-slate-400 font-medium text-sm">
+              No enrollments found.
+            </div>
+          )}
+        </div>
       </div>
+
 
     </div>
   );

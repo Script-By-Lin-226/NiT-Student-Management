@@ -93,22 +93,22 @@ export default function ActivityLogsPage() {
             Track user activity like student registration, payments recording, etc.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => refetch()}
             disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95"
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
-            Refresh
+            <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
             onClick={handleClearAll}
             disabled={busy || logs.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-red-100 text-red-600 font-semibold hover:bg-red-50 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-red-100 text-red-600 font-bold hover:bg-red-50 disabled:opacity-60 text-sm transition-all active:scale-95 whitespace-nowrap"
           >
             <Trash2 className="w-4 h-4" />
-            Clear All
+            <span className="hidden xs:inline">Clear All</span>
           </button>
           <button
             onClick={() => {
@@ -122,23 +122,23 @@ export default function ActivityLogsPage() {
               exportToExcel(dataToExport, "Activity_Logs", "Logs");
             }}
             disabled={busy || filteredLogs.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap"
           >
             <Download className="w-4 h-4" />
-            Export to Excel
+            <span className="hidden xs:inline">Export</span>
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input 
               value={q} 
               onChange={(e) => setQ(e.target.value)} 
               placeholder="Search user, action or details..." 
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium" 
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" 
             />
           </div>
           <div className="w-full sm:w-48">
@@ -146,17 +146,18 @@ export default function ActivityLogsPage() {
               type="date"
               value={dateQ}
               onChange={(e) => setDateQ(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base"
             />
           </div>
           {error && (
-            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">
               {error}
             </div>
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
@@ -192,7 +193,7 @@ export default function ActivityLogsPage() {
                     <button 
                       onClick={() => handleDelete(log.log_id)}
                       disabled={busy}
-                      className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      className="inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all active:scale-90 disabled:opacity-50"
                       title="Delete log entry"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -210,6 +211,51 @@ export default function ActivityLogsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile/Tablet Card View */}
+        <div className="block lg:hidden divide-y divide-slate-100">
+          {filteredLogs.map((log: LogEntry) => (
+            <div key={log.log_id} className="p-4 bg-white hover:bg-slate-50/50 transition-colors">
+              <div className="flex items-start justify-between mb-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">{log.username}</span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      {log.role}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-xs text-slate-500">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {new Date(log.timestamp).toLocaleString()}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleDelete(log.log_id)}
+                  disabled={busy}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 transition-all active:scale-90 disabled:opacity-50"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-bold text-brand-600 uppercase tracking-tight">
+                  {log.action}
+                </div>
+                {log.details && (
+                  <div className="text-sm text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    {log.details}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {filteredLogs.length === 0 && (
+            <div className="p-10 text-center text-slate-400 font-medium text-sm">
+              {busy ? "Loading logs..." : "No matching activity logs found."}
+            </div>
+          )}
+        </div>
+
 
         {pagination && pagination.total_pages > 1 && (
           <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">

@@ -169,7 +169,7 @@ export default function AdminParentsPage() {
           <button
             type="submit"
             disabled={!canCreate || loading}
-            className="mt-5 w-full rounded-xl bg-brand-600 text-white font-semibold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-brand-700 transition"
+            className="mt-5 w-full rounded-xl bg-brand-600 text-white font-bold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-brand-700 transition-all active:scale-95 text-sm"
           >
             {loading ? "Working..." : "Create parent"}
           </button>
@@ -214,7 +214,7 @@ export default function AdminParentsPage() {
           <button
             type="submit"
             disabled={!canLink || loading}
-            className="mt-5 w-full rounded-xl bg-slate-900 text-white font-semibold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-800 transition"
+            className="mt-5 w-full rounded-xl bg-slate-900 text-white font-bold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-800 transition-all active:scale-95 text-sm"
           >
             {loading ? "Working..." : "Link parent → student"}
           </button>
@@ -229,12 +229,12 @@ export default function AdminParentsPage() {
           </div>
           <button
             onClick={() => refresh().catch(console.error)}
-            className="text-sm font-semibold px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition"
+            className="inline-flex items-center justify-center px-4 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition-all active:scale-95 text-sm"
           >
             Refresh
           </button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
@@ -250,7 +250,11 @@ export default function AdminParentsPage() {
                   <td className="px-6 py-4 font-semibold text-slate-800">{p.user_code}</td>
                   <td className="px-6 py-4">{p.username}</td>
                   <td className="px-6 py-4">{p.email}</td>
-                  <td className="px-6 py-4">{p.is_active ? "Yes" : "No"}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${p.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      {p.is_active ? "Yes" : "No"}
+                    </span>
+                  </td>
                 </tr>
               ))}
               {parents.length === 0 && (
@@ -263,6 +267,30 @@ export default function AdminParentsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-slate-100">
+          {parents.map((p) => (
+            <div key={p.user_code} className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{p.user_code}</div>
+                  <div className="font-bold text-slate-900 leading-tight">{p.username}</div>
+                  <div className="text-xs text-slate-500 font-medium mt-0.5">{p.email}</div>
+                </div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${p.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                  {p.is_active ? "Active" : "Inactive"}
+                </span>
+              </div>
+            </div>
+          ))}
+          {parents.length === 0 && (
+            <div className="p-10 text-center text-slate-400 font-medium text-sm">
+              {loading ? "Loading..." : "No parents found."}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
