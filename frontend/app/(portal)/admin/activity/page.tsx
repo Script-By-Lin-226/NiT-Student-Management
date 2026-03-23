@@ -214,7 +214,7 @@ export default function ActivityLogsPage() {
         {pagination && pagination.total_pages > 1 && (
           <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <div className="text-sm font-medium text-slate-500">
-              Showing page <span className="text-slate-900">{page}</span> of <span className="text-slate-900">{pagination.total_pages}</span> ({pagination.total} total logs)
+              Showing page <span className="text-slate-900">{page}</span> of <span className="text-slate-900">{pagination.total_pages}</span> ({pagination.total_count} total logs)
             </div>
             <div className="flex items-center gap-2">
               <button

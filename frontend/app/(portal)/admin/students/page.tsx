@@ -689,7 +689,7 @@ export default function AdminStudentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filtered.map((s) => (
+              {filtered.map((s: AdminStudent) => (
                 <tr key={s.user_code} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 font-bold text-slate-800">{s.user_code}</td>
                   <td className="px-6 py-4">

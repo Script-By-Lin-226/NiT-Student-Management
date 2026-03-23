@@ -11,6 +11,19 @@ export interface AdminUser {
   phone?: string | null;
 }
 
+export interface PaginatedResponse<T> {
+  status_code: number;
+  message: string;
+  data: T[];
+  pagination: {
+    total_count: number;
+    total_pages: number;
+    current_page: number;
+    limit: number;
+  };
+}
+
+
 export interface AdminStudent {
   user_id: number;
   user_code: string;
@@ -327,10 +340,11 @@ export class AdminService {
     const res = await api.post<{ data: AdminUser }>("/admin/staff", payload);
     return res.data.data;
   }
-  static async listStudents(page: number = 1, limit: number = 50): Promise<any> {
-    const res = await api.get("/admin/students", { params: { page, limit } });
+  static async listStudents(page: number = 1, limit: number = 50): Promise<PaginatedResponse<AdminStudent>> {
+    const res = await api.get<PaginatedResponse<AdminStudent>>("/admin/students", { params: { page, limit } });
     return res.data;
   }
+
 
   static async getStudent(user_code: string): Promise<AdminStudent> {
     const res = await api.get(`/admin/students/${encodeURIComponent(user_code)}`);
@@ -507,10 +521,11 @@ export class AdminService {
     await api.post("/admin/payments", payload);
   }
 
-  static async getActivityLogs(page: number = 1, limit: number = 50): Promise<any> {
-    const res = await api.get("/admin/activity-logs", { params: { page, limit } });
+  static async getActivityLogs(page: number = 1, limit: number = 50): Promise<PaginatedResponse<any>> {
+    const res = await api.get<PaginatedResponse<any>>("/admin/activity-logs", { params: { page, limit } });
     return res.data;
   }
+
   
   static async deleteActivityLog(logId: number): Promise<void> {
     await api.delete(`/admin/activity-logs/${logId}`);
