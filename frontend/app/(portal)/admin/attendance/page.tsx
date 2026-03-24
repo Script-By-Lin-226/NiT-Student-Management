@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminEnrollment, AdminCourse, AdminService } from "@/services/admin.service";
 import { Plus, Search, RefreshCw, X, Users, CheckCircle, XCircle, FileText, Download } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
+import { useEnrollments, useAttendance, useTimetables, useCourses, useMarkAttendance, useUpdateAttendance } from "@/hooks/useAdmin";
 
 
 function Modal({
@@ -58,10 +59,18 @@ export default function AdminAttendancePage() {
   const router = useRouter();
   const { isAdminOrSales, loading } = useAuth();
 
-  const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
-  const [attendance, setAttendance] = useState<AdminAttendanceRecord[]>([]);
-  const [timetables, setTimetables] = useState<any[]>([]);
-  const [courses, setCourses] = useState<AdminCourse[]>([]);
+  const { data: enrollmentsData = [], isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useEnrollments();
+  const { data: attendanceData = [], isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendance();
+  const { data: timetablesData = [], isLoading: timetablesLoading, refetch: refetchTimetables } = useTimetables();
+  const { data: coursesData = [], isLoading: coursesLoading, refetch: refetchCourses } = useCourses();
+
+  const markMutation = useMarkAttendance();
+  const updateMutation = useUpdateAttendance();
+  
+  const enrollments = enrollmentsData;
+  const attendance = attendanceData;
+  const timetables = timetablesData;
+  const courses = coursesData;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
@@ -98,30 +107,13 @@ export default function AdminAttendancePage() {
   }, [loading, isAdminOrSales, router]);
 
   const load = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const [enrData, attData, ttData, courseData] = await Promise.all([
-        AdminService.listEnrollments(),
-        AdminService.listAttendance(),
-        AdminService.listTimetables(),
-        AdminService.listCourses()
-      ]);
-      setEnrollments(enrData);
-      setAttendance(attData);
-      setTimetables(ttData);
-      setCourses(courseData);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load data");
-    } finally {
-      setBusy(false);
-    }
+    await Promise.all([
+      refetchEnrollments(),
+      refetchAttendance(),
+      refetchTimetables(),
+      refetchCourses()
+    ]);
   };
-
-  useEffect(() => {
-    if (isAdminOrSales) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
 
   const dateObj = useMemo(() => {
     const [y, m, d] = targetDate.split("-").map(Number);
@@ -269,30 +261,24 @@ export default function AdminAttendancePage() {
   };
 
   const doMarkAttendance = async (student_code: string, slot: string, check_today: boolean) => {
-    setBusy(true);
     setError("");
     try {
-      await AdminService.markAttendance({ student_code, slot, check_today, attendance_date: targetDate });
-      await load();
+      await markMutation.mutateAsync({ student_code, slot, check_today, attendance_date: targetDate });
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to mark attendance");
-    } finally {
-      setBusy(false);
     }
   };
   
   const doUpdateAttendance = async (attendance_id: number, check_today: boolean) => {
-    setBusy(true);
     setError("");
     try {
-      await AdminService.updateAttendance(attendance_id, { check_today });
-      await load();
+      await updateMutation.mutateAsync({ id: attendance_id, payload: { check_today } });
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to update attendance");
-    } finally {
-      setBusy(false);
     }
   };
+  const combinedLoading = loading || enrollmentsLoading || attendanceLoading || timetablesLoading || coursesLoading || busy || markMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -327,8 +313,8 @@ export default function AdminAttendancePage() {
               className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white font-semibold outline-none focus:ring-2 focus:ring-brand-500/20 text-sm sm:text-base"
             />
           )}
-          <button onClick={load} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 transition-all active:scale-95 text-sm">
-            <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
+          <button onClick={load} disabled={combinedLoading} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 transition-all active:scale-95 text-sm">
+            <RefreshCw className={`w-4 h-4 ${combinedLoading ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
         </div>

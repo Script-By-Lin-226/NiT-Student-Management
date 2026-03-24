@@ -73,7 +73,6 @@ export default function BackupPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Database Backup & Recovery</h1>
-          <p className="text-slate-500 text-sm">Export your database to Excel or restore from a backup file.</p>
         </div>
       </div>
 

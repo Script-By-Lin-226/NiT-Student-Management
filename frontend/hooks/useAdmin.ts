@@ -57,6 +57,27 @@ export function useActivityLogs(page: number = 1, limit: number = 50) {
   });
 }
 
+export function useEnrollments() {
+  return useQuery({
+    queryKey: adminKeys.enrollments(),
+    queryFn: () => AdminService.listEnrollments(),
+  });
+}
+
+export function useAttendance() {
+  return useQuery({
+    queryKey: adminKeys.attendance(),
+    queryFn: () => AdminService.listAttendance(),
+  });
+}
+
+export function useTimetables() {
+  return useQuery({
+    queryKey: adminKeys.timetables(),
+    queryFn: () => AdminService.listTimetables(),
+  });
+}
+
 // --- Mutations ---
 
 export function useDeleteUser() {
@@ -64,8 +85,7 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: (code: string) => AdminService.deleteUser(code),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.students() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
   });
 }
@@ -75,7 +95,7 @@ export function useCreateStudent() {
   return useMutation({
     mutationFn: (payload: any) => AdminService.createStudent(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.students() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
   });
 }
@@ -85,7 +105,7 @@ export function useDeleteActivityLog() {
   return useMutation({
     mutationFn: (id: number) => AdminService.deleteActivityLog(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.activityLogs() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
   });
 }
@@ -95,7 +115,38 @@ export function useClearActivityLogs() {
   return useMutation({
     mutationFn: () => AdminService.clearAllActivityLogs(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.activityLogs() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, payload }: { code: string; payload: any }) =>
+      AdminService.updateUser(code, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+export function useMarkAttendance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) => AdminService.markAttendance(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+    },
+  });
+}
+
+export function useUpdateAttendance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => AdminService.updateAttendance(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
   });
 }

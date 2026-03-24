@@ -14,6 +14,11 @@ from app.schemas.payment import PaymentCreate, PaymentUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 
+@router.get("/dashboard/summary")
+async def get_dashboard_summary(request: Request, session: AsyncSession = Depends(get_db)):
+    """Fetch counts of students, courses, active enrollments, and today attendance count."""
+    return await AdminPanelService.get_dashboard_summary(request, session)
+
 # --- Activity Logs ---
 
 @router.get("/activity-logs")
@@ -173,8 +178,8 @@ async def delete_academic_year(academic_year_id: int, request: Request, session:
     return await AdminPanelService.delete_academic_year(academic_year_id, request, session)
 
 @router.get("/attendance")
-async def get_all_attendance(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.get_all_attendance(request, session)
+async def get_all_attendance(request: Request, days: int = None, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_all_attendance(request, session, days)
 
 @router.post("/attendance")
 async def mark_attendance(payload: AttendanceMarkRequest, request: Request, session: AsyncSession = Depends(get_db)):
@@ -209,8 +214,8 @@ async def delete_course(course_code: str, request: Request, session: AsyncSessio
 # --- Enrollments CRUD ---
 
 @router.get("/enrollments")
-async def list_enrollments(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.list_enrollments(request, session)
+async def list_enrollments(request: Request, status: bool = None, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.list_enrollments(request, session, status)
 
 @router.post("/enrollments")
 async def create_enrollment(payload: AdminEnrollmentCreate, request: Request, session: AsyncSession = Depends(get_db)):

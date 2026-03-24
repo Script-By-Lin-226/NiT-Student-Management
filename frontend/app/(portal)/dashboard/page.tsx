@@ -6,17 +6,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminCourse, AdminEnrollment, AdminRoom, AdminService, AdminStudent } from "@/services/admin.service";
 import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound } from "lucide-react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { StatisticSkeleton, ChartSkeleton } from "@/components/ui/Skeleton";
 
 const studentChartData = [
   { name: "Jan", pv: 2400 },
@@ -48,124 +55,32 @@ function lastNDays(n: number) {
 
 export default function DashboardPage() {
   const { isStudent, isParent, isAdminOrSales, isAdmin, user } = useAuth();
-  const [courses, setCourses] = useState<StudentCourse[]>([]);
-  const [attendance, setAttendance] = useState<StudentAttendance | null>(null);
-
-  const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<string>("");
-  const [childAttendance, setChildAttendance] = useState<{ date: string; status: "Present" | "Absent" }[]>([]);
-  const [parentLoading, setParentLoading] = useState(false);
-  const [parentError, setParentError] = useState<string | null>(null);
+  const { admin, parent, student } = useDashboardData(selectedChild);
 
-  const [adminStudents, setAdminStudents] = useState<AdminStudent[]>([]);
-  const [totalStudents, setTotalStudents] = useState(0);
-  const [adminCourses, setAdminCourses] = useState<AdminCourse[]>([]);
-  const [adminEnrollments, setAdminEnrollments] = useState<AdminEnrollment[]>([]);
-  const [adminAttendance, setAdminAttendance] = useState<AdminAttendanceRecord[]>([]);
-  const [adminRooms, setAdminRooms] = useState<AdminRoom[]>([]);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
-
+  // Sync selectedChild when parent data arrives
   useEffect(() => {
-    if (isStudent) {
-      PortalService.getStudentCourses().then(setCourses).catch(console.error);
-      PortalService.getStudentAttendance().then(setAttendance).catch(console.error);
+    if (isParent && parent.children.length > 0 && !selectedChild) {
+      setSelectedChild(parent.children[0].student_code);
     }
-  }, [isStudent]);
+  }, [isParent, parent.children, selectedChild]);
 
-  useEffect(() => {
-    if (!isParent) return;
-    let cancelled = false;
-    setParentLoading(true);
-    setParentError(null);
-    PortalService.getChildren()
-      .then((data) => {
-        if (cancelled) return;
-        setChildren(data);
-        if (!selectedChild && data.length > 0) {
-          setSelectedChild(data[0].student_code);
-        }
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setParentError(e instanceof Error ? e.message : "Failed to load children");
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setParentLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isParent]);
+  const dashboardLoading = (typeof admin.isLoading === 'boolean' ? admin.isLoading : admin.isLoading.overall) || parent.isLoading || student.isLoading;
+  const dashboardError = admin.error || parent.error || student.error;
 
-  useEffect(() => {
-    if (!isParent) return;
-    if (!selectedChild) return;
-    let cancelled = false;
-    setParentLoading(true);
-    setParentError(null);
-    PortalService.getChildAttendance(selectedChild)
-      .then((data) => {
-        if (cancelled) return;
-        setChildAttendance(data);
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setParentError(e instanceof Error ? e.message : "Failed to load child attendance");
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setParentLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isParent, selectedChild]);
+  const {
+    totalStudents = 0,
+    totalCourses = 0,
+    enrollments: adminEnrollments = [],
+    attendance: adminAttendance = [],
+    rooms: adminRooms = [],
+    today_attendance_count = 0,
+  } = admin.data || {};
 
-  useEffect(() => {
-    if (!isAdminOrSales) return;
-
-    let cancelled = false;
-    setAdminLoading(true);
-    setAdminError(null);
-
-    Promise.all([
-      AdminService.listStudents(),
-      AdminService.listCourses(),
-      AdminService.listEnrollments(),
-      AdminService.listAttendance(),
-      AdminService.listRooms(),
-    ])
-      .then(([students, courses, enrollments, attendance, rooms]) => {
-        if (cancelled) return;
-        setAdminStudents(students.data || []);
-        setTotalStudents(students.pagination?.total_count || 0);
-        setAdminCourses(courses);
-        setAdminEnrollments(enrollments);
-        setAdminAttendance(attendance);
-        setAdminRooms(rooms);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        const msg =
-          typeof e?.message === "string"
-            ? e.message
-            : typeof e === "string"
-              ? e
-              : "Failed to load admin dashboard data";
-        setAdminError(msg);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setAdminLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdminOrSales]);
+  const courses = student.courses;
+  const attendance = student.attendance;
+  const children = parent.children;
+  const childAttendance = parent.childAttendance;
 
   const adminKpis = useMemo(() => {
     const activeEnrollments = adminEnrollments.filter((e) => e.status).length;
@@ -177,13 +92,13 @@ export default function DashboardPage() {
 
     return {
       students: totalStudents,
-      courses: adminCourses.length,
-      enrollments: activeEnrollments,
+      courses: totalCourses,
+      enrollments: adminEnrollments.length, // Already filtered by status=true in hook
       attendanceRate,
       rooms: adminRooms.length,
       fullRooms,
     };
-  }, [adminAttendance, adminCourses, adminEnrollments, adminRooms, adminStudents]);
+  }, [adminAttendance, totalCourses, adminEnrollments, adminRooms, totalStudents]);
 
   const attendanceTrend = useMemo(() => {
     const days = lastNDays(7);
@@ -241,138 +156,167 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {adminError && (
+        {dashboardError && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-rose-100">
             <div className="text-sm font-semibold text-rose-700">Couldn’t load dashboard data</div>
-            <div className="text-sm text-rose-600 mt-1">{adminError}</div>
+            <div className="text-sm text-rose-600 mt-1">{String(dashboardError)}</div>
+          </div>
+        )}
+
+        {dashboardLoading && (typeof admin.isLoading === 'boolean' || admin.isLoading.overall) && (
+          <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-0 pointer-events-none absolute">
+             {/* Skeletons are now handled per-card below for better UX */}
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Students", val: adminKpis.students, icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
-            { label: "Courses", val: adminKpis.courses, icon: BookOpen, color: "text-indigo-500", bg: "bg-indigo-50" },
-            { label: "Active Enrollments", val: adminKpis.enrollments, icon: Award, color: "text-emerald-500", bg: "bg-emerald-50" },
-            { label: "Rooms Full", val: `${adminKpis.fullRooms}/${adminKpis.rooms}`, icon: DoorOpen, color: "text-orange-500", bg: "bg-orange-50" },
-          ].map((s, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500">{s.label}</p>
-                  <h3 className="text-2xl font-bold text-slate-800 mt-1">{adminLoading ? "…" : s.val}</h3>
+            { label: "Students", val: adminKpis.students, icon: Users, color: "text-blue-500", bg: "bg-blue-50", loadingKey: 'students' },
+            { label: "Courses", val: adminKpis.courses, icon: BookOpen, color: "text-indigo-500", bg: "bg-indigo-50", loadingKey: 'courses' },
+            { label: "Active Enrollments", val: adminKpis.enrollments, icon: Award, color: "text-emerald-500", bg: "bg-emerald-50", loadingKey: 'enrollments' },
+            { label: "Rooms Full", val: `${adminKpis.fullRooms}/${adminKpis.rooms}`, icon: DoorOpen, color: "text-orange-500", bg: "bg-orange-50", loadingKey: 'rooms' },
+          ].map((s, i) => {
+            const isIndividualLoading = typeof admin.isLoading !== 'boolean' && admin.isLoading[s.loadingKey as keyof typeof admin.isLoading];
+            if (isIndividualLoading) return <StatisticSkeleton key={i} />;
+            
+            return (
+              <div
+                key={i}
+                className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-500">{s.label}</p>
+                    <h3 className="text-2xl font-bold text-slate-800 mt-1">{s.val}</h3>
+                  </div>
+                  <div className={`p-3 rounded-2xl ${s.bg}`}>
+                    <s.icon className={`w-6 h-6 ${s.color}`} />
+                  </div>
                 </div>
-                <div className={`p-3 rounded-2xl ${s.bg}`}>
-                  <s.icon className={`w-6 h-6 ${s.color}`} />
+                <div className="mt-4 flex items-center text-sm font-medium text-slate-500">
+                  <TrendingUp className="w-4 h-4 mr-1.5 text-slate-400" />
+                  <span>Live from your database</span>
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm font-medium text-slate-500">
-                <TrendingUp className="w-4 h-4 mr-1.5 text-slate-400" />
-                <span>Live from your database</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 lg:col-span-2 flex flex-col min-h-[350px]">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="font-bold text-slate-900 text-lg">Attendance (last 7 days)</h3>
-                <p className="text-sm text-slate-500 mt-1">Present vs absent, aggregated per day</p>
-              </div>
-              <div className="text-sm font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-                Today’s rate: {adminKpis.attendanceRate}%
-              </div>
-            </div>
-            <div className="flex-1 w-full relative min-h-0">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <LineChart data={attendanceTrend} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2ff" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} dy={15} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "16px",
-                      border: "none",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                    }}
-                    cursor={{ stroke: "#e2e8f0", strokeWidth: 1 }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="present"
-                    name="Present"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    dot={{ r: 3, fill: "#fff", strokeWidth: 2, stroke: "#10b981" }}
-                    activeDot={{ r: 5, fill: "#10b981", stroke: "#10b981", strokeWidth: 2 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="absent"
-                    name="Absent"
-                    stroke="#ef4444"
-                    strokeWidth={3}
-                    dot={{ r: 3, fill: "#fff", strokeWidth: 2, stroke: "#ef4444" }}
-                    activeDot={{ r: 5, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {typeof admin.isLoading !== 'boolean' && admin.isLoading.attendance ? (
+              <ChartSkeleton />
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-lg">Attendance (last 7 days)</h3>
+                    <p className="text-sm text-slate-500 mt-1">Present vs absent, aggregated per day</p>
+                  </div>
+                  <div className="text-sm font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+                    Today’s rate: {adminKpis.attendanceRate}%
+                  </div>
+                </div>
+                <div className="flex-1 w-full relative min-h-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <LineChart data={attendanceTrend} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2ff" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} dy={15} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "16px",
+                          border: "none",
+                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                        }}
+                        cursor={{ stroke: "#e2e8f0", strokeWidth: 1 }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="present"
+                        name="Present"
+                        stroke="#10b981"
+                        strokeWidth={4}
+                        dot={{ r: 4, fill: "#fff", strokeWidth: 2, stroke: "#10b981" }}
+                        activeDot={{ r: 6, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="absent"
+                        name="Absent"
+                        stroke="#ef4444"
+                        strokeWidth={4}
+                        dot={{ r: 4, fill: "#fff", strokeWidth: 2, stroke: "#ef4444" }}
+                        activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 flex flex-col">
-            <h3 className="font-bold text-slate-900 text-lg mb-2">Top courses (enrollments)</h3>
-            <p className="text-sm text-slate-500 mb-6">Active enrollments grouped by course</p>
-            <div className="flex-1 min-h-[240px] relative w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={enrollmentsByCourse} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="course" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "16px",
-                      border: "none",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                    }}
-                  />
-                  <Bar dataKey="enrollments" name="Enrollments" fill="#4f46e5" radius={[10, 10, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 flex flex-col min-h-[350px]">
+            {typeof admin.isLoading !== 'boolean' && admin.isLoading.enrollments ? (
+              <ChartSkeleton />
+            ) : (
+              <>
+                <h3 className="font-bold text-slate-900 text-lg mb-2">Top courses (enrollments)</h3>
+                <p className="text-sm text-slate-500 mb-6">Active enrollments grouped by course</p>
+                <div className="flex-1 min-h-[240px] relative w-full">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <BarChart data={enrollmentsByCourse} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="course" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "16px",
+                          border: "none",
+                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                        }}
+                      />
+                      <Bar dataKey="enrollments" name="Enrollments" fill="#4f46e5" radius={[10, 10, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-slate-900 text-lg">Room load</h3>
-            </div>
-          </div>
-          <div className="w-full h-[280px] relative">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <BarChart data={roomsLoad} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="room" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "16px",
-                    border: "none",
-                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="load" name="Load" fill="#0ea5e9" radius={[10, 10, 0, 0]} />
-                <Bar dataKey="capacity" name="Capacity" fill="#e2e8f0" radius={[10, 10, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 min-h-[350px]">
+          {typeof admin.isLoading !== 'boolean' && admin.isLoading.rooms ? (
+            <ChartSkeleton />
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">Room load</h3>
+                </div>
+              </div>
+              <div className="w-full h-[280px] relative">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <BarChart data={roomsLoad} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="room" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "16px",
+                        border: "none",
+                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="load" name="Load" fill="#0ea5e9" radius={[10, 10, 0, 0]} />
+                    <Bar dataKey="capacity" name="Capacity" fill="#e2e8f0" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -390,30 +334,45 @@ export default function DashboardPage() {
 
     const trend = (() => {
       const days = lastNDays(7);
-      const byDay: Record<string, number | null> = {};
-      for (const d of days) byDay[d] = null;
+      const byDay: Record<string, { present: number; total: number }> = {};
+      for (const d of days) byDay[d] = { present: 0, total: 0 };
+      
       for (const rec of childAttendance) {
         if (!(rec.date in byDay)) continue;
-        byDay[rec.date] = rec.status === "Present" ? 1 : 0;
+        byDay[rec.date].total += 1;
+        if (rec.status === "Present") byDay[rec.date].present += 1;
       }
-      return days.map((d) => ({ day: d.slice(5), value: byDay[d] }));
+      return days.map((d) => {
+        const rate = byDay[d].total > 0 ? Math.round((byDay[d].present / byDay[d].total) * 100) : null;
+        return { 
+          day: d.slice(5), 
+          rate: rate,
+          present: byDay[d].present,
+          total: byDay[d].total
+        };
+      });
     })();
 
-    const hasAnyInWindow = trend.some((d) => d.value !== null);
+    const pieData = [
+      { name: "Present", value: summary.present, color: "#10b981" },
+      { name: "Absent", value: summary.total - summary.present, color: "#ef4444" },
+    ];
+
+    const hasAnyInWindow = trend.some((d) => d.total > 0);
 
     return (
-      <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Parent Dashboard</h1>
-            <p className="text-slate-500 font-medium text-sm mt-1 flex items-center gap-2">Welcome back, {user?.user_code}</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-outfit">Parent Portal</h1>
+            <p className="text-slate-500 font-medium text-sm mt-1 flex items-center gap-2">Monitoring progress for your children</p>
           </div>
 
           <div className="flex items-center gap-3">
             <select
               value={selectedChild}
               onChange={(e) => setSelectedChild(e.target.value)}
-              className="bg-white border border-slate-200 text-sm rounded-xl px-3 py-2 focus:ring-2 focus:ring-brand-500/20 outline-none text-slate-700 font-semibold"
+              className="bg-white border border-slate-200 text-sm rounded-xl px-4 py-2.5 focus:ring-4 focus:ring-brand-500/10 outline-none text-slate-700 font-bold shadow-sm transition-all cursor-pointer hover:border-brand-300"
             >
               {children.map((c) => (
                 <option key={c.student_code} value={c.student_code}>
@@ -425,75 +384,211 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {parentError && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-rose-100">
-            <div className="text-sm font-semibold text-rose-700">Couldn’t load data</div>
-            <div className="text-sm text-rose-600 mt-1">{parentError}</div>
+        {dashboardError && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-rose-100 flex items-center gap-3 animate-in slide-in-from-top duration-300">
+            <div className="p-2 bg-rose-50 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-rose-700">Heads up!</div>
+              <div className="text-sm text-rose-600 font-medium">{String(dashboardError)}</div>
+            </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { label: "Child", val: selected ? selected.username : "—", icon: UserRound, color: "text-blue-500", bg: "bg-blue-50" },
-            { label: "Attendance Rate", val: `${summary.rate}%`, icon: Fingerprint, color: "text-emerald-500", bg: "bg-emerald-50" },
-            { label: "Records", val: summary.total, icon: Award, color: "text-indigo-500", bg: "bg-indigo-50" },
-          ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500">{s.label}</p>
-                  <h3 className="text-2xl font-bold text-slate-800 mt-1">{parentLoading ? "…" : s.val}</h3>
-                </div>
-                <div className={`p-3 rounded-2xl ${s.bg}`}>
-                  <s.icon className={`w-6 h-6 ${s.color}`} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-sm font-medium text-slate-500">
-                <TrendingUp className="w-4 h-4 mr-1.5 text-slate-400" />
-                <span>From linked child activity</span>
-              </div>
+        {dashboardLoading && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <StatisticSkeleton />
+              <StatisticSkeleton />
+              <StatisticSkeleton />
             </div>
-          ))}
-        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              <ChartSkeleton />
+              <ChartSkeleton />
+            </div>
+          </>
+        )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 flex flex-col min-h-[350px]">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="font-bold text-slate-900 text-lg">Attendance (last 7 days)</h3>
-              <p className="text-sm text-slate-500 mt-1">1 = present, 0 = absent</p>
-            </div>
-            <div className="text-sm font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-              Present: {summary.present}/{summary.total}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
+                  <UserRound className="w-6 h-6" />
+                </div>
+              </div>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Linked Student</p>
+              <h3 className="text-2xl font-black text-slate-800 mt-1">{selected ? selected.username : "—"}</h3>
+              <p className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                {selected?.student_code || "N/A"}
+              </p>
             </div>
           </div>
-          {!hasAnyInWindow ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 font-medium">
-              No attendance records in the last 7 days.
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600">
+                  <Fingerprint className="w-6 h-6" />
+                </div>
+                <div className="text-xs font-black bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg uppercase">Real-time</div>
+              </div>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Attendance Rate</p>
+              <h3 className="text-3xl font-black text-slate-800 mt-1">{`${summary.rate}%`}</h3>
+              <div className="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
+                <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${summary.rate}%` }} />
+              </div>
             </div>
-          ) : (
-            <div className="flex-1 w-full relative min-h-0">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={trend} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2ff" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} dy={15} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} allowDecimals={false} domain={[0, 1]} />
-                  <Tooltip
-                    formatter={(v) => {
-                      if (v === null || typeof v === "undefined") return ["No record", "Attendance"];
-                      return [v, "Attendance"];
-                    }}
-                    contentStyle={{
-                      borderRadius: "16px",
-                      border: "none",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                    }}
-                    cursor={{ stroke: "#e2e8f0", strokeWidth: 1 }}
-                  />
-                  <Bar dataKey="value" name="Attendance" fill="#10b981" radius={[10, 10, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600">
+                  <Award className="w-6 h-6" />
+                </div>
+              </div>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Records</p>
+              <h3 className="text-2xl font-black text-slate-800 mt-1">{summary.total}</h3>
+              <p className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                Across all registered courses
+              </p>
             </div>
-          )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100/50 p-8 lg:col-span-2 flex flex-col min-h-[400px]">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="font-black text-slate-900 text-xl tracking-tight">Attendance Trend</h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">Daily attendance percentage (last 7 days)</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                  <span className="text-xs font-bold text-slate-500">Rate</span>
+                </div>
+              </div>
+            </div>
+            
+            {!hasAnyInWindow ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
+                <div className="p-4 bg-slate-50 rounded-3xl">
+                  <div className="w-8 h-8 text-slate-300" />
+                </div>
+                <p className="font-bold">No data found within this period</p>
+              </div>
+            ) : (
+              <div className="flex-1 w-full relative min-h-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <AreaChart data={trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="day" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 700 }} 
+                      dy={15} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 700 }} 
+                      domain={[0, 100]}
+                      unit="%"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "20px",
+                        border: "none",
+                        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+                        padding: "12px 16px"
+                      }}
+                      itemStyle={{ fontWeight: 800 }}
+                      labelStyle={{ marginBottom: "4px", color: "#64748b", fontWeight: 700 }}
+                      cursor={{ stroke: "#10b981", strokeWidth: 2, strokeDasharray: "5 5" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="rate"
+                      name="Attendance Rate"
+                      stroke="#10b981"
+                      strokeWidth={4}
+                      fillOpacity={1}
+                      fill="url(#colorRate)"
+                      dot={{ r: 6, fill: "#fff", strokeWidth: 3, stroke: "#10b981" }}
+                      activeDot={{ r: 8, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100/50 p-8 flex flex-col items-center">
+            <div className="w-full mb-6">
+              <h3 className="font-black text-slate-900 text-xl tracking-tight">Summary</h3>
+              <p className="text-sm text-slate-500 font-medium mt-1">Overall distribution</p>
+            </div>
+            
+            <div className="flex-1 w-full relative min-h-[250px] flex items-center justify-center">
+              {summary.total === 0 ? (
+                <p className="text-slate-400 font-bold">No records</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={90}
+                      paddingAngle={8}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                       itemStyle={{ fontWeight: 800 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+              {summary.total > 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-black text-slate-800">{summary.rate}%</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Present</span>
+                </div>
+              )}
+            </div>
+
+            <div className="w-full grid grid-cols-2 gap-4 mt-6">
+              <div className="bg-emerald-50 rounded-2xl p-4 text-center">
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Present</p>
+                <p className="text-xl font-black text-emerald-700">{summary.present}</p>
+              </div>
+              <div className="bg-rose-50 rounded-2xl p-4 text-center">
+                <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Absent</p>
+                <p className="text-xl font-black text-rose-700">{summary.total - summary.present}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

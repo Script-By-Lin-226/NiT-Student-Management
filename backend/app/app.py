@@ -5,6 +5,7 @@ from app.controller.v1.admin_route import router as admin_router
 from app.controller.v1.portal_route import router as portal_router
 from app.controller.v1.staff_route import router as staff_router
 from app.middleware.authentication_middleware import AuthMiddleware
+from app.middleware.latency_middleware import LatencyLoggingMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from app.core.database_initialization import init_db
 from app.core.config import settings
@@ -38,6 +39,7 @@ app.include_router(admin_router)
 app.include_router(portal_router)
 app.include_router(staff_router)
 
+app.add_middleware(LatencyLoggingMiddleware)
 app.add_middleware(AuthMiddleware)
 
 # Build allowed origins: localhost for dev + FRONTEND_URL for Railway

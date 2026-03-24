@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import Request, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boolean, DateTime, Date
+from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boolean, DateTime, Date, and_
 from app.models.model import (
     User, AcademicYear, Course, Enrollment, Payment, 
     Room, TimeTable, Grade, Attendance, StaffAttendance, 
@@ -98,18 +98,36 @@ class BackupService:
             stats = {}
             from datetime import date as py_date
 
+            # Helper to normalize column names
+            def normalize_key(k):
+                if not isinstance(k, str): return str(k)
+                # Remove spaces, dashes, dots and convert to lowercase
+                return k.lower().replace(" ", "_").replace("-", "_").replace(".", "_").strip()
+
             for sheet_name, model in import_order:
                 if sheet_name in df_dict:
                     df = df_dict[sheet_name]
-                    records = df.to_dict('records')
+                    records_raw = df.to_dict('records')
                     count = 0
                     
-                    for record in records:
+                    for record_raw in records_raw:
+                        # Normalize all keys in record
+                        record = {normalize_key(k): v for k, v in record_raw.items()}
+
                         # Map common misspellings or aliases
                         if model == User:
                             # Handle date_of_birth vs data_of_birth
-                            if 'date_of_birth' in record and record['date_of_birth'] is not None:
+                            if 'date_of_birth' in record:
                                 record['data_of_birth'] = record.pop('date_of_birth')
+                            
+                            # Handle NRC/nrc
+                            if 'NRC' in record:
+                                record['nrc'] = record.pop('NRC')
+
+                        if model == ParentStudent:
+                            # Ensure relationship_label exists
+                            if 'relationship' in record and 'relationship_label' not in record:
+                                record['relationship_label'] = record.pop('relationship')
                         
                         # Clean NaN/Null values explicitly and handle Timestamps
                         clean_record = {}
@@ -125,6 +143,18 @@ class BackupService:
                                 clean_record[k] = v.to_pydatetime()
                             else:
                                 clean_record[k] = v
+                        
+                        if model == User:
+                            # Required fields fallbacks
+                            if not record.get('data_of_birth') or pd.isna(record.get('data_of_birth')):
+                                # Use a neutral default if missing to prevent DB failure
+                                record['data_of_birth'] = datetime(2000, 1, 1)
+                            if (not record.get('username') or pd.isna(record.get('username'))) and record.get('email'):
+                                email_str = str(record.get('email'))
+                                if '@' in email_str:
+                                    record['username'] = email_str.split('@')[0]
+                                else:
+                                    record['username'] = email_str
                         
                         record = clean_record
 
@@ -167,7 +197,6 @@ class BackupService:
                                             
                                     elif isinstance(col.type, Boolean):
                                         if pd.isna(val) or val is None:
-                                            # Defend with default if nullable?
                                             record[col.name] = getattr(col, 'default', None)
                                         else:
                                             # Convert common values to bool
@@ -198,52 +227,60 @@ class BackupService:
                                     pass
 
                         try:
+                            # Use nested transaction to protect individual record failures
                             async with session.begin_nested():
-                                # Try to find by primary key or unique code
                                 pk_name = [c.name for c in model.__table__.primary_key.columns][0]
                                 unique_cols = [c.name for c in model.__table__.columns if c.unique]
                                 
-                                stmt = select(model)
-                                if pk_name in record and record[pk_name] is not None:
-                                    # Ensure pk_name is int if it's an Integer column
+                                obj = None
+                                
+                                # 1. Try finding by email/user_code for Users (Strongest Natural Keys)
+                                if model == User:
+                                    if record.get('email'):
+                                        r = await session.execute(select(User).where(User.email == record['email']))
+                                        obj = r.scalars().first()
+                                    elif record.get('user_code'):
+                                        r = await session.execute(select(User).where(User.user_code == record['user_code']))
+                                        obj = r.scalars().first()
+                                
+                                # 2. Try finding by composite unique constraints (e.g. ParentStudent)
+                                if not obj and model == ParentStudent:
+                                    if record.get('parent_id') and record.get('student_id'):
+                                        r = await session.execute(select(ParentStudent).where(
+                                            and_(ParentStudent.parent_id == record['parent_id'], 
+                                                 ParentStudent.student_id == record['student_id'])
+                                        ))
+                                        obj = r.scalars().first()
+
+                                # 3. Try finding by single unique columns
+                                if not obj and unique_cols:
+                                    for uc in unique_cols:
+                                        if record.get(uc):
+                                            r = await session.execute(select(model).where(getattr(model, uc) == record[uc]))
+                                            obj = r.scalars().first()
+                                            if obj: break
+
+                                # 4. Try finding by Primary Key
+                                if not obj and pk_name in record and record[pk_name] is not None:
                                     try:
                                         pk_val = int(record[pk_name])
-                                        stmt = stmt.where(getattr(model, pk_name) == pk_val)
+                                        r = await session.execute(select(model).where(getattr(model, pk_name) == pk_val))
+                                        obj = r.scalars().first()
                                     except:
-                                        stmt = stmt.where(getattr(model, pk_name) == record[pk_name])
-                                elif unique_cols:
-                                    if model == User:
-                                        # Use email or user_code if available
-                                        if record.get('email'):
-                                            stmt = stmt.where(User.email == record['email'])
-                                        elif record.get('user_code'):
-                                            stmt = stmt.where(User.user_code == record['user_code'])
-                                        else:
-                                            # Skip if no unique way to find
-                                            session.add(model(**record))
-                                            count += 1
-                                            continue
-                                    else:
-                                        stmt = stmt.where(getattr(model, unique_cols[0]) == record.get(unique_cols[0]))
-                                else:
-                                    session.add(model(**record))
-                                    count += 1
-                                    continue
-                                
-                                result = await session.execute(stmt)
-                                obj = result.scalars().first()
-                                
+                                        pass
+
                                 if obj:
+                                    # Update existing
                                     for k, v in record.items():
                                         if k != pk_name: # Don't update PK
                                             setattr(obj, k, v)
                                     count += 1
                                 else:
+                                    # Create new
                                     session.add(model(**record))
                                     count += 1
                         except Exception as e:
-                            print(f"Error importing record into {sheet_name}: {e}")
-                            # The nested transaction rolls back automatically
+                            print(f"Error importing record into {sheet_name}: {str(e)}")
                     
                     # Commit each table
                     await session.commit()
@@ -257,6 +294,8 @@ class BackupService:
             })
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return JSONResponse({
                 "status_code": 500, 
                 "message": f"Import failed: {str(e)}"

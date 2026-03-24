@@ -3,11 +3,12 @@ from app.models.model import User, AcademicYear, Attendance, Course, Enrollment,
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateRequest
-from sqlalchemy import and_, select, update, delete
+from sqlalchemy import and_, select, update, delete, Integer
+from sqlalchemy.orm import defer
 from fastapi.responses import JSONResponse
 from fastapi import Request
 from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove, UserPasswordChange, AdminUserPasswordChange
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from app.security.password_hashing import hash_password
 from sqlalchemy import func
 from app.schemas.course import AdminCourseCreate, AdminCourseUpdate
@@ -19,6 +20,19 @@ from app.schemas.payment import PaymentCreate, PaymentUpdate
 from app.core.timezone_utils import get_now_local
 
 
+def _serialize_user_lite(u: User) -> dict:
+    return {
+        "user_id": u.user_id,
+        "user_code": u.user_code,
+        "username": u.username,
+        "email": u.email,
+        "role": u.role,
+        "is_active": u.is_active,
+        "phone": getattr(u, "phone", None),
+        "data_of_birth": u.data_of_birth.isoformat() if getattr(u, "data_of_birth", None) else None,
+        "created_at": f"{u.created_at.isoformat()}Z" if getattr(u, "created_at", None) else None,
+    }
+
 def _serialize_user(u: User) -> dict:
     return {
         "user_id": u.user_id,
@@ -28,6 +42,7 @@ def _serialize_user(u: User) -> dict:
         "role": u.role,
         "is_active": u.is_active,
         "nrc": getattr(u, "nrc", None),
+        "gender": getattr(u, "gender", None),
         "phone": getattr(u, "phone", None),
         "parent_name": getattr(u, "parent_name", None),
         "parent_phone": getattr(u, "parent_phone", None),
@@ -48,24 +63,13 @@ async def _next_student_code(session: AsyncSession, department: str = "College",
     """
     prefix = manual_prefix if manual_prefix else ("IN" if department == "Institute" else "CO")
     
-    # Get all student codes for this prefix to find the max sequence number
+    # Efficiently find the highest sequence number for this prefix using DB-level pattern matching
+    # Result will be like "CO005..." -> we want the "005" part
     result = await session.execute(
-        select(User.user_code)
+        select(func.max(func.cast(func.substr(User.user_code, 3, 3), Integer)))
         .where(and_(User.role == "student", User.user_code.like(f"{prefix}%")))
     )
-    codes = result.scalars().all()
-    
-    max_seq = 0
-    for code in codes:
-        if code and len(code) >= 5:
-            try:
-                # The sequence is always the 3 digits after the 2-character prefix
-                seq_val = int(code[2:5])
-                if seq_val > max_seq:
-                    max_seq = seq_val
-            except ValueError:
-                pass
-                
+    max_seq = result.scalar() or 0
     seq = max_seq + 1
     
     now = get_now_local()
@@ -78,23 +82,12 @@ async def _next_parent_code(session: AsyncSession) -> str:
     """
     Generate a stable parent_code like PAR0001.
     """
+    # Optimized: DB-level max sequence lookup
     result = await session.execute(
-        select(User.user_code)
+        select(func.max(func.cast(func.substr(User.user_code, 4), Integer)))
         .where(and_(User.role == "parent", User.user_code.like("PAR%")))
     )
-    codes = result.scalars().all()
-    
-    max_seq = 0
-    for code in codes:
-        if code and len(code) >= 7:
-            try:
-                # PAR prefix is 3 chars, seq is after that
-                seq_val = int(code[3:])
-                if seq_val > max_seq:
-                    max_seq = seq_val
-            except ValueError:
-                pass
-                
+    max_seq = result.scalar() or 0
     return f"PAR{max_seq + 1:04d}"
 
 async def _next_staff_code(session: AsyncSession, role: str) -> str:
@@ -108,22 +101,13 @@ async def _next_staff_code(session: AsyncSession, role: str) -> str:
         "manager": "MGR"
     }
     prefix = prefix_map.get(role, "STF")
+    
+    # Optimized: DB-level max sequence lookup
     result = await session.execute(
-        select(User.user_code)
+        select(func.max(func.cast(func.substr(User.user_code, len(prefix) + 1), Integer)))
         .where(and_(User.role == role, User.user_code.like(f"{prefix}%")))
     )
-    codes = result.scalars().all()
-    
-    max_seq = 0
-    for code in codes:
-        if code and len(code) >= len(prefix) + 4:
-            try:
-                seq_val = int(code[len(prefix):])
-                if seq_val > max_seq:
-                    max_seq = seq_val
-            except ValueError:
-                pass
-                
+    max_seq = result.scalar() or 0
     return f"{prefix}{max_seq + 1:04d}"
 
 
@@ -197,15 +181,19 @@ async def _log_activity(request: Request, session: AsyncSession, action: str, de
     try:
         user_info = _get_user(request)
         user_id = user_info.get("user_id")
-        # JWT doesn't contain user_id, so look it up from user_code
+        
+        # If user_id is missing, try looking it up once (cached in request state)
         if not user_id and user_info.get("user_code"):
-            from app.models.model import User as UserModel
-            result = await session.execute(
-                select(UserModel.user_id).where(UserModel.user_code == user_info["user_code"])
-            )
-            row = result.scalar_one_or_none()
-            if row:
-                user_id = row
+            if hasattr(request.state, "user_id_cache"):
+                user_id = request.state.user_id_cache
+            else:
+                from app.models.model import User as UserModel
+                result = await session.execute(
+                    select(UserModel.user_id).where(UserModel.user_code == user_info["user_code"])
+                )
+                user_id = result.scalar_one_or_none()
+                request.state.user_id_cache = user_id
+
         if user_id:
             al = ActivityLog(
                 user_id=user_id,
@@ -213,7 +201,8 @@ async def _log_activity(request: Request, session: AsyncSession, action: str, de
                 details=details
             )
             session.add(al)
-            await session.commit()
+            # Use flush instead of commit to batch with the main transaction
+            await session.flush()
     except Exception as e:
         print("_log_activity error:", e)
 
@@ -280,13 +269,19 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True):
             return {"message": "You are not authorized to perform this action"}
             
-        result = await session.execute(select(User))
+        result = await session.execute(
+            select(User).options(
+                defer(User.profile_picture),
+                defer(User.address),
+                defer(User.password_hash)
+            ).order_by(User.created_at.desc())
+        )
         users = result.scalars().all()
         return JSONResponse(
             {
                 "status_code": 200,
                 "message": "All users fetched successfully",
-                "data": [_serialize_user(u) for u in users],
+                "data": [_serialize_user_lite(u) for u in users],
             }
         )
 
@@ -294,8 +289,12 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        # Base query
-        base_query = select(User).where(User.role == "student")
+        # Base query optimized to exclude large columns
+        base_query = select(User).where(User.role == "student").options(
+            defer(User.profile_picture),
+            defer(User.address),
+            defer(User.password_hash)
+        )
         
         # Paginated query
         if limit > 0:
@@ -320,7 +319,7 @@ class AdminPanelService:
             {
                 "status_code": 200,
                 "message": "Students details fetched successfully",
-                "data": [_serialize_user(s) for s in students],
+                "data": [_serialize_user_lite(s) for s in students],
                 "pagination": {
                     "total_count": total_count,
                     "total_pages": total_pages,
@@ -991,9 +990,48 @@ class AdminPanelService:
     async def list_courses(request: Request, session: AsyncSession):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
-        r = await session.execute(select(Course))
+        
+        # Optimized: order by created_at desc
+        r = await session.execute(select(Course).order_by(Course.created_at.desc()))
         courses = r.scalars().all()
         return JSONResponse({"status_code": 200, "message": "Courses fetched successfully", "data": [_serialize_course(c) for c in courses]})
+
+    async def get_dashboard_summary(request: Request, session: AsyncSession):
+        """Fetch multiple KPI counts efficiently for the dashboard."""
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        # In parallel
+        stu_q = select(func.count(User.user_id)).where(User.role == "student")
+        crs_q = select(func.count(Course.course_id))
+        enr_q = select(func.count(Enrollment.enrollment_id)).where(Enrollment.status == True)
+        from datetime import date
+        today = date.today()
+        att_q = select(func.count(Attendance.attendance_id)).where(Attendance.attendance_date == today)
+        
+        tasks = [
+            session.execute(stu_q),
+            session.execute(crs_q),
+            session.execute(enr_q),
+            session.execute(att_q)
+        ]
+        results = []
+        for t in tasks:
+            res = await t
+            results.append(res.scalar() or 0)
+            
+        total_students, total_courses, active_enrollments, today_attendance = results
+        
+        return JSONResponse({
+            "status_code": 200,
+            "message": "Dashboard summary fetched successfully",
+            "data": {
+                "total_students": total_students,
+                "total_courses": total_courses,
+                "active_enrollments": active_enrollments,
+                "today_attendance_count": today_attendance
+            }
+        })
 
     async def create_course(request: Request, session: AsyncSession, payload: AdminCourseCreate):
         if not await validating_admin_role(request, allow_sales=True):
@@ -1091,14 +1129,18 @@ class AdminPanelService:
 
     # CRUD - Enrollments
 
-    async def list_enrollments(request: Request, session: AsyncSession):
+    async def list_enrollments(request: Request, session: AsyncSession, status: bool = None):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
-        r = await session.execute(
-            select(Enrollment, User, Course)
-            .join(User, Enrollment.student_id == User.user_id)
-            .join(Course, Enrollment.course_id == Course.course_id)
-        )
+        
+        q = select(Enrollment, User, Course).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).options(
+            defer(User.profile_picture), defer(User.address), defer(User.password_hash)
+        ).order_by(Enrollment.enrollment_date.desc(), Enrollment.enrollment_id.desc())
+
+        if status is not None:
+            q = q.where(Enrollment.status == status)
+            
+        r = await session.execute(q)
         rows = r.all()
         data = []
         for e, u, c in rows:
@@ -1293,12 +1335,20 @@ class AdminPanelService:
             }
         }, status_code=201)
 
-    async def get_all_attendance(request: Request, session: AsyncSession):
+    async def get_all_attendance(request: Request, session: AsyncSession, days: int = 30):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        q = select(Attendance, User).join(User, Attendance.user_id == User.user_id).options(
+            defer(User.profile_picture), defer(User.address), defer(User.password_hash)
+        ).order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
 
-        query = select(Attendance, User).join(User, Attendance.user_id == User.user_id)
-        result = await session.execute(query)
+        
+        if days is not None:
+            cutoff = get_now_local().date() - timedelta(days=days)
+            q = q.where(Attendance.attendance_date >= cutoff)
+            
+        result = await session.execute(q)
         rows = result.all()
         return JSONResponse({
             "status_code": 200,
@@ -1612,6 +1662,8 @@ class AdminPanelService:
             .join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)
             .join(User, Enrollment.student_id == User.user_id)
             .join(Course, Enrollment.course_id == Course.course_id)
+            .options(defer(User.profile_picture), defer(User.address), defer(User.password_hash))
+            .order_by(Payment.payment_date.desc(), Payment.payment_id.desc())
         )
         r = await session.execute(query)
         rows = r.all()

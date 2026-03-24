@@ -8,13 +8,14 @@ import { useAuth } from "@/hooks/useAuth";
 
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check } from "lucide-react";
 import * as XLSX from "xlsx";
-import { useStudents, useCourses } from "@/hooks/useAdmin";
+import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser } from "@/hooks/useAdmin";
 
 function Modal({
   title,
   open,
   onClose,
   children,
+  
 }: {
   title: string;
   open: boolean;
@@ -54,11 +55,15 @@ export default function AdminStudentsPage() {
   const { data: studentResponse, isLoading: studentsLoading, refetch: refetchStudents } = useStudents(page, limit);
   const { data: courses = [], isLoading: coursesLoading } = useCourses();
 
+  const [busy, setBusy] = useState(false); // Used for generic busy state when not in mutation
+  const [error, setError] = useState<string>("");
+
+  const createMutation = useCreateStudent();
+  const deleteMutation = useDeleteUser();
+  const updateMutation = useUpdateUser();
+
   const rows = studentResponse?.data || [];
   const pagination = studentResponse?.pagination;
-
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>("");
   const [q, setQ] = useState("");
 
   const handleError = (e: any, fallback: string) => {
@@ -149,7 +154,7 @@ export default function AdminStudentsPage() {
     await refetchStudents();
   };
 
-  const combinedLoading = authLoading || studentsLoading || coursesLoading || busy;
+  const combinedLoading = authLoading || studentsLoading || coursesLoading || busy || createMutation.isPending || deleteMutation.isPending || updateMutation.isPending;
 
   const openCreate = () => {
     setCUserCode("");
@@ -177,10 +182,9 @@ export default function AdminStudentsPage() {
   };
 
   const submitCreate = async () => {
-    setBusy(true);
     setError("");
     try {
-      await AdminService.createStudent({
+      await createMutation.mutateAsync({
         user_code: cUserCode.trim() || undefined,
         username: cUsername.trim(),
         email: cEmail.trim(),
@@ -206,11 +210,8 @@ export default function AdminStudentsPage() {
         installment_amount: cInstallment !== "" ? Number(cInstallment) : null,
       });
       setCreateOpen(false);
-      await load();
     } catch (e: any) {
       handleError(e, "Failed to create student");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -244,37 +245,32 @@ export default function AdminStudentsPage() {
 
   const submitEdit = async () => {
     if (!selected) return;
-    setBusy(true);
     setError("");
     try {
-      await AdminService.updateUser(selected.user_code, {
-        username: eUsername.trim(),
-        email: eEmail.trim(),
-        date_of_birth: eDob ? eDob : null,
-        is_active: eActive,
+      await updateMutation.mutateAsync({
+        code: selected.user_code,
+        payload: {
+          username: eUsername.trim(),
+          email: eEmail.trim(),
+          date_of_birth: eDob ? eDob : null,
+          is_active: eActive,
+        }
       });
       setEditOpen(false);
       setSelected(null);
-      await load();
     } catch (e: any) {
       handleError(e, "Failed to update student");
-    } finally {
-      setBusy(false);
     }
   };
 
   const doDelete = async (s: AdminStudent) => {
     const ok = window.confirm(`Delete student ${s.user_code} (${s.username})? This cannot be undone.`);
     if (!ok) return;
-    setBusy(true);
     setError("");
     try {
-      await AdminService.deleteUser(s.user_code);
-      await load();
+      await deleteMutation.mutateAsync(s.user_code);
     } catch (e: any) {
       handleError(e, "Failed to delete student");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -1164,10 +1160,11 @@ export default function AdminStudentsPage() {
           <div className="sm:col-span-2 flex justify-end">
             <button
               onClick={submitCreate}
-              disabled={busy || !cUsername.trim() || !cEmail.trim() || cPassword.length < 6 || !cDob}
-              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60"
+              disabled={combinedLoading || !cUsername.trim() || !cEmail.trim() || cPassword.length < 6 || !cDob}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60 transition-all active:scale-95 shadow-sm"
             >
-              Create
+              {createMutation.isPending && <RefreshCw className="w-4 h-4 animate-spin" />}
+              {createMutation.isPending ? "Creating..." : "Create Student"}
             </button>
           </div>
         </div>
@@ -1250,10 +1247,11 @@ export default function AdminStudentsPage() {
             </button>
             <button
               onClick={submitEdit}
-              disabled={busy || !selected}
-              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60"
+              disabled={combinedLoading || !selected}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60 transition-all active:scale-95 shadow-sm"
             >
-              Save changes
+              {updateMutation.isPending && <RefreshCw className="w-4 h-4 animate-spin" />}
+              {updateMutation.isPending ? "Saving..." : "Save changes"}
             </button>
           </div>
         </div>

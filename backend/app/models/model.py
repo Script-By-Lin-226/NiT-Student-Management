@@ -17,8 +17,8 @@ class Room(Base):
     capacity = Column(Integer, nullable=False, default=30)
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=func.now(), index=True)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), index=True)
 
 
 # ==============================
@@ -51,8 +51,8 @@ class User(Base):
     student_type = Column(String, nullable=True) # Old Student or New Student
     intended_course_code = Column(String, nullable=True) # Selected on registration but for info only
 
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=func.now(), index=True)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), index=True)
 
     # Relationships
     courses = relationship("Course", back_populates="instructor")

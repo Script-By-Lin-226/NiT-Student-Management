@@ -24,6 +24,14 @@ export interface PaginatedResponse<T> {
 }
 
 
+export interface AdminDashboardStats {
+  total_students: number;
+  total_courses: number;
+  active_enrollments: number;
+  today_attendance_count: number;
+}
+
+
 export interface AdminStudent {
   user_id: number;
   user_code: string;
@@ -331,6 +339,11 @@ export interface AdminPaymentCreate {
 }
 
 export class AdminService {
+  static async getDashboardSummary(): Promise<AdminDashboardStats> {
+    const res = await api.get<{ data: AdminDashboardStats }>("/admin/dashboard/summary");
+    return res.data.data;
+  }
+
   static async listAllUsers(): Promise<AdminUser[]> {
     const res = await api.get<{ data: AdminUser[] }>("/admin/users");
     return res.data.data;
@@ -433,8 +446,8 @@ export class AdminService {
   }
 
   // Enrollments
-  static async listEnrollments(): Promise<AdminEnrollment[]> {
-    const res = await api.get("/admin/enrollments");
+  static async listEnrollments(status?: boolean): Promise<AdminEnrollment[]> {
+    const res = await api.get("/admin/enrollments", { params: { status } });
     return res.data.data;
   }
 
@@ -448,8 +461,8 @@ export class AdminService {
   }
 
   // Attendance
-  static async listAttendance(): Promise<AdminAttendanceRecord[]> {
-    const res = await api.get("/admin/attendance");
+  static async listAttendance(days?: number): Promise<AdminAttendanceRecord[]> {
+    const res = await api.get("/admin/attendance", { params: { days } });
     return res.data.data;
   }
 
