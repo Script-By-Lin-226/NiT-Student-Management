@@ -66,7 +66,7 @@ export default function AdminCoursesPage() {
   const [cFeeInst, setCFeeInst] = useState<number | "">("");
   const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">("");
   const [cFocList, setCFocList] = useState<string[]>([]);
-  const [cDiscount, setCDiscount] = useState("");
+  const [cDiscount, setCDiscount] = useState<number | "">("");
   const [cCategory, setCCategory] = useState("");
 
   const [eName, setEName] = useState("");
@@ -76,7 +76,7 @@ export default function AdminCoursesPage() {
   const [eFeeInst, setEFeeInst] = useState<number | "">("");
   const [eExamFeeGbp, setEExamFeeGbp] = useState<number | "">("");
   const [eFocList, setEFocList] = useState<string[]>([]);
-  const [eDiscount, setEDiscount] = useState("");
+  const [eDiscount, setEDiscount] = useState<number | "">("");
   const [eCategory, setECategory] = useState("");
 
   const busy = yearsLoading || coursesLoading || createCourse.isPending || updateCourse.isPending || deleteCourse.isPending;
@@ -117,7 +117,7 @@ export default function AdminCoursesPage() {
         fee_installment: cFeeInst !== "" ? Number(cFeeInst) : null,
         exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : null,
         foc_items: cFocList.filter(f => f.trim() !== "").join(",") || null,
-        discount_plan: cDiscount.trim() ? cDiscount.trim() : null,
+        discount: cDiscount !== "" ? Number(cDiscount) : 0,
         category: cCategory || null,
       });
       setCreateOpen(false);
@@ -129,7 +129,7 @@ export default function AdminCoursesPage() {
 
   const openEdit = (c: AdminCourse) => {
     setSelected(c);
-    setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? ""); setEExamFeeGbp(c.exam_fee_gbp ?? ""); setEFocList(c.foc_items ? c.foc_items.split(",").map(i => i.trim()).filter(Boolean) : []); setEDiscount(c.discount_plan || ""); setECategory(c.category || "");
+    setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? ""); setEExamFeeGbp(c.exam_fee_gbp ?? ""); setEFocList(c.foc_items ? c.foc_items.split(",").map(i => i.trim()).filter(Boolean) : []); setEDiscount(c.discount ?? ""); setECategory(c.category || "");
     setEditOpen(true);
   };
 
@@ -146,7 +146,7 @@ export default function AdminCoursesPage() {
           fee_installment: eFeeInst !== "" ? Number(eFeeInst) : null,
           exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : null,
           foc_items: eFocList.filter(f => f.trim() !== "").join(",") || null,
-          discount_plan: eDiscount.trim() ? eDiscount.trim() : null,
+          discount: eDiscount !== "" ? Number(eDiscount) : 0,
           category: eCategory || null,
         }
       });
@@ -190,7 +190,7 @@ export default function AdminCoursesPage() {
                 "Academic Year": yearNameById.get(c.academic_year_id) || "-",
                 "Instructor ID": c.instructor_id || "-",
                 "FOC Items": c.foc_items || "-",
-                "Discount Plan": c.discount_plan || "-"
+                "Discount (MMK)": c.discount || 0
               }));
               exportToExcel(dataToExport, "Courses_List", "Courses");
             }}
@@ -406,8 +406,8 @@ export default function AdminCoursesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Plan (Optional)</label>
-            <input type="text" value={cDiscount} onChange={(e) => setCDiscount(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. Early Bird 10%" />
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount (MMK)</label>
+            <input type="number" value={cDiscount} onChange={(e) => setCDiscount(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="0" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
             <button onClick={submitCreate} disabled={busy || !cName.trim() || cYearId === ""} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
@@ -485,8 +485,8 @@ export default function AdminCoursesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Plan (Optional)</label>
-            <input type="text" value={eDiscount} onChange={(e) => setEDiscount(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. Early Bird 10%" />
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount (MMK)</label>
+            <input type="number" value={eDiscount} onChange={(e) => setEDiscount(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="0" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
             <button onClick={() => setEditOpen(false)} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">

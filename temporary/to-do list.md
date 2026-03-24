@@ -1,17 +1,27 @@
-# Task: Admin Password Management & Forgot Password Fix
+# Project: NiT Student Management System (NiT-SMS) - To-Do List
 
-## Completed
-- [x] Backend: Add `UserPasswordChange` and `AdminUserPasswordChange` schemas in `app/schemas/user.py`.
-- [x] Backend: Add `change_user_password` and `change_self_password` methods in `AdminPanelService` (`app/services/admin_panel.py`).
-- [x] Backend: Add `PUT /admin/users/{user_code}/password` and `PUT /admin/profile/password` routes in `app/controller/v1/admin_route.py`.
-- [x] Frontend: Add `changeUserPassword` and `changeSelfPassword` methods in `AdminService` (`services/admin.service.ts`).
-- [x] Frontend: Create `/forgot-password` page to resolve 404 error and advise users to contact Admin.
-- [x] Frontend: Add "Change Password" modal and action button to the Staff Management page (`app/(portal)/admin/users/page.tsx`).
-- [x] Frontend: Add "Security" section with password change form to the Profile page (`app/(portal)/profile/page.tsx`).
-- [x] Frontend: Remove `MobileNav` (bottom bar) from `PortalLayout` and adjust bottom padding.
-- [x] Frontend: Update `MobileHeader` to include all navigation links (including Backup) in the side drawer.
+## Documentation & AI Logic
+- [ ] Write Technical Documentation in `temporary/NiT-SMS-Technical.md`
+- [ ] Write Algorithm description in `Algorithm-OF-SMS.md`
+- [x] Refactor Course Discount Logic:
+    - [x] Update `Course` model: `discount_plan` (string) -> `discount` (float/MMK)
+    - [x] Update `backend/app/schemas/course.py`
+    - [x] Update `AdminPanelService` to calculate `course_cost` (base - discount)
+    - [x] Update `frontend/services/admin.service.ts` types
+    - [x] Update `frontend/app/(portal)/admin/courses/page.tsx` UI
+- [ ] Verify financial calculations in student invoices
+- [ ] Final production build and testing
+- [ ] Verify JWT and RBAC middleware functionality
+- [ ] Ensure database models (SQLAlchemy) match the schema requirements
 
-## Notes
-- The "Change Password" action for staff uses the `AdminUserPasswordChange` schema (no old password required).
-- The "Self Change Password" action uses the `UserPasswordChange` schema (requires old password verification).
-- The `/forgot-password` route was missing, causing a 404. It now correctly informs users on how to proceed.
+## Frontend Tasks
+- [ ] Review `(auth)` and `(portal)` routes
+- [ ] Verify `AdminService` and `PortalService` API integration
+- [ ] Ensure consistent UI across all portal pages
+
+## Backend Tasks
+- [ ] Review `admin_panel.py` for student and course management logic
+
+## Testing & Quality
+- [ ] Run performance tests as planned in `docs/performance_testing_plan.md`
+- [ ] Verify login and role-based access security

@@ -112,7 +112,7 @@ class Course(Base):
     exam_fee = Column(Float, nullable=True)
     exam_fee_gbp = Column(Float, nullable=True) # Fee in Pounds (GBP) as mentioned by user
     foc_items = Column(String, nullable=True)
-    discount_plan = Column(String, nullable=True)
+    discount = Column(Float, nullable=True, default=0.0)
     category = Column(String, nullable=True)
 
 
