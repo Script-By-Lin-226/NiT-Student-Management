@@ -39,14 +39,19 @@ This document outlines the logical processes and algorithms that drive the stude
 **Goal**: Maintain consistent accounting for student fees and installments.
 1.  **Payment Processing**:
     -   Identify the `enrollment_id`.
-    -   Input `amount`, `payment_method`, and `month` (for installments).
+    -   Input `amount`, `payment_method`, `month` (for installments), and `discount_amount` (optional).
+    -   Verification: Ensure `amount + discount_amount` does not exceed the remaining balance for that enrollment.
     -   Record the transaction in the `payments` table.
-    -   Update the enrollment's `balance` or history.
-2.  **Fine Calculation**:
+    -   Store `discount_amount` directly in the `payments` record for transactional immutability.
+2.  **Balance Calculation**:
+    -   `Total Disount` = `SUM(discount_amount)` for all payments of an enrollment.
+    -   `Total Paid` = `SUM(amount)` for all payments of an enrollment.
+    -   `Left Amount` = `Course Cost - (Total Paid + Total Discount)`.
+3.  **Fine Calculation**:
     -   Compare current date with `due_date` (if applicable).
     -   If late, apply `fine_amount` to the transaction.
-3.  **Receipt Generation**:
-    -   Aggregate enrollment details, payment details, and balance into a structured JSON/Receipt format for the frontend to render.
+4.  **Receipt & Export**:
+    -   Aggregate enrollment details, payment details, discounts, and remaining balance into a structured PDF receipt or Excel report.
 
 ---
 

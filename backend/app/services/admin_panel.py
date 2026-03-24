@@ -479,7 +479,7 @@ class AdminPanelService:
                     "payment_method": getattr(p, "payment_method", None),
                     "course_name": c.course_name,
                     "course_code": c.course_code,
-                    "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0)) - (c.discount or 0)),
+                    "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
                     "foc_items": getattr(c, "foc_items", None),
                     "payment_plan": getattr(e, "payment_plan", None),
                     "downpayment": getattr(e, "downpayment", 0) or 0,
@@ -490,7 +490,8 @@ class AdminPanelService:
                     "fine_reason": getattr(p, "fine_reason", None),
                     "exam_fee_paid_gbp": getattr(p, "exam_fee_paid_gbp", 0) or 0,
                     "exam_fee_paid_mmk": getattr(p, "exam_fee_paid_mmk", 0) or 0,
-                    "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK")
+                    "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK"),
+                    "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0
                 })
 
         return JSONResponse(
@@ -504,7 +505,7 @@ class AdminPanelService:
                             **_serialize_enrollment(e),
                             "course_code": c.course_code,
                             "course_name": c.course_name,
-                            "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0)) - (c.discount or 0)),
+                            "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
                             "foc_items": getattr(c, "foc_items", None)
                         }
                         for e, c in enrollment_rows
@@ -1073,7 +1074,6 @@ class AdminPanelService:
             fee_installment=payload.fee_installment,
             exam_fee_gbp=payload.exam_fee_gbp,
             foc_items=payload.foc_items,
-            discount=payload.discount,
             category=payload.category,
         )
         session.add(new_course)
@@ -1112,8 +1112,6 @@ class AdminPanelService:
             course.exam_fee_gbp = payload.exam_fee_gbp
         if getattr(payload, "foc_items", None) is not None:
             course.foc_items = payload.foc_items
-        if getattr(payload, "discount", None) is not None:
-            course.discount = payload.discount
         if getattr(payload, "category", None) is not None:
             course.category = payload.category
 
@@ -1247,7 +1245,7 @@ class AdminPanelService:
             d["course_name"] = c.course_name
             d["room"] = getattr(c, "room", None)
             base_fee = (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0)) or 0
-            d["course_cost"] = max(0, base_fee - (c.discount or 0))
+            d["course_cost"] = max(0, base_fee)
             d["foc_items"] = getattr(c, "foc_items", None)
             d["profile_picture"] = u.profile_picture
             data.append(d)
@@ -1828,7 +1826,7 @@ class AdminPanelService:
                 "enrollment_id": e.enrollment_id,
                 "enrollment_code": e.enrollment_code,
                 "amount": p.amount,
-                "payment_date": str(p.payment_date),
+                "payment_date": f"{p.payment_date.isoformat()}Z" if p.payment_date else None,
                 "month": p.month,
                 "status": p.status,
                 "student_code": u.user_code,
@@ -1837,7 +1835,8 @@ class AdminPanelService:
                 "course_name": c.course_name,
                 "payment_plan": e.payment_plan,
                 "payment_method": getattr(p, "payment_method", None),
-                "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0)) - (c.discount or 0)),
+                "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
+                "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0,
                 "foc_items": getattr(c, "foc_items", None),
                 "downpayment": getattr(e, "downpayment", 0) or 0,
                 "installment_amount": getattr(e, "installment_amount", 0) or 0,
@@ -1873,7 +1872,8 @@ class AdminPanelService:
             extra_items=getattr(payload, "extra_items", None),
             exam_fee_paid_gbp=getattr(payload, "exam_fee_paid_gbp", None),
             exam_fee_paid_mmk=getattr(payload, "exam_fee_paid_mmk", None),
-            exam_fee_currency=getattr(payload, "exam_fee_currency", "MMK")
+            exam_fee_currency=getattr(payload, "exam_fee_currency", "MMK"),
+            discount_amount=getattr(payload, "discount_amount", 0.0)
         )
         session.add(pay)
         await session.commit()

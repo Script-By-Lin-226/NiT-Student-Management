@@ -91,12 +91,13 @@ export const generateReceiptPDF = async (
       `${p.amount.toLocaleString()} MMK`,
       (p.fine_amount && p.fine_amount > 0) ? `${p.fine_amount.toLocaleString()} MMK` : "-",
       (p.extra_items_fee && p.extra_items_fee > 0) ? `${p.extra_items_fee.toLocaleString()} MMK` : "-",
+      (p.discount_amount && p.discount_amount > 0) ? `${p.discount_amount.toLocaleString()} MMK` : "-",
       (p.exam_fee_paid_gbp && p.exam_fee_paid_gbp > 0) ? `${p.exam_fee_paid_gbp} GBP (${p.exam_fee_paid_mmk ? p.exam_fee_paid_mmk.toLocaleString() : 0} MMK)` : "-",
     ]);
 
   autoTable(doc, {
     startY: contentY,
-    head: [["#", "Date", "Month / For", "Method", "Status", "Amount", "Fine", "Extra", "Exam"]],
+    head: [["#", "Date", "Month / For", "Method", "Status", "Amount", "Fine", "Extra", "Discount", "Exam"]],
     body: tableData,
     theme: "striped",
     headStyles: { fillColor: [63, 81, 181] },
@@ -106,6 +107,7 @@ export const generateReceiptPDF = async (
       6: { halign: "right" },
       7: { halign: "right" },
       8: { halign: "right" },
+      9: { halign: "right" },
     }
   });
 
@@ -137,6 +139,7 @@ export const generateReceiptPDF = async (
 
   // Summary
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalDiscount = payments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
   const totalFine = payments.reduce((sum, p) => sum + (p.fine_amount || 0), 0);
   const totalExtra = payments.reduce((sum, p) => sum + (p.extra_items_fee || 0), 0);
   const totalExamMmk = payments.reduce((sum, p) => sum + (p.exam_fee_paid_mmk || 0), 0);
@@ -144,13 +147,21 @@ export const generateReceiptPDF = async (
   
   doc.setFont("helvetica", "bold");
   doc.text(`Tuition Paid: ${totalPaid.toLocaleString()} MMK`, 196, finalY + 10, { align: "right" });
-  if (totalFine > 0) doc.text(`Fine: ${totalFine.toLocaleString()} MMK`, 196, finalY + 16, { align: "right" });
-  if (totalExtra > 0) doc.text(`Extra Items: ${totalExtra.toLocaleString()} MMK`, 196, finalY + 22, { align: "right" });
+  if (totalDiscount > 0) doc.text(`Discount Applied: -${totalDiscount.toLocaleString()} MMK`, 196, finalY + 16, { align: "right" });
+  if (totalFine > 0) doc.text(`Fine: ${totalFine.toLocaleString()} MMK`, 196, finalY + (totalDiscount > 0 ? 22 : 16), { align: "right" });
+  if (totalExtra > 0) doc.text(`Extra Items: ${totalExtra.toLocaleString()} MMK`, 196, finalY + (totalDiscount > 0 ? 28 : 22), { align: "right" });
+  
+  let examY = finalY + (totalDiscount > 0 ? 34 : 28);
+  if (totalExtra <= 0 && totalFine <= 0) examY = finalY + (totalDiscount > 0 ? 22 : 16);
+  else if (totalExtra <= 0 || totalFine <= 0) examY = finalY + (totalDiscount > 0 ? 28 : 22);
+
   if (totalExamMmk > 0) {
     const totalExamGbp = payments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
-    doc.text(`Exam Fee Paid: ${totalExamGbp} GBP (${totalExamMmk.toLocaleString()} MMK)`, 196, finalY + 28, { align: "right" });
+    doc.text(`Exam Fee Paid: ${totalExamGbp} GBP (${totalExamMmk.toLocaleString()} MMK)`, 196, examY, { align: "right" });
   }
-  doc.text(`Grand Total (Received): ${grandTotal.toLocaleString()} MMK`, 196, finalY + (totalFine > 0 || totalExtra > 0 || totalExamMmk > 0 ? 36 : 16), { align: "right" });
+  
+  const finalSummaryY = examY + (totalExamMmk > 0 ? 8 : 0);
+  doc.text(`Grand Total (Received): ${grandTotal.toLocaleString()} MMK`, 196, finalSummaryY, { align: "right" });
 
   // Footer
   doc.setFont("helvetica", "normal");

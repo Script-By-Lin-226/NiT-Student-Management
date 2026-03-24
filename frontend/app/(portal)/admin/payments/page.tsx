@@ -60,6 +60,7 @@ export default function AdminPaymentsPage() {
   const [pFineReason, setPFineReason] = useState("")
   const [pExtraFee, setPExtraFee] = useState<number | "">("")
   const [pExtraItems, setPExtraItems] = useState("")
+  const [pDiscountAmount, setPDiscountAmount] = useState<number | "">("");
   const [pExamFeePaidGbp, setPExamFeePaidGbp] = useState<number | "">("")
   const [pExamFeePaidMmk, setPExamFeePaidMmk] = useState<number | "">("")
   const [pExchangeRate, setPExchangeRate] = useState<number | "">("")
@@ -68,8 +69,9 @@ export default function AdminPaymentsPage() {
   const calculateLeftAmount = (enr: AdminEnrollment) => {
     const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
     const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalDiscount = enrPayments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
     const cost = enr.course_cost || 0;
-    return Math.max(0, cost - totalPaid);
+    return Math.max(0, cost - (totalPaid + totalDiscount));
   };
 
   const calculateLeftExamFeeGbp = (enr: AdminEnrollment) => {
@@ -136,6 +138,7 @@ export default function AdminPaymentsPage() {
     setPFineReason("");
     setPExtraFee("");
     setPExtraItems("");
+    setPDiscountAmount("");
     setPExamFeePaidGbp("");
     setPExamFeePaidMmk("");
     setPExchangeRate("");
@@ -160,6 +163,7 @@ export default function AdminPaymentsPage() {
         fine_reason: pFineReason.trim() || undefined,
         extra_items_fee: pExtraFee !== "" ? Number(pExtraFee) : undefined,
         extra_items: pExtraItems.trim() || undefined,
+        discount_amount: pDiscountAmount !== "" ? Number(pDiscountAmount) : 0,
         exam_fee_paid_gbp: pExamFeePaidGbp !== "" ? Number(pExamFeePaidGbp) : undefined,
         exam_fee_paid_mmk: pExamFeePaidMmk !== "" ? Number(pExamFeePaidMmk) : undefined,
         exam_fee_currency: pExamFeeCurrency || "MMK",
@@ -202,6 +206,7 @@ export default function AdminPaymentsPage() {
               const dataToExport = filteredEnrollments.map(enr => {
                   const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
                   const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount, 0);
+                  const totalDiscount = enrPayments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
                   const totalFine = enrPayments.reduce((sum, p) => sum + (p.fine_amount || 0), 0);
                   const totalExtra = enrPayments.reduce((sum, p) => sum + (p.extra_items_fee || 0), 0);
                   const totalExamGbp = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
@@ -215,6 +220,7 @@ export default function AdminPaymentsPage() {
                     "Payment Plan": enr.payment_plan === 'full' ? 'Full Payment' : 'Installment',
                     "Course Fee (MMK)": enr.course_cost || 0,
                     "Total Paid (MMK)": totalPaid,
+                    "Total Discount (MMK)": totalDiscount,
                     "Total Fine Paid (MMK)": totalFine,
                     "Fine Reasons": enrPayments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ") || "-",
                     "Total Extra Items Fee (MMK)": totalExtra,
@@ -609,6 +615,25 @@ export default function AdminPaymentsPage() {
                     className="w-full px-3 py-2.5 rounded-xl bg-amber-50/50 border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
                     placeholder="e.g. uniform, book"
                   />
+                  {pExtraFee !== "" && (
+                    <input
+                      type="text"
+                      value={pExtraItems}
+                      onChange={(e) => setPExtraItems(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 rounded-xl bg-white border border-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500/10 focus:border-amber-300 text-xs"
+                      placeholder="List extra items..."
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Amount (MMK)</label>
+                  <input
+                    type="number"
+                    value={pDiscountAmount}
+                    onChange={(e) => setPDiscountAmount(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-3 py-2.5 rounded-xl bg-green-50/50 border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"
+                    placeholder="e.g. 50000"
+                  />
                 </div>
                 <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -709,6 +734,11 @@ export default function AdminPaymentsPage() {
                         {((p.exam_fee_paid_gbp != null && p.exam_fee_paid_gbp > 0) || (p.exam_fee_paid_mmk != null && p.exam_fee_paid_mmk > 0)) && (
                           <div className="text-xs text-blue-600 mt-0.5 font-semibold">
                             Exam Fee: {p.exam_fee_paid_gbp || 0} GBP ({p.exam_fee_paid_mmk || 0} MMK)
+                          </div>
+                        )}
+                        {(p.discount_amount != null && p.discount_amount > 0) && (
+                          <div className="text-xs text-emerald-600 mt-0.5 font-semibold italic">
+                            Discount Applied: -{p.discount_amount} MMK
                           </div>
                         )}
                       </div>

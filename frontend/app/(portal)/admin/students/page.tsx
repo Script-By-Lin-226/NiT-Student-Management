@@ -393,7 +393,10 @@ export default function AdminStudentsPage() {
       const totalPaid = (relations.payments || [])
         .filter(p => p.enrollment_id === e.enrollment_id)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
-      const leftAmount = Math.max(0, courseCost - totalPaid);
+      const totalDiscount = (relations.payments || [])
+        .filter(p => p.enrollment_id === e.enrollment_id)
+        .reduce((sum, p) => sum + (p.discount_amount || 0), 0);
+      const leftAmount = Math.max(0, courseCost - (totalPaid + totalDiscount));
       return {
         "Course Code": e.course_code,
         "Course Name": e.course_name,
@@ -404,6 +407,7 @@ export default function AdminStudentsPage() {
         "Deposit (MMK)": e.downpayment || 0,
         "Monthly Installment (MMK)": e.installment_amount || 0,
         "Total Paid (MMK)": totalPaid,
+        "Total Discount (MMK)": totalDiscount,
         "Left Amount (MMK)": leftAmount,
         "FOC Items": (e as any).foc_items || "-",
         "Discount Plan": (e as any).discount_plan || "-",
@@ -436,7 +440,7 @@ export default function AdminStudentsPage() {
           "Exam Fee Paid (GBP)": p.exam_fee_paid_gbp || 0,
           "Exam Fee Paid (MMK)": p.exam_fee_paid_mmk || 0,
           "Total Paid for Enrollment (MMK)": totalPaidForEnrollment,
-          "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnrollment),
+          "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnrollment - ((p as any).totalDiscountForEnrollment || 0)),
           "Status": p.status
         };
       });
@@ -514,8 +518,10 @@ export default function AdminStudentsPage() {
 
       // Compute total paid per enrollment for left amount
       const paidPerEnrollment: Record<number, number> = {};
+      const discountPerEnrollment: Record<number, number> = {};
       for (const p of payments) {
         paidPerEnrollment[p.enrollment_id] = (paidPerEnrollment[p.enrollment_id] || 0) + (p.amount || 0);
+        discountPerEnrollment[p.enrollment_id] = (discountPerEnrollment[p.enrollment_id] || 0) + (p.discount_amount || 0);
       }
 
       const wsPayments = XLSX.utils.json_to_sheet(payments.length ? payments.map((p: any) => {
@@ -531,13 +537,14 @@ export default function AdminStudentsPage() {
           "Date": p.payment_date ? p.payment_date.slice(0, 10) : "-",
           "Course Amount (MMK)": courseCost,
           "Amount Paid (MMK)": p.amount,
+          "Discount (MMK)": p.discount_amount || 0,
           "Fine Amount (MMK)": p.fine_amount || 0,
           "Extra Items Fee (MMK)": p.extra_items_fee || 0,
           "Extra Items": p.extra_items || "-",
           "Exam Fee Paid (GBP)": p.exam_fee_paid_gbp || 0,
           "Exam Fee Paid (MMK)": p.exam_fee_paid_mmk || 0,
           "Total Paid (MMK)": totalPaidForEnroll,
-          "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnroll),
+          "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnroll - (discountPerEnrollment[p.enrollment_id] || 0)),
           "Status": p.status
         };
       }) : [{"Info": "No payments recorded"}]);
@@ -562,6 +569,8 @@ export default function AdminStudentsPage() {
       const wsEnrollments = XLSX.utils.json_to_sheet(enrollments.length ? enrollments.map((e: any) => {
         const courseCost = e.course_cost || 0;
         const totalPaid = paidPerEnrollment[e.enrollment_id] || 0;
+        const totalDiscount = discountPerEnrollment[e.enrollment_id] || 0;
+        const leftAmount = Math.max(0, courseCost - (totalPaid + totalDiscount));
         return {
           "Enrollment ID": e.enrollment_id,
           "Student Name": e.student_name,
@@ -572,7 +581,8 @@ export default function AdminStudentsPage() {
           "Deposit (MMK)": e.downpayment || 0,
           "Monthly Installment (MMK)": e.installment_amount || 0,
           "Total Paid (MMK)": totalPaid,
-          "Left Amount (MMK)": Math.max(0, courseCost - totalPaid),
+          "Total Discount (MMK)": totalDiscount,
+          "Left Amount (MMK)": leftAmount,
           "FOC Items": e.foc_items || "-",
           "Status": e.status ? "Active" : "Inactive"
         };
@@ -1503,6 +1513,9 @@ export default function AdminStudentsPage() {
                       <div className="mt-2 text-sm grid grid-cols-2 gap-2 text-slate-600">
                         <div><span className="font-semibold text-slate-500">Method:</span> {p.payment_method || "-"}</div>
                         <div><span className="font-semibold text-slate-500">Amount:</span> {p.amount.toLocaleString()} MMK</div>
+                        {p.discount_amount != null && p.discount_amount > 0 && (
+                          <div className="col-span-2 text-emerald-600 font-semibold italic"><span className="font-semibold text-slate-500">Discount:</span> -{p.discount_amount.toLocaleString()} MMK</div>
+                        )}
                         <div><span className="font-semibold text-slate-500">Date:</span> {p.payment_date ? p.payment_date.slice(0, 10) : "-"}</div>
                         <div><span className="font-semibold text-slate-500">Receipt ID:</span> #{p.payment_id}</div>
                       </div>

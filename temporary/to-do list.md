@@ -3,12 +3,13 @@
 ## Documentation & AI Logic
 - [ ] Write Technical Documentation in `temporary/NiT-SMS-Technical.md`
 - [ ] Write Algorithm description in `Algorithm-OF-SMS.md`
-- [x] Refactor Course Discount Logic:
-    - [x] Update `Course` model: `discount_plan` (string) -> `discount` (float/MMK)
-    - [x] Update `backend/app/schemas/course.py`
-    - [x] Update `AdminPanelService` to calculate `course_cost` (base - discount)
+- [x] Refactor Course Discount Logic (Shift to Payment-Based):
+    - [x] Remove `discount` from `Course` model and schemas
+    - [x] Add `discount_amount` to `Payment` model and schemas
+    - [x] Update `AdminPanelService` to handle `discount_amount` during payment
     - [x] Update `frontend/services/admin.service.ts` types
-    - [x] Update `frontend/app/(portal)/admin/courses/page.tsx` UI
+    - [x] Update `frontend/app/(portal)/admin/courses/page.tsx` (Remove Discount UI)
+    - [x] Update `frontend/app/(portal)/admin/payments/page.tsx` (Add Discount UI)
 - [ ] Verify financial calculations in student invoices
 - [ ] Final production build and testing
 - [ ] Verify JWT and RBAC middleware functionality

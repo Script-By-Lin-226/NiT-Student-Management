@@ -112,7 +112,6 @@ class Course(Base):
     exam_fee = Column(Float, nullable=True)
     exam_fee_gbp = Column(Float, nullable=True) # Fee in Pounds (GBP) as mentioned by user
     foc_items = Column(String, nullable=True)
-    discount = Column(Float, nullable=True, default=0.0)
     category = Column(String, nullable=True)
 
 
@@ -229,6 +228,7 @@ class Payment(Base):
     exam_fee_paid_gbp = Column(Float, nullable=True)
     exam_fee_paid_mmk = Column(Float, nullable=True)
     exam_fee_currency = Column(String, default="MMK") # MMK or GBP
+    discount_amount = Column(Float, nullable=True, default=0.0)
 
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

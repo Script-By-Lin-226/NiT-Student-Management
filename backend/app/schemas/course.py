@@ -18,7 +18,6 @@ class AdminCourseCreate(BaseModel):
     fee_installment: Optional[float] = None
     exam_fee_gbp: Optional[float] = None
     foc_items: Optional[str] = None
-    discount: Optional[float] = 0.0
     category: Optional[str] = None
 
 
@@ -30,5 +29,4 @@ class AdminCourseUpdate(BaseModel):
     fee_installment: Optional[float] = None
     exam_fee_gbp: Optional[float] = None
     foc_items: Optional[str] = None
-    discount: Optional[float] = None
     category: Optional[str] = None

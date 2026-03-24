@@ -65,8 +65,7 @@ export default function AdminCoursesPage() {
   const [cFeeFull, setCFeeFull] = useState<number | "">("");
   const [cFeeInst, setCFeeInst] = useState<number | "">("");
   const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">("");
-  const [cFocList, setCFocList] = useState<string[]>([]);
-  const [cDiscount, setCDiscount] = useState<number | "">("");
+  const [cFocItems, setCFocItems] = useState("");
   const [cCategory, setCCategory] = useState("");
 
   const [eName, setEName] = useState("");
@@ -75,8 +74,7 @@ export default function AdminCoursesPage() {
   const [eFeeFull, setEFeeFull] = useState<number | "">("");
   const [eFeeInst, setEFeeInst] = useState<number | "">("");
   const [eExamFeeGbp, setEExamFeeGbp] = useState<number | "">("");
-  const [eFocList, setEFocList] = useState<string[]>([]);
-  const [eDiscount, setEDiscount] = useState<number | "">("");
+  const [eFocItems, setEFocItems] = useState("");
   const [eCategory, setECategory] = useState("");
 
   const busy = yearsLoading || coursesLoading || createCourse.isPending || updateCourse.isPending || deleteCourse.isPending;
@@ -101,7 +99,9 @@ export default function AdminCoursesPage() {
   if (!isAdminOrSales) return null;
 
   const openCreate = () => {
-    setCName(""); setCInstructor(""); setCFeeFull(""); setCFeeInst(""); setCExamFeeGbp(""); setCFocList([]); setCDiscount(""); setCCategory("");
+    setCName(""); setCInstructor(""); setCFeeFull(""); setCFeeInst("");    setCExamFeeGbp("");
+    setCFocItems("");
+    setCCategory("");
     setCYearId(years[0]?.academic_year_id ?? "");
     setCreateOpen(true);
   };
@@ -115,10 +115,9 @@ export default function AdminCoursesPage() {
         instructor_user_code: cInstructor.trim() ? cInstructor.trim() : null,
         fee_full_payment: cFeeFull !== "" ? Number(cFeeFull) : null,
         fee_installment: cFeeInst !== "" ? Number(cFeeInst) : null,
-        exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : null,
-        foc_items: cFocList.filter(f => f.trim() !== "").join(",") || null,
-        discount: cDiscount !== "" ? Number(cDiscount) : 0,
-        category: cCategory || null,
+        exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : undefined,
+        foc_items: cFocItems.trim() || undefined,
+        category: cCategory.trim() || undefined,
       });
       setCreateOpen(false);
       toast.success("Course created successfully");
@@ -129,7 +128,10 @@ export default function AdminCoursesPage() {
 
   const openEdit = (c: AdminCourse) => {
     setSelected(c);
-    setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? ""); setEExamFeeGbp(c.exam_fee_gbp ?? ""); setEFocList(c.foc_items ? c.foc_items.split(",").map(i => i.trim()).filter(Boolean) : []); setEDiscount(c.discount ?? ""); setECategory(c.category || "");
+    setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? "");
+      setEExamFeeGbp(c.exam_fee_gbp || "");
+      setEFocItems(c.foc_items || "");
+      setECategory(c.category || "");
     setEditOpen(true);
   };
 
@@ -144,10 +146,9 @@ export default function AdminCoursesPage() {
           instructor_user_code: eInstructor.trim() ? eInstructor.trim() : null,
           fee_full_payment: eFeeFull !== "" ? Number(eFeeFull) : null,
           fee_installment: eFeeInst !== "" ? Number(eFeeInst) : null,
-          exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : null,
-          foc_items: eFocList.filter(f => f.trim() !== "").join(",") || null,
-          discount: eDiscount !== "" ? Number(eDiscount) : 0,
-          category: eCategory || null,
+          exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : undefined,
+          foc_items: eFocItems.trim() || undefined,
+          category: eCategory.trim() || undefined,
         }
       });
       setEditOpen(false);
@@ -190,7 +191,6 @@ export default function AdminCoursesPage() {
                 "Academic Year": yearNameById.get(c.academic_year_id) || "-",
                 "Instructor ID": c.instructor_id || "-",
                 "FOC Items": c.foc_items || "-",
-                "Discount (MMK)": c.discount || 0
               }));
               exportToExcel(dataToExport, "Courses_List", "Courses");
             }}
@@ -374,24 +374,12 @@ export default function AdminCoursesPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Add-ons)</label>
-            <div className="space-y-2">
-              {cFocList.map((foc, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={foc}
-                    onChange={(e) => {
-                      const newFoc = [...cFocList];
-                      newFoc[i] = e.target.value;
-                      setCFocList(newFoc);
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    placeholder="e.g. Uniform"
-                  />
-                  <button type="button" onClick={() => { const newFoc = [...cFocList]; newFoc.splice(i, 1); setCFocList(newFoc); }} className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              ))}
-              <button type="button" onClick={() => setCFocList([...cFocList, ""])} className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"><Plus className="w-4 h-4" /> Add FOC Item</button>
-            </div>
+            <input
+              value={cFocItems}
+              onChange={(e) => setCFocItems(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="e.g. Uniform, Books (comma separated)"
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
@@ -404,10 +392,6 @@ export default function AdminCoursesPage() {
               <option value="GED Courses">GED Courses</option>
               <option value="ABE courses">ABE courses</option>
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount (MMK)</label>
-            <input type="number" value={cDiscount} onChange={(e) => setCDiscount(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="0" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
             <button onClick={submitCreate} disabled={busy || !cName.trim() || cYearId === ""} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
@@ -453,24 +437,12 @@ export default function AdminCoursesPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Add-ons)</label>
-            <div className="space-y-2">
-              {eFocList.map((foc, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={foc}
-                    onChange={(e) => {
-                      const newFoc = [...eFocList];
-                      newFoc[i] = e.target.value;
-                      setEFocList(newFoc);
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    placeholder="e.g. Uniform"
-                  />
-                  <button type="button" onClick={() => { const newFoc = [...eFocList]; newFoc.splice(i, 1); setEFocList(newFoc); }} className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              ))}
-              <button type="button" onClick={() => setEFocList([...eFocList, ""])} className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"><Plus className="w-4 h-4" /> Add FOC Item</button>
-            </div>
+            <input
+              value={eFocItems}
+              onChange={(e) => setEFocItems(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="e.g. Uniform, Books (comma separated)"
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
@@ -483,10 +455,6 @@ export default function AdminCoursesPage() {
               <option value="GED Courses">GED Courses</option>
               <option value="ABE courses">ABE courses</option>
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount (MMK)</label>
-            <input type="number" value={eDiscount} onChange={(e) => setEDiscount(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="0" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
             <button onClick={() => setEditOpen(false)} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">

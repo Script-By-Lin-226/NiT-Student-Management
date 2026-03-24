@@ -45,9 +45,9 @@ The application follows a **3-Layer Backend Clean Architecture** coupled with a 
 
 ### Models (`app/models/model.py`)
 - **`User`**: Unified model for Student, Teacher, Admin, HR, etc., with `role` field.
-- **`Course`**: Academic course details including fees (MMK and GBP).
+- **`Course`**: Academic course details including base fees (MMK and GBP). Discounts are no longer managed at the course level to allow for flexible, transaction-based discounting.
 - **`Enrollment`**: Linking users to courses with payment plans.
-- **`Payment`**: Tracking financial transactions (Cash, Bank Transfer, Mobile).
+- **`Payment`**: Tracking financial transactions (Cash, Bank Transfer, Mobile). Includes `discount_amount` for recording per-transaction discounts, ensuring accurate historical balance tracking.
 - **`Attendance`**: Tracking student attendance per slot (Morning/Afternoon/Evening).
 - **`ActivityLog`**: System audit trail for admin actions.
 

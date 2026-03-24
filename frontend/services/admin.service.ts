@@ -129,7 +129,6 @@ export interface AdminCourseCreate {
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
-  discount?: number | null;
   category?: string | null;
 }
 
@@ -141,7 +140,6 @@ export interface AdminCourseUpdate {
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
-  discount?: number | null;
   category?: string | null;
 }
 
@@ -355,6 +353,7 @@ export interface AdminPayment {
   exam_fee_paid_gbp?: number;
   exam_fee_paid_mmk?: number;
   exam_fee_currency?: string;
+  discount_amount?: number;
 }
 
 export interface AdminPaymentCreate {
@@ -370,6 +369,7 @@ export interface AdminPaymentCreate {
   exam_fee_paid_gbp?: number | null;
   exam_fee_paid_mmk?: number | null;
   exam_fee_currency?: string | null;
+  discount_amount?: number | null;
 }
 
 export class AdminService {
