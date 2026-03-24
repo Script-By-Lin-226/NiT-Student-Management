@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAcademicYear, AdminCourse, AdminService } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Layers } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
+import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDeleteCourse, useBatches, useCreateBatch, useUpdateBatch, useDeleteBatch } from "@/hooks/useAdmin";
+import { toast } from "sonner";
 
 
 function Modal({
@@ -41,45 +43,47 @@ function Modal({
 
 export default function AdminCoursesPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdmin, loading: authLoading } = useAuth();
 
-  const [years, setYears] = useState<AdminAcademicYear[]>([]);
-  const [rows, setRows] = useState<AdminCourse[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { data: years = [], isLoading: yearsLoading } = useAcademicYears();
+  const { data: rows = [], isLoading: coursesLoading, refetch: reload } = useCourses();
+  
+  const createCourse = useCreateCourse();
+  const updateCourse = useUpdateCourse();
+  const deleteCourse = useDeleteCourse();
+
   const [q, setQ] = useState("");
-
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [selected, setSelected] = useState<AdminCourse | null>(null);
 
+  // Form states... (keeping them as they are for simplicity in replacement, but I'll optimize if needed)
   const [cName, setCName] = useState("");
   const [cYearId, setCYearId] = useState<number | "">("");
   const [cInstructor, setCInstructor] = useState("");
-  const [cStartDate, setCStartDate] = useState("");
-  const [cEndDate, setCEndDate] = useState("");
-  const [cRoom, setCRoom] = useState("");
   const [cFeeFull, setCFeeFull] = useState<number | "">("");
   const [cFeeInst, setCFeeInst] = useState<number | "">("");
   const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">("");
   const [cFocList, setCFocList] = useState<string[]>([]);
   const [cDiscount, setCDiscount] = useState("");
+  const [cCategory, setCCategory] = useState("");
 
   const [eName, setEName] = useState("");
   const [eYearId, setEYearId] = useState<number | "">("");
   const [eInstructor, setEInstructor] = useState("");
-  const [eStartDate, setEStartDate] = useState("");
-  const [eEndDate, setEEndDate] = useState("");
-  const [eRoom, setERoom] = useState("");
   const [eFeeFull, setEFeeFull] = useState<number | "">("");
   const [eFeeInst, setEFeeInst] = useState<number | "">("");
   const [eExamFeeGbp, setEExamFeeGbp] = useState<number | "">("");
   const [eFocList, setEFocList] = useState<string[]>([]);
   const [eDiscount, setEDiscount] = useState("");
+  const [eCategory, setECategory] = useState("");
+
+  const busy = yearsLoading || coursesLoading || createCourse.isPending || updateCourse.isPending || deleteCourse.isPending;
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!authLoading && !isAdminOrSales) router.replace("/dashboard");
+  }, [authLoading, isAdminOrSales, router]);
 
   const yearNameById = useMemo(() => {
     const m = new Map<number, string>();
@@ -93,127 +97,73 @@ export default function AdminCoursesPage() {
     return rows.filter((c) => c.course_code.toLowerCase().includes(term) || c.course_name.toLowerCase().includes(term));
   }, [q, rows]);
 
-  const load = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const [y, c] = await Promise.all([AdminService.listAcademicYears(), AdminService.listCourses()]);
-      setYears(y);
-      setRows(c);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load courses");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAdminOrSales) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
-
-  if (loading) return null;
+  if (authLoading) return null;
   if (!isAdminOrSales) return null;
 
   const openCreate = () => {
-    setCName("");
-    setCInstructor("");
-    setCStartDate("");
-    setCEndDate("");
-    setCRoom("");
-    setCFeeFull("");
-    setCFeeInst("");
-    setCExamFeeGbp("");
-    setCFocList([]);
-    setCDiscount("");
+    setCName(""); setCInstructor(""); setCFeeFull(""); setCFeeInst(""); setCExamFeeGbp(""); setCFocList([]); setCDiscount(""); setCCategory("");
     setCYearId(years[0]?.academic_year_id ?? "");
     setCreateOpen(true);
   };
 
   const submitCreate = async () => {
     if (cYearId === "") return;
-    setBusy(true);
-    setError("");
     try {
-      await AdminService.createCourse({
+      await createCourse.mutateAsync({
         course_name: cName.trim(),
         academic_year_id: cYearId,
         instructor_user_code: cInstructor.trim() ? cInstructor.trim() : null,
-        start_date: cStartDate.trim() ? cStartDate.trim() : null,
-        end_date: cEndDate.trim() ? cEndDate.trim() : null,
-        room: cRoom.trim() ? cRoom.trim() : null,
         fee_full_payment: cFeeFull !== "" ? Number(cFeeFull) : null,
         fee_installment: cFeeInst !== "" ? Number(cFeeInst) : null,
         exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : null,
         foc_items: cFocList.filter(f => f.trim() !== "").join(",") || null,
         discount_plan: cDiscount.trim() ? cDiscount.trim() : null,
+        category: cCategory || null,
       });
       setCreateOpen(false);
-      await load();
+      toast.success("Course created successfully");
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to create course");
-    } finally {
-      setBusy(false);
+      toast.error(e?.response?.data?.message || "Failed to create course");
     }
   };
 
   const openEdit = (c: AdminCourse) => {
     setSelected(c);
-    setEName(c.course_name);
-    setEYearId(c.academic_year_id);
-    setEInstructor(""); // backend doesn't return user_code for instructor currently
-    setEStartDate(c.start_date || "");
-    setEEndDate(c.end_date || "");
-    setERoom(c.room || "");
-    setEFeeFull(c.fee_full_payment ?? "");
-    setEFeeInst(c.fee_installment ?? "");
-    setEExamFeeGbp(c.exam_fee_gbp ?? "");
-    setEFocList(c.foc_items ? c.foc_items.split(",").map(i => i.trim()).filter(Boolean) : []);
-    setEDiscount(c.discount_plan || "");
+    setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? ""); setEExamFeeGbp(c.exam_fee_gbp ?? ""); setEFocList(c.foc_items ? c.foc_items.split(",").map(i => i.trim()).filter(Boolean) : []); setEDiscount(c.discount_plan || ""); setECategory(c.category || "");
     setEditOpen(true);
   };
 
   const submitEdit = async () => {
-    if (!selected) return;
-    if (eYearId === "") return;
-    setBusy(true);
-    setError("");
+    if (!selected || eYearId === "") return;
     try {
-      await AdminService.updateCourse(selected.course_code, {
-        course_name: eName.trim(),
-        academic_year_id: eYearId,
-        instructor_user_code: eInstructor.trim() ? eInstructor.trim() : null,
-        start_date: eStartDate.trim() ? eStartDate.trim() : null,
-        end_date: eEndDate.trim() ? eEndDate.trim() : null,
-        room: eRoom.trim() ? eRoom.trim() : null,
-        fee_full_payment: eFeeFull !== "" ? Number(eFeeFull) : null,
-        fee_installment: eFeeInst !== "" ? Number(eFeeInst) : null,
-        exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : null,
-        foc_items: eFocList.filter(f => f.trim() !== "").join(",") || null,
-        discount_plan: eDiscount.trim() ? eDiscount.trim() : null,
+      await updateCourse.mutateAsync({
+        code: selected.course_code,
+        payload: {
+          course_name: eName.trim(),
+          academic_year_id: eYearId,
+          instructor_user_code: eInstructor.trim() ? eInstructor.trim() : null,
+          fee_full_payment: eFeeFull !== "" ? Number(eFeeFull) : null,
+          fee_installment: eFeeInst !== "" ? Number(eFeeInst) : null,
+          exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : null,
+          foc_items: eFocList.filter(f => f.trim() !== "").join(",") || null,
+          discount_plan: eDiscount.trim() ? eDiscount.trim() : null,
+          category: eCategory || null,
+        }
       });
       setEditOpen(false);
-      setSelected(null);
-      await load();
+      toast.success("Course updated successfully");
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to update course");
-    } finally {
-      setBusy(false);
+      toast.error(e?.response?.data?.message || "Failed to update course");
     }
   };
 
   const doDelete = async (c: AdminCourse) => {
-    const ok = window.confirm(`Delete course ${c.course_code} (${c.course_name})?`);
-    if (!ok) return;
-    setBusy(true);
-    setError("");
+    if (!window.confirm(`Delete course ${c.course_code} (${c.course_name})?`)) return;
     try {
-      await AdminService.deleteCourse(c.course_code);
-      await load();
+      await deleteCourse.mutateAsync(c.course_code);
+      toast.success("Course deleted successfully");
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to delete course");
-    } finally {
-      setBusy(false);
+      toast.error(e?.response?.data?.message || "Failed to delete course");
     }
   };
 
@@ -225,7 +175,7 @@ export default function AdminCoursesPage() {
           <p className="text-slate-500 font-medium text-sm mt-1">Create, update, and delete courses.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={load} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95">
+          <button onClick={() => reload()} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95">
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
@@ -239,9 +189,6 @@ export default function AdminCoursesPage() {
                 "Exam Fee (GBP)": c.exam_fee_gbp || 0,
                 "Academic Year": yearNameById.get(c.academic_year_id) || "-",
                 "Instructor ID": c.instructor_id || "-",
-                "Start Date": c.start_date || "-",
-                "End Date": c.end_date || "-",
-                "Room": c.room || "-",
                 "FOC Items": c.foc_items || "-",
                 "Discount Plan": c.discount_plan || "-"
               }));
@@ -266,48 +213,60 @@ export default function AdminCoursesPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by code or name…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" />
           </div>
-          {error && <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">{error}</div>}
         </div>
 
         {/* Desktop Table */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
+            <thead className="bg-slate-50/80 text-xs uppercase font-bold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4">Code</th>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Fees (Full/Inst)</th>
+                <th className="px-6 py-4">Course</th>
+                <th className="px-6 py-4">Fees (MMK)</th>
                 <th className="px-6 py-4">Academic Year</th>
-                <th className="px-6 py-4">Instructor ID</th>
-                <th className="px-6 py-4">Start Date</th>
-                <th className="px-6 py-4">End Date</th>
-                <th className="px-6 py-4">Room</th>
+                <th className="px-6 py-4">Instructor</th>
+                <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.map((c) => (
-                <tr key={c.course_code} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-800">{c.course_code}</td>
-                  <td className="px-6 py-4 font-semibold text-slate-800">{c.course_name}</td>
-                  <td className="px-6 py-4 font-medium text-slate-700">{c.fee_full_payment ? c.fee_full_payment.toLocaleString() : "-"}/{c.fee_installment ? c.fee_installment.toLocaleString() : "-"}</td>
-                  <td className="px-6 py-4">{yearNameById.get(c.academic_year_id) || `#${c.academic_year_id}`}</td>
-                  <td className="px-6 py-4">{c.instructor_id ?? "-"}</td>
-                  <td className="px-6 py-4">{c.start_date ?? "-"}</td>
-                  <td className="px-6 py-4">{c.end_date ?? "-"}</td>
-                  <td className="px-6 py-4">{c.room ?? "-"}</td>
+                <tr key={c.course_code} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-brand-600 group-hover:underline underline-offset-4 decoration-brand-200 transition-all cursor-default">{c.course_code}</div>
+                    <div className="font-bold text-slate-900 text-base">{c.course_name}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase text-slate-400 w-8">Full</span>
+                        <span className="font-bold text-slate-900">{c.fee_full_payment ? c.fee_full_payment.toLocaleString() : "-"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase text-slate-400 w-8">Inst</span>
+                        <span className="font-bold text-slate-700">{c.fee_installment ? c.fee_installment.toLocaleString() : "-"}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-slate-600">{yearNameById.get(c.academic_year_id) || `#${c.academic_year_id}`}</td>
+                  <td className="px-6 py-4 font-bold text-slate-700">{c.instructor_id ?? "-"}</td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black bg-brand-50 text-brand-700 border border-brand-100 uppercase tracking-widest shadow-sm">
+                      {c.category || "General"}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2 text-xs">
+                      <button onClick={() => { setSelected(c); setBatchOpen(true); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 shadow-sm" title="Manage Batches">
+                        <Layers className="w-4 h-4" />
+                      </button>
                       {isAdmin && (
-                        <button onClick={() => openEdit(c)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95">
-                          <Pencil className="w-3.5 h-3.5" />
-                          Edit
+                        <button onClick={() => openEdit(c)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm" title="Edit Course">
+                          <Pencil className="w-4 h-4" />
                         </button>
                       )}
                       {isAdmin && (
-                        <button onClick={() => doDelete(c)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all active:scale-95">
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
+                        <button onClick={() => doDelete(c)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all active:scale-90 shadow-sm" title="Delete Course">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -316,7 +275,7 @@ export default function AdminCoursesPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400 font-medium">
                     {busy ? "Loading…" : "No courses found."}
                   </td>
                 </tr>
@@ -362,15 +321,9 @@ export default function AdminCoursesPage() {
                   </div>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Instructor & Room</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Instructor</div>
                   <div className="font-semibold text-slate-700 truncate">
-                    {c.instructor_id || "-"} • {c.room || "-"}
-                  </div>
-                </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Duration</div>
-                  <div className="font-semibold text-slate-700 truncate">
-                    {c.start_date || "-"} to {c.end_date || "-"}
+                    {c.instructor_id || "-"}
                   </div>
                 </div>
               </div>
@@ -405,18 +358,6 @@ export default function AdminCoursesPage() {
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Instructor code (optional)</label>
             <input value={cInstructor} onChange={(e) => setCInstructor(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="TEA0001" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Start Date</label>
-            <input type="date" value={cStartDate} onChange={(e) => setCStartDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">End Date</label>
-            <input type="date" value={cEndDate} onChange={(e) => setCEndDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Room</label>
-            <input type="text" value={cRoom} onChange={(e) => setCRoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. room 6" />
           </div>
 
           <div>
@@ -453,6 +394,18 @@ export default function AdminCoursesPage() {
             </div>
           </div>
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+            <select value={cCategory} onChange={(e) => setCCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+              <option value="">Select Category…</option>
+              <option value="Diploma">Diploma</option>
+              <option value="Certificate">Certificate</option>
+              <option value="NCC">NCC</option>
+              <option value="International Qualification">International Qualification</option>
+              <option value="GED Courses">GED Courses</option>
+              <option value="ABE courses">ABE courses</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Plan (Optional)</label>
             <input type="text" value={cDiscount} onChange={(e) => setCDiscount(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. Early Bird 10%" />
           </div>
@@ -484,18 +437,6 @@ export default function AdminCoursesPage() {
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Instructor code (optional)</label>
             <input value={eInstructor} onChange={(e) => setEInstructor(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="TEA0001 (leave empty to clear)" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Start Date</label>
-            <input type="date" value={eStartDate} onChange={(e) => setEStartDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">End Date</label>
-            <input type="date" value={eEndDate} onChange={(e) => setEEndDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Room</label>
-            <input type="text" value={eRoom} onChange={(e) => setERoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. room 6" />
           </div>
 
           <div>
@@ -532,6 +473,18 @@ export default function AdminCoursesPage() {
             </div>
           </div>
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+            <select value={eCategory} onChange={(e) => setECategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+              <option value="">Select Category…</option>
+              <option value="Diploma">Diploma</option>
+              <option value="Certificate">Certificate</option>
+              <option value="NCC">NCC</option>
+              <option value="International Qualification">International Qualification</option>
+              <option value="GED Courses">GED Courses</option>
+              <option value="ABE courses">ABE courses</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Plan (Optional)</label>
             <input type="text" value={eDiscount} onChange={(e) => setEDiscount(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. Early Bird 10%" />
           </div>
@@ -545,6 +498,103 @@ export default function AdminCoursesPage() {
           </div>
         </div>
       </Modal>
+      <Modal title={`Batches — ${selected?.course_name}`} open={batchOpen} onClose={() => setBatchOpen(false)}>
+        {selected && <BatchManagement courseId={selected.course_id} />}
+      </Modal>
+    </div>
+  );
+}
+
+function BatchManagement({ courseId }: { courseId: number }) {
+  const { data: batchRes, isLoading } = useBatches(courseId);
+  const batches = batchRes?.data || [];
+  const createBatch = useCreateBatch();
+  const updateBatch = useUpdateBatch();
+  const deleteBatch = useDeleteBatch();
+
+  const [newNo, setNewNo] = useState("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
+  const [newRoom, setNewRoom] = useState("");
+
+  const handleCreate = async () => {
+    if (!newNo.trim()) return;
+    try {
+      await createBatch.mutateAsync({
+        batch_no: newNo.trim(),
+        course_id: courseId,
+        start_date: newStart || null,
+        end_date: newEnd || null,
+        room: newRoom || null,
+      });
+      setNewNo(""); setNewStart(""); setNewEnd(""); setNewRoom("");
+      toast.success("Batch created");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to create batch");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Delete this batch?")) return;
+    try {
+      await deleteBatch.mutateAsync(id);
+      toast.success("Batch deleted");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to delete batch");
+    }
+  };
+
+  if (isLoading) return <div className="py-10 text-center"><RefreshCw className="w-6 h-6 animate-spin mx-auto text-slate-300" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
+        <h4 className="text-sm font-bold text-slate-900 border-l-4 border-brand-500 pl-3">New Batch</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Batch Number</label>
+            <input value={newNo} onChange={(e) => setNewNo(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" placeholder="e.g. Batch #1" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Start Date</label>
+            <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">End Date</label>
+            <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Room</label>
+            <input value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" placeholder="Room 101" />
+          </div>
+        </div>
+        <button onClick={handleCreate} disabled={createBatch.isPending || !newNo} className="w-full py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-50 transition-all active:scale-95">
+          Add Batch
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <h4 className="text-sm font-bold text-slate-900 px-1">Active Batches</h4>
+        {batches.length === 0 ? (
+          <div className="py-8 text-center text-slate-400 text-sm bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">No batches yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {batches.map((b) => (
+              <div key={b.batch_id} className="p-3 bg-white border border-slate-200 rounded-2xl flex items-center justify-between hover:border-brand-200 transition-colors group">
+                <div>
+                  <div className="font-bold text-slate-900">{b.batch_no}</div>
+                  <div className="text-[10px] text-slate-500 font-medium">
+                    {b.start_date || "?"} to {b.end_date || "?"} • {b.room || "No room"}
+                  </div>
+                </div>
+                <button onClick={() => handleDelete(b.batch_id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

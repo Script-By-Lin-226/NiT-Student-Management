@@ -111,42 +111,68 @@ export interface AdminCourse {
   course_name: string;
   academic_year_id: number;
   instructor_id: number | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  room?: string | null;
   fee_full_payment?: number | null;
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
   discount_plan?: string | null;
+  category?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 export interface AdminCourseCreate {
   course_name: string;
   academic_year_id: number;
   instructor_user_code?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  room?: string | null;
   fee_full_payment?: number | null;
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
   discount_plan?: string | null;
+  category?: string | null;
 }
 
 export interface AdminCourseUpdate {
   course_name?: string;
   academic_year_id?: number;
   instructor_user_code?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  room?: string | null;
   fee_full_payment?: number | null;
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
   discount_plan?: string | null;
+  category?: string | null;
+}
+
+export interface AdminBatch {
+  batch_id: number;
+  batch_no: string;
+  course_id: number;
+  course_name?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  room?: string | null;
+  instructor_id?: number | null;
+  is_active: boolean;
+}
+
+export interface AdminBatchCreate {
+  batch_no: string;
+  course_id: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  room?: string | null;
+  instructor_user_code?: string | null;
+}
+
+export interface AdminBatchUpdate {
+  batch_no?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  room?: string | null;
+  instructor_user_code?: string | null;
+  is_active?: boolean;
 }
 
 export interface AdminEnrollment {
@@ -156,6 +182,7 @@ export interface AdminEnrollment {
   course_id: number;
   enrollment_date: string | null;
   status: boolean;
+  batch_id?: number | null;
   // backend enriches list endpoint with these fields
   student_code?: string;
   student_name?: string;
@@ -168,6 +195,7 @@ export interface AdminEnrollment {
   installment_amount?: number | null;
   course_cost?: number | null;
   foc_items?: string | null;
+  profile_picture?: string | null;
 }
 
 export interface AdminEnrollmentCreate {
@@ -175,6 +203,7 @@ export interface AdminEnrollmentCreate {
   course_code: string;
   status?: boolean;
   batch_no?: string | null;
+  batch_id?: number | null;
   payment_plan?: string | null;
   downpayment?: number | null;
   installment_amount?: number | null;
@@ -183,6 +212,7 @@ export interface AdminEnrollmentCreate {
 export interface AdminEnrollmentUpdate {
   status?: boolean;
   batch_no?: string | null;
+  batch_id?: number | null;
   payment_plan?: string | null;
   downpayment?: number | null;
   installment_amount?: number | null;
@@ -246,10 +276,13 @@ export interface AdminTimeTableRow {
   course_id: number;
   course_code: string;
   course_name: string;
+  batch_id?: number | null;
+  batch_no?: string | null;
 }
 
 export interface AdminTimeTableCreate {
   course_code: string;
+  batch_no?: string | null;
   day_of_week: string;
   start_time: string;
   end_time: string;
@@ -261,6 +294,7 @@ export interface AdminTimeTableUpdate {
   start_time?: string;
   end_time?: string;
   room_name?: string | null;
+  batch_no?: string | null;
 }
 
 export interface AdminStudentRelations {
@@ -571,6 +605,26 @@ export class AdminService {
 
   static async changeSelfPassword(payload: { old_password: string, new_password: string }): Promise<void> {
     await api.put("/admin/profile/password", payload);
+  }
+
+  // Batches
+  static async listBatches(courseId?: number): Promise<PaginatedResponse<AdminBatch>> {
+    const res = await api.get<PaginatedResponse<AdminBatch>>("/admin/batches", { params: { course_id: courseId } });
+    return res.data;
+  }
+
+  static async createBatch(payload: AdminBatchCreate): Promise<AdminBatch> {
+    const res = await api.post<{ data: AdminBatch }>("/admin/batches", payload);
+    return res.data.data;
+  }
+
+  static async updateBatch(id: number, payload: AdminBatchUpdate): Promise<AdminBatch> {
+    const res = await api.put<{ data: AdminBatch }>(`/admin/batches/${id}`, payload);
+    return res.data.data;
+  }
+
+  static async deleteBatch(id: number): Promise<void> {
+    await api.delete(`/admin/batches/${id}`);
   }
 }
 

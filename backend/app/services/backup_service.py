@@ -8,7 +8,7 @@ from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boo
 from app.models.model import (
     User, AcademicYear, Course, Enrollment, Payment, 
     Room, TimeTable, Grade, Attendance, StaffAttendance, 
-    ParentStudent, ActivityLog
+    ParentStudent, ActivityLog, Batch
 )
 from app.services.rbac_portal import validating_admin_role
 from app.core.timezone_utils import get_now_local
@@ -28,6 +28,7 @@ class BackupService:
             (Room, "Rooms"),
             (Enrollment, "Enrollments"),
             (Payment, "Payments"),
+            (Batch, "Batches"),
             (TimeTable, "Timetables"),
             (Grade, "Grades"),
             (Attendance, "Attendances"),
@@ -85,6 +86,7 @@ class BackupService:
                 ("AcademicYears", AcademicYear),
                 ("Users", User),
                 ("Courses", Course),
+                ("Batches", Batch),
                 ("Enrollments", Enrollment),
                 ("Payments", Payment),
                 ("Timetables", TimeTable),
@@ -128,6 +130,14 @@ class BackupService:
                             # Ensure relationship_label exists
                             if 'relationship' in record and 'relationship_label' not in record:
                                 record['relationship_label'] = record.pop('relationship')
+                        
+                        if model == AcademicYear:
+                            # Handle academic_year_name aliases
+                            if 'year_name' in record:
+                                record['academic_year_name'] = record.pop('year_name')
+                            # Handle academic_year_id vs academicyear_id
+                            if 'academicyear_id' in record:
+                                record['academic_year_id'] = record.pop('academicyear_id')
                         
                         # Clean NaN/Null values explicitly and handle Timestamps
                         clean_record = {}

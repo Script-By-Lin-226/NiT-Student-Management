@@ -3,6 +3,7 @@ import { api } from "./api";
 export interface PublicCourse {
   course_code: string;
   course_name: string;
+  category: string;
 }
 
 export class AuthService {

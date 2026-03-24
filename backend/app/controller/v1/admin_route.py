@@ -11,6 +11,7 @@ from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateReques
 from app.schemas.room import AdminRoomCreate, AdminRoomUpdate
 from app.schemas.time_table import AdminTimeTableCreate, AdminTimeTableUpdate
 from app.schemas.payment import PaymentCreate, PaymentUpdate
+from app.schemas.batch import AdminBatchCreate, AdminBatchUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 
@@ -210,6 +211,24 @@ async def update_course(course_code: str, payload: AdminCourseUpdate, request: R
 @router.delete("/courses/{course_code}")
 async def delete_course(course_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.delete_course(request, session, course_code)
+
+# --- Batches CRUD ---
+
+@router.get("/batches")
+async def list_batches(request: Request, course_id: int = None, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.list_batches(request, session, course_id)
+
+@router.post("/batches")
+async def create_batch(payload: AdminBatchCreate, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.create_batch(request, session, payload)
+
+@router.put("/batches/{batch_id}")
+async def update_batch(batch_id: int, payload: AdminBatchUpdate, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.update_batch(request, session, batch_id, payload)
+
+@router.delete("/batches/{batch_id}")
+async def delete_batch(batch_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.delete_batch(request, session, batch_id)
 
 # --- Enrollments CRUD ---
 

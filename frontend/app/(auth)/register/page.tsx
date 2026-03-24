@@ -41,6 +41,7 @@ export default function RegisterPage() {
   
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [howDidYouHear, setHowDidYouHear] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [otherHearAbout, setOtherHearAbout] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -324,6 +325,25 @@ export default function RegisterPage() {
                         {currentStep === 2 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                     <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-slate-700">Course Category</label>
+                                        <select 
+                                            value={selectedCategory} 
+                                            onChange={(e) => {
+                                                setSelectedCategory(e.target.value);
+                                                setFormData(prev => ({ ...prev, course_code: "" }));
+                                            }}
+                                            className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all text-slate-700 font-medium appearance-none cursor-pointer"
+                                        >
+                                            <option value="">All Categories</option>
+                                            <option value="Diploma">Diploma</option>
+                                            <option value="Certificate">Certificate</option>
+                                            <option value="NCC">NCC</option>
+                                            <option value="International Qualification">International Qualification</option>
+                                            <option value="GED Courses">GED Courses</option>
+                                            <option value="ABE courses">ABE courses</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-slate-700">Select Your Course</label>
                                         <select 
                                             name="course_code"
@@ -332,11 +352,14 @@ export default function RegisterPage() {
                                             className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all text-slate-700 font-medium appearance-none cursor-pointer"
                                         >
                                             <option value="" disabled>Choose a course...</option>
-                                            {courses.map((course) => (
-                                                <option key={course.course_code} value={course.course_code}>
-                                                    {course.course_name} ({course.course_code})
-                                                </option>
-                                            ))}
+                                            {courses
+                                                .filter(c => !selectedCategory || c.category === selectedCategory)
+                                                .map((course) => (
+                                                    <option key={course.course_code} value={course.course_code}>
+                                                        {course.course_name} ({course.course_code})
+                                                    </option>
+                                                ))
+                                            }
                                         </select>
                                         {courses.length === 0 && (
                                             <p className="text-xs text-amber-600 font-medium animate-pulse">No courses available. Please contact support.</p>

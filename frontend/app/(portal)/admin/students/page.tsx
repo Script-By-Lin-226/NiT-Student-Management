@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check } from "lucide-react";
 import * as XLSX from "xlsx";
-import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser } from "@/hooks/useAdmin";
+import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment } from "@/hooks/useAdmin";
 
 function Modal({
   title,
@@ -61,6 +61,8 @@ export default function AdminStudentsPage() {
   const createMutation = useCreateStudent();
   const deleteMutation = useDeleteUser();
   const updateMutation = useUpdateUser();
+  const approveMutation = useApproveStudent();
+  const fastEnrollMutation = useCreateEnrollment();
 
   const rows = studentResponse?.data || [];
   const pagination = studentResponse?.pagination;
@@ -222,7 +224,10 @@ export default function AdminStudentsPage() {
     setViewOpen(true);
 
     AdminService.getStudentRelations(s.user_code)
-      .then(setRelations)
+      .then(data => {
+        setRelations(data);
+        if (data.student) setSelected(data.student);
+      })
       .catch(() => setRelations(null))
       .finally(() => setRelationsLoading(false));
   };
@@ -238,7 +243,14 @@ export default function AdminStudentsPage() {
     setEditOpen(true);
 
     AdminService.getStudentRelations(s.user_code)
-      .then(setRelations)
+      .then(data => {
+        setRelations(data);
+        if (data.student) {
+          setSelected(data.student);
+          // Don't override eUsername etc if user already started editing, 
+          // but we do need the full details for the student object.
+        }
+      })
       .catch(() => setRelations(null))
       .finally(() => setRelationsLoading(false));
   };
@@ -286,9 +298,12 @@ export default function AdminStudentsPage() {
     setBusy(true);
     setError("");
     try {
-        await AdminService.approveStudent(selected.user_id, {
-            user_code: approvePrefix === "" ? approveManualCode : undefined,
-            auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
+        await approveMutation.mutateAsync({
+            id: selected.user_id,
+            payload: {
+                user_code: approvePrefix === "" ? approveManualCode : undefined,
+                auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
+            }
         });
         setApproveOpen(false);
         await load();
@@ -336,7 +351,7 @@ export default function AdminStudentsPage() {
     if (!ok) return;
     setBusy(true);
     try {
-      await AdminService.createEnrollment({
+      await fastEnrollMutation.mutateAsync({
         student_code: uCode,
         course_code: cCode,
         status: false, // Start as inactive/pending

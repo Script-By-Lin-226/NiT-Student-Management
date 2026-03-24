@@ -1,5 +1,6 @@
+from typing import Optional, List
 from app.services.rbac_portal import validating_admin_role, validating_parent_role
-from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog
+from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog, Batch
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateRequest
@@ -17,6 +18,7 @@ from app.schemas.room import AdminRoomCreate, AdminRoomUpdate
 from collections import defaultdict
 from app.schemas.time_table import AdminTimeTableCreate, AdminTimeTableUpdate
 from app.schemas.payment import PaymentCreate, PaymentUpdate
+from app.schemas.batch import AdminBatchCreate, AdminBatchUpdate
 from app.core.timezone_utils import get_now_local
 
 
@@ -30,6 +32,7 @@ def _serialize_user_lite(u: User) -> dict:
         "is_active": u.is_active,
         "phone": getattr(u, "phone", None),
         "data_of_birth": u.data_of_birth.isoformat() if getattr(u, "data_of_birth", None) else None,
+        "profile_picture": getattr(u, "profile_picture", None),
         "created_at": f"{u.created_at.isoformat()}Z" if getattr(u, "created_at", None) else None,
     }
 
@@ -126,9 +129,9 @@ async def _next_enrollment_code(session: AsyncSession) -> str:
 def _serialize_academic_year(y: AcademicYear) -> dict:
     return {
         "academic_year_id": y.academic_year_id,
-        "academic_year_name": y.year_name,
-        "start_date": y.start_date.date().isoformat() if getattr(y, "start_date", None) else None,
-        "end_date": y.end_date.date().isoformat() if getattr(y, "end_date", None) else None,
+        "academic_year_name": y.academic_year_name,
+        "start_date": y.start_date.isoformat() if y.start_date else None,
+        "end_date": y.end_date.isoformat() if y.end_date else None,
     }
 
 
@@ -139,14 +142,25 @@ def _serialize_course(c: Course) -> dict:
         "course_name": c.course_name,
         "academic_year_id": c.academicyear_id,
         "instructor_id": c.instructor_id,
-        "start_date": str(c.start_date) if getattr(c, "start_date", None) else None,
-        "end_date": str(c.end_date) if getattr(c, "end_date", None) else None,
-        "room": c.room,
         "fee_full_payment": getattr(c, "fee_full_payment", None),
         "fee_installment": getattr(c, "fee_installment", None),
         "exam_fee_gbp": getattr(c, "exam_fee_gbp", None),
         "foc_items": getattr(c, "foc_items", None),
         "discount_plan": getattr(c, "discount_plan", None),
+        "category": getattr(c, "category", None),
+    }
+
+
+def _serialize_batch(b: Batch) -> dict:
+    return {
+        "batch_id": b.batch_id,
+        "batch_no": b.batch_no,
+        "course_id": b.course_id,
+        "start_date": b.start_date.isoformat() if b.start_date else None,
+        "end_date": b.end_date.isoformat() if b.end_date else None,
+        "room": b.room,
+        "instructor_id": b.instructor_id,
+        "is_active": b.is_active,
     }
 
 
@@ -156,6 +170,7 @@ def _serialize_enrollment(e: Enrollment) -> dict:
         "enrollment_code": e.enrollment_code,
         "student_id": e.student_id,
         "course_id": e.course_id,
+        "batch_id": e.batch_id,
         "enrollment_date": f"{e.enrollment_date.isoformat()}Z" if getattr(e, "enrollment_date", None) else None,
         "status": bool(e.status),
         "batch_no": getattr(e, "batch_no", None),
@@ -201,8 +216,8 @@ async def _log_activity(request: Request, session: AsyncSession, action: str, de
                 details=details
             )
             session.add(al)
-            # Use flush instead of commit to batch with the main transaction
-            await session.flush()
+            # Commit to ensure the log is persisted even if called after the main transaction commit
+            await session.commit()
     except Exception as e:
         print("_log_activity error:", e)
 
@@ -291,7 +306,6 @@ class AdminPanelService:
         
         # Base query optimized to exclude large columns
         base_query = select(User).where(User.role == "student").options(
-            defer(User.profile_picture),
             defer(User.address),
             defer(User.password_hash)
         )
@@ -789,11 +803,11 @@ class AdminPanelService:
         # Academic year
         local_now = get_now_local()
         year_name = f"{local_now.year}/{local_now.year + 1}"
-        yr_r = await session.execute(select(AcademicYear).where(AcademicYear.year_name == year_name))
+        yr_r = await session.execute(select(AcademicYear).where(AcademicYear.academic_year_name == year_name))
         year = yr_r.scalars().first()
         if not year:
             year = AcademicYear(
-                year_name=year_name,
+                academic_year_name=year_name,
                 start_date=datetime(date.today().year, 1, 1),
                 end_date=datetime(date.today().year, 12, 31),
             )
@@ -913,12 +927,12 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
-        existing = await session.execute(select(AcademicYear).where(AcademicYear.year_name == payload.academic_year_name))
+        existing = await session.execute(select(AcademicYear).where(AcademicYear.academic_year_name == payload.academic_year_name))
         if existing.scalars().first():
             return JSONResponse({"status_code": 409, "message": "Academic year already exists"}, status_code=409)
 
         new_academic_year = AcademicYear(
-            year_name=payload.academic_year_name,
+            academic_year_name=payload.academic_year_name,
             start_date=datetime.strptime(payload.start_date, "%Y-%m-%d"),
             end_date=datetime.strptime(payload.end_date, "%Y-%m-%d"),
         )
@@ -959,7 +973,7 @@ class AdminPanelService:
             return JSONResponse({"message": "Academic year not found"}, status_code=404)
             
         if payload.academic_year_name is not None:
-            target_year.year_name = payload.academic_year_name
+            target_year.academic_year_name = payload.academic_year_name
         if payload.start_date is not None:
             target_year.start_date = datetime.strptime(payload.start_date, "%Y-%m-%d")
         if payload.end_date is not None:
@@ -1055,14 +1069,12 @@ class AdminPanelService:
             course_name=payload.course_name,
             academicyear_id=payload.academic_year_id,
             instructor_id=instructor_id,
-            start_date=datetime.strptime(payload.start_date, "%Y-%m-%d").date() if payload.start_date else None,
-            end_date=datetime.strptime(payload.end_date, "%Y-%m-%d").date() if getattr(payload, "end_date", None) else None,
-            room=payload.room,
             fee_full_payment=payload.fee_full_payment,
             fee_installment=payload.fee_installment,
             exam_fee_gbp=payload.exam_fee_gbp,
             foc_items=payload.foc_items,
             discount_plan=payload.discount_plan,
+            category=payload.category,
         )
         session.add(new_course)
         await session.commit()
@@ -1091,15 +1103,7 @@ class AdminPanelService:
             else:
                 u = await session.execute(select(User).where(User.user_code == payload.instructor_user_code))
                 inst = u.scalars().first()
-                if not inst:
-                    return JSONResponse({"status_code": 404, "message": "Instructor not found"}, status_code=404)
-                course.instructor_id = inst.user_id
-        if payload.start_date is not None:
-            course.start_date = datetime.strptime(payload.start_date, "%Y-%m-%d").date() if payload.start_date else None
-        if getattr(payload, "end_date", None) is not None:
-            course.end_date = datetime.strptime(payload.end_date, "%Y-%m-%d").date() if payload.end_date else None
-        if payload.room is not None:
-            course.room = payload.room
+                if inst: course.instructor_id = inst.user_id
         if getattr(payload, "fee_full_payment", None) is not None:
             course.fee_full_payment = payload.fee_full_payment
         if getattr(payload, "fee_installment", None) is not None:
@@ -1110,6 +1114,8 @@ class AdminPanelService:
             course.foc_items = payload.foc_items
         if getattr(payload, "discount_plan", None) is not None:
             course.discount_plan = payload.discount_plan
+        if getattr(payload, "category", None) is not None:
+            course.category = payload.category
 
         await session.commit()
         await _log_activity(request, session, "Update Course", f"Course {course_code} updated")
@@ -1127,14 +1133,104 @@ class AdminPanelService:
         await _log_activity(request, session, "Delete Course", f"Course {course_code} deleted")
         return JSONResponse({"status_code": 200, "message": "Course deleted successfully"})
 
-    # CRUD - Enrollments
+    # --- CRUD - Batches ---
+
+    async def list_batches(request: Request, session: AsyncSession, course_id: Optional[int] = None):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        q = select(Batch, Course).join(Course, Batch.course_id == Course.course_id)
+        if course_id:
+            q = q.where(Batch.course_id == course_id)
+        
+        res = await session.execute(q)
+        data = []
+        for b, c in res:
+            d = _serialize_batch(b)
+            d["course_name"] = c.course_name
+            data.append(d)
+            
+        return JSONResponse({"status_code": 200, "message": "Batches fetched successfully", "data": data})
+
+    async def create_batch(request: Request, session: AsyncSession, payload: AdminBatchCreate):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        # Check course
+        c_r = await session.execute(select(Course).where(Course.course_id == payload.course_id))
+        course = c_r.scalars().first()
+        if not course:
+            return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
+            
+        # Optional instructor
+        inst_id = None
+        if payload.instructor_user_code:
+            i_r = await session.execute(select(User).where(User.user_code == payload.instructor_user_code))
+            inst = i_r.scalars().first()
+            if inst:
+                inst_id = inst.user_id
+
+        new_batch = Batch(
+            batch_no=payload.batch_no,
+            course_id=payload.course_id,
+            start_date=datetime.strptime(payload.start_date, "%Y-%m-%d").date() if payload.start_date else None,
+            end_date=datetime.strptime(payload.end_date, "%Y-%m-%d").date() if payload.end_date else None,
+            room=payload.room,
+            instructor_id=inst_id
+        )
+        session.add(new_batch)
+        await session.commit()
+        await session.refresh(new_batch)
+        await _log_activity(request, session, "Create Batch", f"Batch {payload.batch_no} created for course {course.course_name}")
+        return JSONResponse({"status_code": 201, "message": "Batch created successfully", "data": _serialize_batch(new_batch)}, status_code=201)
+
+    async def update_batch(request: Request, session: AsyncSession, batch_id: int, payload: AdminBatchUpdate):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+            
+        r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+        batch = r.scalars().first()
+        if not batch:
+            return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
+            
+        if payload.batch_no is not None: batch.batch_no = payload.batch_no
+        if payload.start_date is not None: batch.start_date = datetime.strptime(payload.start_date, "%Y-%m-%d").date()
+        if payload.end_date is not None: batch.end_date = datetime.strptime(payload.end_date, "%Y-%m-%d").date()
+        if payload.room is not None: batch.room = payload.room
+        if payload.is_active is not None: batch.is_active = payload.is_active
+        
+        if payload.instructor_user_code is not None:
+            i_r = await session.execute(select(User).where(User.user_code == payload.instructor_user_code))
+            inst = i_r.scalars().first()
+            if inst:
+                batch.instructor_id = inst.user_id
+            else:
+                batch.instructor_id = None
+                
+        await session.commit()
+        await _log_activity(request, session, "Update Batch", f"Batch ID {batch_id} updated")
+        return JSONResponse({"status_code": 200, "message": "Batch updated successfully", "data": _serialize_batch(batch)})
+
+    async def delete_batch(request: Request, session: AsyncSession, batch_id: int):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+        batch = r.scalars().first()
+        if not batch:
+            return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
+        await session.delete(batch)
+        await session.commit()
+        await _log_activity(request, session, "Delete Batch", f"Batch ID {batch_id} deleted")
+        return JSONResponse({"status_code": 200, "message": "Batch deleted successfully"})
+
+    # --- CRUD - Enrollments ---
 
     async def list_enrollments(request: Request, session: AsyncSession, status: bool = None):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Enrollment, User, Course).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).options(
-            defer(User.profile_picture), defer(User.address), defer(User.password_hash)
+            defer(User.address), defer(User.password_hash)
         ).order_by(Enrollment.enrollment_date.desc(), Enrollment.enrollment_id.desc())
 
         if status is not None:
@@ -1152,6 +1248,7 @@ class AdminPanelService:
             d["room"] = getattr(c, "room", None)
             d["course_cost"] = (c.fee_full_payment or getattr(c, "exam_fee", 0) or 0) if getattr(e, "payment_plan", None) == "full" else ((c.fee_installment or getattr(c, "exam_fee", 0) or 0) if getattr(e, "payment_plan", None) == "installment" else 0)
             d["foc_items"] = getattr(c, "foc_items", None)
+            d["profile_picture"] = u.profile_picture
             data.append(d)
         return JSONResponse({"status_code": 200, "message": "Enrollments fetched successfully", "data": data})
 
@@ -1174,11 +1271,33 @@ class AdminPanelService:
         if dup_r.scalars().first():
             return JSONResponse({"status_code": 409, "message": "Student already enrolled in this course"}, status_code=409)
 
+        # Find matching Batch if possible
+        batch_id = payload.batch_id
+        batch_no = payload.batch_no
+        if not batch_id and batch_no:
+            b_res = await session.execute(select(Batch).where(and_(Batch.course_id == course.course_id, Batch.batch_no == batch_no)))
+            batch = b_res.scalars().first()
+            if batch:
+                batch_id = batch.batch_id
+            else:
+                # If batch_no is provided but no matching batch found, clear batch_no to avoid inconsistency
+                batch_no = None
+        elif batch_id and not batch_no:
+            b_res = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+            batch = b_res.scalars().first()
+            if batch:
+                batch_no = batch.batch_no
+            else:
+                # If batch_id is provided but no matching batch found, clear batch_id
+                batch_id = None
+
+
         enrollment_code = await _next_enrollment_code(session)
         e = Enrollment(
             enrollment_code=enrollment_code,
             student_id=student.user_id,
             course_id=course.course_id,
+            batch_id=batch_id,
             status=payload.status,
             batch_no=payload.batch_no,
             payment_plan=payload.payment_plan,
@@ -1279,19 +1398,27 @@ class AdminPanelService:
             except ValueError:
                 pass
 
-        # Ensure attendance is within course bounds for the student
-        enroll_q = select(Enrollment).join(Course, Enrollment.course_id == Course.course_id).where(
+        # Ensure attendance is within course/batch bounds for the student
+        enroll_q = select(Enrollment, Batch, Course).outerjoin(Batch, Enrollment.batch_id == Batch.batch_id).join(Course, Enrollment.course_id == Course.course_id).where(
             and_(
                 Enrollment.student_id == student.user_id,
-                Enrollment.status == True,
-                Course.start_date <= today,
-                Course.end_date >= today
+                Enrollment.status == True
             )
         )
         er = await session.execute(enroll_q)
-        active_enroll = er.scalars().first()
-        if not active_enroll:
-            return JSONResponse({"status_code": 400, "message": "Attendance is only allowed within an active course duration."}, status_code=400)
+        row = er.first()
+        if not row:
+            return JSONResponse({"status_code": 404, "message": "No active enrollment found for student."}, status_code=404)
+        
+        active_enroll, active_batch, active_course = row
+        start = active_batch.start_date if active_batch and active_batch.start_date else active_course.start_date
+        end = active_batch.end_date if active_batch and active_batch.end_date else active_course.end_date
+        
+        if not start or not end:
+             # If no dates set at all, we might allow or deny. Let's assume allowed if missing but warn or just check.
+             pass
+        elif not (start <= today <= end):
+            return JSONResponse({"status_code": 400, "message": f"Attendance is only allowed within course/batch duration ({start} to {end})."}, status_code=400)
 
         # ── One-per-day guard ──────────────────────────────────────────────
         duplicate_query = select(Attendance).where(
@@ -1315,6 +1442,7 @@ class AdminPanelService:
 
         new_record = Attendance(
             user_id=student.user_id,
+            batch_id=active_enroll.batch_id,
             attendance_date=today,
             slot=payload.slot,
             check_today=payload.check_today
@@ -1340,7 +1468,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Attendance, User).join(User, Attendance.user_id == User.user_id).options(
-            defer(User.profile_picture), defer(User.address), defer(User.password_hash)
+            defer(User.address), defer(User.password_hash)
         ).order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
 
         
@@ -1362,6 +1490,7 @@ class AdminPanelService:
                     "attendance_date": str(a.attendance_date),
                     "slot": a.slot,
                     "check_today": a.check_today,
+                    "profile_picture": u.profile_picture,
                 }
                 for a, u in rows
             ],
@@ -1575,12 +1704,13 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(
-            select(TimeTable, Course)
+            select(TimeTable, Course, Batch)
             .join(Course, TimeTable.course_id == Course.course_id)
+            .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
         )
         rows = r.all()
         data = []
-        for t, c in rows:
+        for t, c, b in rows:
             data.append(
                 {
                     "timetable_id": t.timetable_id,
@@ -1591,6 +1721,8 @@ class AdminPanelService:
                     "course_id": c.course_id,
                     "course_code": c.course_code,
                     "course_name": c.course_name,
+                    "batch_id": t.batch_id,
+                    "batch_no": b.batch_no if b else None
                 }
             )
         return JSONResponse({"status_code": 200, "message": "Timetables fetched successfully", "data": data})
@@ -1604,8 +1736,16 @@ class AdminPanelService:
         if not course:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
 
+        batch_id = None
+        if payload.batch_no:
+            b_r = await session.execute(select(Batch).where(and_(Batch.course_id == course.course_id, Batch.batch_no == payload.batch_no)))
+            batch = b_r.scalars().first()
+            if batch:
+                batch_id = batch.batch_id
+
         tt = TimeTable(
             course_id=course.course_id,
+            batch_id=batch_id,
             day_of_week=payload.day_of_week,
             start_time=payload.start_time,
             end_time=payload.end_time,
@@ -1614,7 +1754,10 @@ class AdminPanelService:
         session.add(tt)
         await session.commit()
         await session.refresh(tt)
-        await _log_activity(request, session, "Create Timetable", f"Timetable for {payload.course_code} on {payload.day_of_week} {payload.start_time}-{payload.end_time} created")
+        msg = f"Timetable for {payload.course_code}"
+        if payload.batch_no: msg += f" (Batch {payload.batch_no})"
+        msg += f" on {payload.day_of_week} {payload.start_time}-{payload.end_time} created"
+        await _log_activity(request, session, "Create Timetable", msg)
         return JSONResponse({"status_code": 201, "message": "Timetable created successfully", "data": {"timetable_id": tt.timetable_id}}, status_code=201)
 
     async def update_timetable(request: Request, session: AsyncSession, timetable_id: int, payload: AdminTimeTableUpdate):
@@ -1634,6 +1777,15 @@ class AdminPanelService:
             tt.end_time = payload.end_time
         if payload.room_name is not None:
             tt.room_name = payload.room_name
+        
+        if payload.batch_no is not None:
+            if payload.batch_no:
+                b_r = await session.execute(select(Batch).where(and_(Batch.course_id == tt.course_id, Batch.batch_no == payload.batch_no)))
+                batch = b_r.scalars().first()
+                if batch:
+                    tt.batch_id = batch.batch_id
+            else:
+                tt.batch_id = None
 
         await session.commit()
         await _log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")

@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { AdminCourse, AdminEnrollment, AdminService } from "@/services/admin.service";
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
+import { useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment, useCourses, useEnrollments, useBatches } from "@/hooks/useAdmin";
+import { toast } from "sonner";
 
 
 function Modal({
@@ -43,29 +45,46 @@ export default function AdminEnrollmentsPage() {
   const router = useRouter();
   const { isAdminOrSales, isAdmin, loading } = useAuth();
 
-  const [courses, setCourses] = useState<AdminCourse[]>([]);
-  const [rows, setRows] = useState<AdminEnrollment[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { data: courses = [], isLoading: coursesLoading } = useCourses();
+  const { data: rows = [], isLoading: enrollmentsLoading, refetch: reload } = useEnrollments();
+
   const [q, setQ] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selected, setSelected] = useState<AdminEnrollment | null>(null);
 
+  const createMutation = useCreateEnrollment();
+  const deleteMutation = useDeleteEnrollment();
+  const busy = coursesLoading || enrollmentsLoading || createMutation.isPending || deleteMutation.isPending;
+
   const [cStudentCode, setCStudentCode] = useState("");
   const [cCourseCode, setCCourseCode] = useState("");
   const [cStatus, setCStatus] = useState(true);
   const [cBatchNo, setCBatchNo] = useState("");
+  const [cBatchId, setCBatchId] = useState<number | "">("");
   const [cPaymentPlan, setCPaymentPlan] = useState("");
   const [cDownpayment, setCDownpayment] = useState<number | "">("");
   const [cInstallment, setCInstallment] = useState<number | "">("");
 
   const [eStatus, setEStatus] = useState(true);
   const [eBatchNo, setEBatchNo] = useState("");
+  const [eBatchId, setEBatchId] = useState<number | "">("");
   const [ePaymentPlan, setEPaymentPlan] = useState("");
   const [eDownpayment, setEDownpayment] = useState<number | "">("");
   const [eInstallment, setEInstallment] = useState<number | "">("");
+
+  const updateMutation = useUpdateEnrollment();
+
+  const selectedCourse = useMemo(() => {
+    return courses.find(c => c.course_code === cCourseCode);
+  }, [cCourseCode, courses]);
+
+  const { data: cBatchesFull } = useBatches(selectedCourse?.course_id);
+  const cBatches = cBatchesFull?.data || [];
+
+  const { data: eBatchesFull } = useBatches(selected?.course_id);
+  const eBatches = eBatchesFull?.data || [];
 
 
   useEffect(() => {
@@ -89,22 +108,8 @@ export default function AdminEnrollmentsPage() {
     });
   }, [q, rows]);
 
-  const load = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const [cs, es] = await Promise.all([AdminService.listCourses(), AdminService.listEnrollments()]);
-      setCourses(cs);
-      setRows(es);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load enrollments");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   useEffect(() => {
-    if (isAdminOrSales) load();
+    if (isAdminOrSales) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminOrSales]);
 
@@ -123,71 +128,67 @@ export default function AdminEnrollmentsPage() {
   };
 
   const submitCreate = async () => {
-    setBusy(true);
-    setError("");
     try {
-      await AdminService.createEnrollment({
+      await createMutation.mutateAsync({
         student_code: cStudentCode.trim(),
         course_code: cCourseCode.trim(),
         status: cStatus,
         batch_no: cBatchNo.trim() || null,
+        batch_id: cBatchId !== "" ? Number(cBatchId) : null,
         payment_plan: cPaymentPlan || null,
         downpayment: cDownpayment !== "" ? Number(cDownpayment) : null,
         installment_amount: cInstallment !== "" ? Number(cInstallment) : null,
       });
       setCreateOpen(false);
-      await load();
+      reload();
+      toast.success("Enrollment created");
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to create enrollment");
-    } finally {
-      setBusy(false);
+      toast.error(e?.response?.data?.message || "Failed to create enrollment");
     }
   };
 
   const openEdit = (e: AdminEnrollment) => {
     setSelected(e);
-    setEStatus(!!e.status);
+    setEStatus(e.status);
     setEBatchNo(e.batch_no || "");
+    setEBatchId(e.batch_id || "");
     setEPaymentPlan(e.payment_plan || "");
-    setEDownpayment(e.downpayment ?? "");
-    setEInstallment(e.installment_amount ?? "");
+    setEDownpayment(e.downpayment || "");
+    setEInstallment(e.installment_amount || "");
     setEditOpen(true);
   };
 
   const submitEdit = async () => {
     if (!selected) return;
-    setBusy(true);
-    setError("");
     try {
-      await AdminService.updateEnrollment(selected.enrollment_code, { 
-        status: eStatus,
-        batch_no: eBatchNo.trim() || null,
-        payment_plan: ePaymentPlan || null,
-        downpayment: eDownpayment !== "" ? Number(eDownpayment) : null,
-        installment_amount: eInstallment !== "" ? Number(eInstallment) : null,
+      await updateMutation.mutateAsync({
+        code: selected.enrollment_code,
+        payload: {
+          status: eStatus,
+          batch_no: eBatchNo.trim() || null,
+          batch_id: eBatchId !== "" ? Number(eBatchId) : null,
+          payment_plan: ePaymentPlan || null,
+          downpayment: eDownpayment !== "" ? Number(eDownpayment) : null,
+          installment_amount: eInstallment !== "" ? Number(eInstallment) : null,
+        },
       });
       setEditOpen(false);
       setSelected(null);
-      await load();
+      reload();
+      toast.success("Enrollment updated");
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to update enrollment");
-    } finally {
-      setBusy(false);
+      toast.error(e?.response?.data?.message || "Failed to update enrollment");
     }
   };
 
   const doDelete = async (e: AdminEnrollment) => {
-    const ok = window.confirm(`Delete enrollment ${e.enrollment_code}?`);
-    if (!ok) return;
-    setBusy(true);
-    setError("");
+    if (!window.confirm(`Delete enrollment ${e.enrollment_code}?`)) return;
     try {
-      await AdminService.deleteEnrollment(e.enrollment_code);
-      await load();
+      await deleteMutation.mutateAsync(e.enrollment_code);
+      reload();
+      toast.success("Enrollment deleted");
     } catch (er: any) {
-      setError(er?.response?.data?.detail || er?.response?.data?.message || "Failed to delete enrollment");
-    } finally {
-      setBusy(false);
+      toast.error(er?.response?.data?.message || "Failed to delete enrollment");
     }
   };
 
@@ -199,7 +200,7 @@ export default function AdminEnrollmentsPage() {
           <p className="text-slate-500 font-medium text-sm mt-1">Enroll students into courses and manage enrollment status.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={load} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95">
+          <button onClick={() => reload()} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95">
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
@@ -241,54 +242,72 @@ export default function AdminEnrollmentsPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by student or course…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" />
           </div>
-          {error && <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">{error}</div>}
         </div>
 
         {/* Desktop Table */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
+            <thead className="bg-slate-50/80 text-xs uppercase font-bold text-slate-500 border-b border-slate-100">
               <tr>
                 <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Student</th>
                 <th className="px-6 py-4">Course</th>
-                <th className="px-6 py-4">Room</th>
+                <th className="px-6 py-4">Batch</th>
+                <th className="px-6 py-4">Payment</th>
                 <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.map((e) => (
-                <tr key={e.enrollment_code} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-800">{e.enrollment_code}</td>
+                <tr key={e.enrollment_code} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4 font-bold text-brand-600">{e.enrollment_code}</td>
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-800">{(e as any).student_name || "-"}</div>
-                    <div className="text-xs text-slate-500 font-medium">{(e as any).student_code || `ID ${e.student_id}`}</div>
+                    <div className="flex items-center gap-3">
+                      {e.profile_picture ? (
+                        <img src={e.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                          {e.student_name?.[0] || "?"}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{e.student_name || "-"}</div>
+                        <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{e.student_code || `ID ${e.student_id}`}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-800">{(e as any).course_name || "-"}</div>
-                    <div className="text-xs text-slate-500 font-medium">{(e as any).course_code || `ID ${e.course_id}`}</div>
+                    <div className="font-bold text-slate-900">{(e as any).course_name || "-"}</div>
+                    <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{(e as any).course_code || `ID ${e.course_id}`}</div>
                   </td>
-                  <td className="px-6 py-4">{(e as any).room || "-"}</td>
-                  <td className="px-6 py-4">{e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"}</td>
                   <td className="px-6 py-4">
-                    <span className={["inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"].join(" ")}>
+                    <div className="font-bold text-slate-700">{e.batch_no || "-"}</div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Room: {(e as any).room || "-"}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-900 uppercase tracking-tighter text-xs">{e.payment_plan || "-"}</div>
+                    {e.payment_plan === "installment" && (
+                      <div className="text-[10px] text-slate-400 font-bold">Res: {e.installment_amount?.toLocaleString()} MMK</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 font-medium text-slate-600">{e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={["inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"].join(" ")}>
                       {e.status ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 text-xs">
                       {isAdmin && (
-                        <button onClick={() => openEdit(e)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95">
-                          <Pencil className="w-3.5 h-3.5" />
-                          Edit
+                        <button onClick={() => openEdit(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm">
+                          <Pencil className="w-4 h-4" />
                         </button>
                       )}
                       {isAdmin && (
-                        <button onClick={() => doDelete(e)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all active:scale-95">
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
+                        <button onClick={() => doDelete(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all active:scale-90 shadow-sm">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -297,7 +316,7 @@ export default function AdminEnrollmentsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={8} className="px-6 py-10 text-center text-slate-400 font-medium">
                     {busy ? "Loading…" : "No enrollments found."}
                   </td>
                 </tr>
@@ -311,10 +330,19 @@ export default function AdminEnrollmentsPage() {
           {filtered.map((e) => (
             <div key={e.enrollment_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
               <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{e.enrollment_code}</div>
-                  <div className="text-base font-bold text-slate-900 leading-tight">{(e as any).student_name || "Unknown Student"}</div>
-                  <div className="text-xs text-slate-500 font-medium">{(e as any).student_code || `ID ${e.student_id}`}</div>
+                <div className="flex items-center gap-3">
+                  {e.profile_picture ? (
+                    <img src={e.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                      {e.student_name?.[0] || "?"}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{e.enrollment_code}</div>
+                    <div className="text-base font-bold text-slate-900 leading-tight">{e.student_name || "Unknown Student"}</div>
+                    <div className="text-xs text-slate-500 font-medium">{e.student_code || `ID ${e.student_id}`}</div>
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <span className={["inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"].join(" ")}>
@@ -383,9 +411,26 @@ export default function AdminEnrollmentsPage() {
               ))}
             </datalist>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch No (Important for Attendance)</label>
-            <input value={cBatchNo} onChange={(e) => setCBatchNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. Batch 1" />
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Batch (Populated from Course)</label>
+            <select 
+              value={cBatchId} 
+              onChange={(e) => {
+                const val = e.target.value;
+                setCBatchId(val ? Number(val) : "");
+                const b = cBatches.find(x => x.batch_id === Number(val));
+                setCBatchNo(b?.batch_no || "");
+              }} 
+              disabled={!cCourseCode}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:opacity-50"
+            >
+              <option value="">-- Select Batch --</option>
+              {cBatches.map(b => (
+                <option key={b.batch_id} value={b.batch_id}>
+                  {b.batch_no} ({b.start_date || "N/A"})
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Plan</label>
@@ -423,9 +468,25 @@ export default function AdminEnrollmentsPage() {
 
       <Modal title={`Edit Enrollment${selected ? ` — ${selected.enrollment_code}` : ""}`} open={editOpen} onClose={() => setEditOpen(false)}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch No</label>
-            <input value={eBatchNo} onChange={(e) => setEBatchNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="e.g. Batch 1" />
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch</label>
+            <select 
+              value={eBatchId} 
+              onChange={(e) => {
+                const val = e.target.value;
+                setEBatchId(val ? Number(val) : "");
+                const b = eBatches.find(x => x.batch_id === Number(val));
+                setEBatchNo(b?.batch_no || "");
+              }}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            >
+              <option value="">-- Select Batch --</option>
+              {eBatches.map(b => (
+                <option key={b.batch_id} value={b.batch_id}>
+                  {b.batch_no} ({b.start_date || "N/A"})
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Plan</label>
@@ -468,4 +529,3 @@ export default function AdminEnrollmentsPage() {
     </div>
   );
 }
-

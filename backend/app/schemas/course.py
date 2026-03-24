@@ -7,31 +7,28 @@ class CourseBase(BaseModel):
     course_name: str
     academic_year_id: int
     user_id: int
+    category: Optional[str] = None
 
 
 class AdminCourseCreate(BaseModel):
     course_name: str
     academic_year_id: int
     instructor_user_code: Optional[str] = None  # teacher user_code (optional)
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    room: Optional[str] = None
     fee_full_payment: Optional[float] = None
     fee_installment: Optional[float] = None
     exam_fee_gbp: Optional[float] = None
     foc_items: Optional[str] = None
     discount_plan: Optional[str] = None
+    category: Optional[str] = None
 
 
 class AdminCourseUpdate(BaseModel):
     course_name: Optional[str] = None
     academic_year_id: Optional[int] = None
-    instructor_user_code: Optional[str] = None  # set/replace instructor
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    room: Optional[str] = None
+    instructor_user_code: Optional[str] = None
     fee_full_payment: Optional[float] = None
     fee_installment: Optional[float] = None
     exam_fee_gbp: Optional[float] = None
     foc_items: Optional[str] = None
     discount_plan: Optional[str] = None
+    category: Optional[str] = None

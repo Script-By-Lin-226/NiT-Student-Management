@@ -15,6 +15,7 @@ class AdminEnrollmentCreate(BaseModel):
     course_code: str
     status: bool = True
     batch_no: Optional[str] = None
+    batch_id: Optional[int] = None
     payment_plan: Optional[str] = None
     downpayment: Optional[float] = None
     installment_amount: Optional[float] = None

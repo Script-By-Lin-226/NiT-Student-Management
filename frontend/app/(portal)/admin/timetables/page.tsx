@@ -55,6 +55,8 @@ export default function AdminTimetablesPage() {
   const [selected, setSelected] = useState<AdminTimeTableRow | null>(null);
 
   const [cCourseCode, setCCourseCode] = useState("");
+  const [cBatchNo, setCBatchNo] = useState("");
+  const [batches, setBatches] = useState<any[]>([]);
   const [cDay, setCDay] = useState<(typeof DAYS)[number]>("Monday");
   const [cSlots, setCSlots] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "10:00" }]);
   const [cRoom, setCRoom] = useState<string>("");
@@ -63,6 +65,8 @@ export default function AdminTimetablesPage() {
   const [eStart, setEStart] = useState("09:00");
   const [eEnd, setEEnd] = useState("10:00");
   const [eRoom, setERoom] = useState<string>("");
+  const [eBatchNo, setEBatchNo] = useState("");
+  const [eBatches, setEBatches] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !isAdminOrSales) router.replace("/dashboard");
@@ -75,6 +79,7 @@ export default function AdminTimetablesPage() {
       return (
         r.course_code.toLowerCase().includes(term) ||
         r.course_name.toLowerCase().includes(term) ||
+        (r.batch_no || "").toLowerCase().includes(term) ||
         r.day_of_week.toLowerCase().includes(term) ||
         (r.room_name || "").toLowerCase().includes(term)
       );
@@ -101,11 +106,24 @@ export default function AdminTimetablesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminOrSales]);
 
+  useEffect(() => {
+    if (cCourseCode) {
+      const c = courses.find((x) => x.course_code === cCourseCode);
+      if (c) {
+        AdminService.listBatches(c.course_id).then((res) => setBatches(res.data));
+      } else {
+        setBatches([]);
+      }
+    }
+  }, [cCourseCode, courses]);
+
   if (loading) return null;
   if (!isAdminOrSales) return null;
 
   const openCreate = () => {
-    setCCourseCode(courses[0]?.course_code ?? "");
+    const firstCourse = courses[0];
+    setCCourseCode(firstCourse?.course_code ?? "");
+    setCBatchNo("");
     setCDay("Monday");
     setCSlots([{ start: "09:00", end: "10:00" }]);
     setCRoom(rooms[0]?.room_name ?? "");
@@ -120,6 +138,7 @@ export default function AdminTimetablesPage() {
         cSlots.map(slot =>
           AdminService.createTimetable({
             course_code: cCourseCode,
+            batch_no: cBatchNo || null,
             day_of_week: cDay,
             start_time: slot.start,
             end_time: slot.end,
@@ -142,6 +161,10 @@ export default function AdminTimetablesPage() {
     setEStart(r.start_time);
     setEEnd(r.end_time);
     setERoom(r.room_name || "");
+    setEBatchNo(r.batch_no || "");
+
+    AdminService.listBatches(r.course_id).then((res) => setEBatches(res.data));
+
     setEditOpen(true);
   };
 
@@ -155,6 +178,7 @@ export default function AdminTimetablesPage() {
         start_time: eStart,
         end_time: eEnd,
         room_name: eRoom || null,
+        batch_no: eBatchNo || null,
       });
       setEditOpen(false);
       setSelected(null);
@@ -214,6 +238,7 @@ export default function AdminTimetablesPage() {
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
                 <th className="px-6 py-4">Course</th>
+                <th className="px-6 py-4">Batch</th>
                 <th className="px-6 py-4">Day</th>
                 <th className="px-6 py-4">Time</th>
                 <th className="px-6 py-4">Room</th>
@@ -226,6 +251,9 @@ export default function AdminTimetablesPage() {
                   <td className="px-6 py-4">
                     <div className="font-semibold text-slate-800">{r.course_name}</div>
                     <div className="text-xs text-slate-500 font-medium">{r.course_code}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-slate-700">{r.batch_no || "-"}</span>
                   </td>
                   <td className="px-6 py-4">{r.day_of_week}</td>
                   <td className="px-6 py-4 font-semibold">{r.start_time} - {r.end_time}</td>
@@ -268,6 +296,17 @@ export default function AdminTimetablesPage() {
               {courses.map((c) => (
                 <option key={c.course_code} value={c.course_code}>
                   {c.course_name} ({c.course_code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch (Optional)</label>
+            <select value={cBatchNo} onChange={(e) => setCBatchNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+              <option value="">(no batch)</option>
+              {batches.map((b) => (
+                <option key={b.batch_id} value={b.batch_no}>
+                  {b.batch_no}
                 </option>
               ))}
             </select>
@@ -351,6 +390,17 @@ export default function AdminTimetablesPage() {
               {rooms.map((r) => (
                 <option key={r.room_id} value={r.room_name}>
                   {r.room_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch (Optional)</label>
+            <select value={eBatchNo} onChange={(e) => setEBatchNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+              <option value="">(no batch)</option>
+              {eBatches.map((b) => (
+                <option key={b.batch_id} value={b.batch_no}>
+                  {b.batch_no}
                 </option>
               ))}
             </select>

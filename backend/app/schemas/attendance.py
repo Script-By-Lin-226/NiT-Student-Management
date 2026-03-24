@@ -22,6 +22,7 @@ class AttendanceResponse(BaseModel):
     attendance_date: date
     slot: str
     check_today: bool
+    batch_id: Optional[int] = None
 
     class Config:
         from_attributes = True

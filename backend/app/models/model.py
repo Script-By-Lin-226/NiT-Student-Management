@@ -18,63 +18,7 @@ class Room(Base):
     is_active = Column(Boolean, default=True)
 
     created_at = Column(DateTime, default=func.now(), index=True)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), index=True)
-
-
-# ==============================
-# User Model
-# ==============================
-
-class User(Base):
-    __tablename__ = "users"
-
-    user_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_code = Column(String, unique=True, index=True)
-
-    username = Column(String, index=True, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-
-    nrc = Column(String, nullable=True)
-    gender = Column(String, nullable=True)
-    address = Column(Text, nullable=True)
-    phone = Column(String, nullable=True)
-    parent_name = Column(String, nullable=True)
-    parent_phone = Column(String, nullable=True)
-    profile_picture = Column(Text, nullable=True)
-
-    is_active = Column(Boolean, default=True)
-    data_of_birth = Column(DateTime, nullable=False)
-    role = Column(String, nullable=False, default="student", index=True)
-    
-    how_did_you_hear = Column(String, nullable=True)
-    student_type = Column(String, nullable=True) # Old Student or New Student
-    intended_course_code = Column(String, nullable=True) # Selected on registration but for info only
-
-    created_at = Column(DateTime, default=func.now(), index=True)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), index=True)
-
-    # Relationships
-    courses = relationship("Course", back_populates="instructor")
-    enrollments = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan")
-    grades = relationship("Grade", back_populates="student", cascade="all, delete-orphan")
-    attendance = relationship("Attendance", back_populates="student", cascade="all, delete-orphan")
-    staff_attendance = relationship("StaffAttendance", back_populates="staff_member", cascade="all, delete-orphan")
-
-    # Parent → children (when role=parent)
-    children = relationship(
-        "ParentStudent",
-        foreign_keys="ParentStudent.parent_id",
-        back_populates="parent",
-        cascade="all, delete-orphan"
-    )
-    # Student → parents (when role=student)
-    parents = relationship(
-        "ParentStudent",
-        foreign_keys="ParentStudent.student_id",
-        back_populates="student_user",
-        cascade="all, delete-orphan"
-    )
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
 # ==============================
@@ -85,13 +29,55 @@ class AcademicYear(Base):
     __tablename__ = "academic_years"
 
     academic_year_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    year_name = Column(String, unique=True, index=True)
+    academic_year_name = Column(String, unique=True, index=True, nullable=False)  # e.g. "2023-2024"
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
 
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
-    # Relationship
     courses = relationship("Course", back_populates="academic_year")
+
+
+# ==============================
+# User Model (Core)
+# ==============================
+
+class User(Base):
+    __tablename__ = "users"
+
+    user_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_code = Column(String, unique=True, index=True, nullable=False)  # e.g. STU001 or TEA001
+    username = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    
+    nrc = Column(String, nullable=True) # ID card
+    gender = Column(String, nullable=True) # male / female
+    phone = Column(String, nullable=True)
+    parent_name = Column(String, nullable=True)
+    parent_phone = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    profile_picture = Column(Text, nullable=True) # Base64 or URL
+    
+    data_of_birth = Column(DateTime, nullable=True)
+    role = Column(String, nullable=False, default="student") # admin, teacher, student, parent, hr, manager, sales
+    
+    is_active = Column(Boolean, default=True)
+    
+    # Registration extra info
+    how_did_you_hear = Column(String, nullable=True) # comma separated
+    student_type = Column(String, nullable=True) # New Student, Returning, etc.
+    intended_course_code = Column(String, nullable=True)
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    courses = relationship("Course", back_populates="instructor") # if teacher
+    enrollments = relationship("Enrollment", back_populates="student") # if student
+    attendance = relationship("Attendance", back_populates="student")
+    grades = relationship("Grade", back_populates="student")
 
 
 # ==============================
@@ -102,21 +88,20 @@ class Course(Base):
     __tablename__ = "courses"
 
     course_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    course_code = Column(String, unique=True, index=True)
-
-    course_name = Column(String, index=True, nullable=False)
-
+    course_code = Column(String, unique=True, index=True, nullable=False) # e.g. CRS001
+    course_name = Column(String, nullable=False)
+    
     academicyear_id = Column(
         Integer,
         ForeignKey("academic_years.academic_year_id"),
-        index=True,
-        nullable=False
+        index=True
     )
 
     instructor_id = Column(
         Integer,
         ForeignKey("users.user_id"),
-        index=True
+        index=True,
+        nullable=True
     )
 
     start_date = Column(Date, nullable=True)
@@ -128,6 +113,7 @@ class Course(Base):
     exam_fee_gbp = Column(Float, nullable=True) # Fee in Pounds (GBP) as mentioned by user
     foc_items = Column(String, nullable=True)
     discount_plan = Column(String, nullable=True)
+    category = Column(String, nullable=True)
 
 
     created_at = Column(DateTime, default=func.now())
@@ -140,6 +126,34 @@ class Course(Base):
     enrollments = relationship("Enrollment", back_populates="course", cascade="all, delete-orphan")
     timetable = relationship("TimeTable", back_populates="course", cascade="all, delete-orphan")
     grades = relationship("Grade", back_populates="course", cascade="all, delete-orphan")
+    batches = relationship("Batch", back_populates="course", cascade="all, delete-orphan")
+
+# ==============================
+# Batch Model
+# ==============================
+
+class Batch(Base):
+    __tablename__ = "batches"
+
+    batch_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    batch_no = Column(String, nullable=False) # "Batch 1", "Batch 2" etc, manual
+    course_id = Column(Integer, ForeignKey("courses.course_id", ondelete="CASCADE"), nullable=False)
+    
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    room = Column(String, nullable=True)
+    instructor_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    course = relationship("Course", back_populates="batches")
+    instructor = relationship("User")
+    enrollments = relationship("Enrollment", back_populates="batch", cascade="all, delete-orphan")
+    attendance = relationship("Attendance", back_populates="batch", cascade="all, delete-orphan")
+    timetables = relationship("TimeTable", back_populates="batch", cascade="all, delete-orphan")
 
 
 # ==============================
@@ -164,10 +178,17 @@ class Enrollment(Base):
         index=True
     )
 
+    batch_id = Column(
+        Integer,
+        ForeignKey("batches.batch_id", ondelete="SET NULL"),
+        index=True,
+        nullable=True
+    )
+
     enrollment_date = Column(DateTime, default=func.now(), index=True)
     status = Column(Boolean, default=True)
     
-    batch_no = Column(String, nullable=True)
+    batch_no = Column(String, nullable=True) # Kept for migration / legacy
     payment_plan = Column(String, nullable=True)
     downpayment = Column(Float, nullable=True)
     installment_amount = Column(Float, nullable=True)
@@ -175,7 +196,9 @@ class Enrollment(Base):
     # Relationships
     student = relationship("User", back_populates="enrollments")
     course = relationship("Course", back_populates="enrollments")
+    batch = relationship("Batch", back_populates="enrollments")
     payments = relationship("Payment", back_populates="enrollment", cascade="all, delete-orphan")
+
 
 # ==============================
 # Payment Model
@@ -185,27 +208,30 @@ class Payment(Base):
     __tablename__ = "payments"
 
     payment_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    
     enrollment_id = Column(
         Integer,
         ForeignKey("enrollments.enrollment_id", ondelete="CASCADE"),
-        index=True,
-        nullable=False
+        index=True
     )
 
     amount = Column(Float, nullable=False)
-    payment_date = Column(DateTime, default=func.now())
-    month = Column(String, nullable=False) # e.g., "March 2026", "April 2026"
-    status = Column(String, default="Paid")
-    payment_method = Column(String, nullable=True) # KBZPay, AYA Pay, Cash, MMQR, Banking
+    payment_date = Column(DateTime, default=func.now(), index=True)
+    month = Column(String, nullable=True) # e.g. "January" or "Jan 2024"
+    status = Column(String, default="Paid") # Paid, Pending, Overdue
     
+    payment_method = Column(String, nullable=True) # Cash, Bank Transfer, KPay, etc.
     fine_amount = Column(Float, nullable=True)
     fine_reason = Column(String, nullable=True)
     extra_items_fee = Column(Float, nullable=True)
     extra_items = Column(String, nullable=True)
+    
+    # Exam fee fields
     exam_fee_paid_gbp = Column(Float, nullable=True)
     exam_fee_paid_mmk = Column(Float, nullable=True)
-    exam_fee_currency = Column(String, default="MMK")
+    exam_fee_currency = Column(String, default="MMK") # MMK or GBP
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
     enrollment = relationship("Enrollment", back_populates="payments")
@@ -219,20 +245,26 @@ class TimeTable(Base):
     __tablename__ = "timetables"
 
     timetable_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-
     course_id = Column(
         Integer,
         ForeignKey("courses.course_id", ondelete="CASCADE"),
         index=True
     )
+    batch_id = Column(
+        Integer,
+        ForeignKey("batches.batch_id", ondelete="CASCADE"),
+        index=True,
+        nullable=True
+    )
 
-    day_of_week = Column(String, nullable=False)
-    start_time = Column(String, nullable=False)
-    end_time = Column(String, nullable=False)
-    room_name = Column(String, nullable=True)  # e.g. "Room 6"
+    day_of_week = Column(String, nullable=False) # Monday, Tuesday...
+    start_time = Column(String, nullable=False) # 09:00
+    end_time = Column(String, nullable=False)   # 12:00
+    room_name = Column(String, nullable=True)
 
-    # Relationship
+    # Relationships
     course = relationship("Course", back_populates="timetable")
+    batch = relationship("Batch", back_populates="timetables")
 
 
 # ==============================
@@ -243,8 +275,8 @@ class Grade(Base):
     __tablename__ = "grades"
 
     grade_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-
-    user_id = Column(
+    
+    student_id = Column(
         Integer,
         ForeignKey("users.user_id", ondelete="CASCADE"),
         index=True
@@ -270,6 +302,7 @@ class Attendance(Base):
 
     attendance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.batch_id", ondelete="SET NULL"), index=True, nullable=True)
     attendance_date = Column(Date, nullable=False, default=date.today, index=True)
     slot = Column(String, nullable=False, default="Morning") # "Morning", "Afternoon", "Evening"
     check_today = Column(Boolean, nullable=False, default=False)
@@ -280,10 +313,11 @@ class Attendance(Base):
     )
 
     student = relationship("User", back_populates="attendance")
+    batch = relationship("Batch", back_populates="attendance")
 
 
 # ==============================
-# Parent ↔ Student Link
+# Parent \u2194 Student Link
 # ==============================
 
 class ParentStudent(Base):
@@ -297,44 +331,47 @@ class ParentStudent(Base):
         index=True,
         nullable=False
     )
+
     student_id = Column(
         Integer,
         ForeignKey("users.user_id", ondelete="CASCADE"),
         index=True,
         nullable=False
     )
-    relationship_label = Column(String, default="parent")  # e.g. mother, father, guardian
 
+    relationship_label = Column(String, nullable=True) # e.g. "Father", "Mother"
+
+    # Enforce unique links
     __table_args__ = (
-        UniqueConstraint("parent_id", "student_id", name="uq_parent_student"),
+        UniqueConstraint('parent_id', 'student_id', name='uq_parent_student'),
     )
-
-    # Back-references
-    parent = relationship("User", foreign_keys=[parent_id], back_populates="children")
-    student_user = relationship("User", foreign_keys=[student_id], back_populates="parents")
 
 
 # ==============================
-# Staff Attendance Model
-# (hr, manager, sales, teacher)
+# Staff Attendance
 # ==============================
 
 class StaffAttendance(Base):
-    __tablename__ = "staff_attendances"
+    __tablename__ = "staff_attendance"
 
-    attendance_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True, nullable=False)
-    attendance_date = Column(Date, nullable=False, default=date.today, index=True)
-    check_in_time = Column(String, nullable=True)   # e.g. "09:05"
-    check_out_time = Column(String, nullable=True)  # e.g. "17:30"
-    status = Column(String, nullable=False, default="present")  # present | absent | late
-    note = Column(Text, nullable=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
+    
+    date = Column(Date, nullable=False, default=date.today, index=True)
+    time_in = Column(DateTime, nullable=True)
+    time_out = Column(DateTime, nullable=True)
+    
+    status = Column(String, default="Present") # Present, Absent, Leave
 
+    created_at = Column(DateTime, default=func.now())
+
+    # Enforce one record per day
     __table_args__ = (
-        UniqueConstraint("user_id", "attendance_date", name="uq_staff_attendance_date"),
+        UniqueConstraint('user_id', 'date', name='uq_staff_attendance_day'),
     )
 
-    staff_member = relationship("User", back_populates="staff_attendance")
+    user = relationship("User")
+
 
 # ==============================
 # Activity Log Model

@@ -8,6 +8,7 @@ import { exportToExcel } from "@/utils/excelExport";
 import { AdminService, AdminEnrollment, AdminPayment } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 import { generateReceiptPDF } from "@/utils/pdfReceipt";
+import { useCreatePayment } from "@/hooks/useAdmin";
 
 function Modal({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null;
@@ -43,6 +44,8 @@ export default function AdminPaymentsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
   const [q, setQ] = useState("");
+
+  const createPaymentMutation = useCreatePayment();
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -148,7 +151,7 @@ export default function AdminPaymentsPage() {
     setBusy(true);
     setError("");
     try {
-      await AdminService.createPayment({
+      await createPaymentMutation.mutateAsync({
         enrollment_id: selectedEnrollment.enrollment_id,
         amount: Number(pAmount),
         month: pYear ? `${pMonth} ${pYear}` : pMonth,
@@ -210,7 +213,7 @@ export default function AdminPaymentsPage() {
                     "Course": enr.course_name,
                     "Batch": enr.batch_no || "-",
                     "Payment Plan": enr.payment_plan === 'full' ? 'Full Payment' : 'Installment',
-                    "Course Cost (MMK)": enr.course_cost || 0,
+                    "Course Fee (MMK)": enr.course_cost || 0,
                     "Total Paid (MMK)": totalPaid,
                     "Total Fine Paid (MMK)": totalFine,
                     "Fine Reasons": enrPayments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ") || "-",

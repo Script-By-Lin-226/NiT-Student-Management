@@ -20,7 +20,7 @@ async def get_courses_public(session: AsyncSession = Depends(get_db)):
     return JSONResponse({
         "status_code": 200,
         "message": "Courses fetched successfully",
-        "data": [{"course_code": c.course_code, "course_name": c.course_name} for c in courses]
+        "data": [{"course_code": c.course_code, "course_name": c.course_name, "category": c.category} for c in courses]
     })
 
 @router.post("/login")
