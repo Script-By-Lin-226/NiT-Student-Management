@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { AdminCourse, AdminRoom, AdminService, AdminTimeTableRow } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X } from "lucide-react";
+import { AdminCourse, AdminRoom, AdminService, AdminTimeTableRow, AdminUser, TeachingHoursReport } from "@/services/admin.service";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, GraduationCap } from "lucide-react";
 
 function Modal({
   title,
@@ -46,16 +46,20 @@ export default function AdminTimetablesPage() {
   const [rows, setRows] = useState<AdminTimeTableRow[]>([]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
+  const [teachers, setTeachers] = useState<AdminUser[]>([]);
+  const [teachingHours, setTeachingHours] = useState<TeachingHoursReport[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [selected, setSelected] = useState<AdminTimeTableRow | null>(null);
 
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
+  const [cTeacherCode, setCTeacherCode] = useState("");
   const [batches, setBatches] = useState<any[]>([]);
   const [cDay, setCDay] = useState<(typeof DAYS)[number]>("Monday");
   const [cSlots, setCSlots] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "10:00" }]);
@@ -66,6 +70,7 @@ export default function AdminTimetablesPage() {
   const [eEnd, setEEnd] = useState("10:00");
   const [eRoom, setERoom] = useState<string>("");
   const [eBatchNo, setEBatchNo] = useState("");
+  const [eTeacherCode, setETeacherCode] = useState("");
   const [eBatches, setEBatches] = useState<any[]>([]);
 
   useEffect(() => {
@@ -90,10 +95,16 @@ export default function AdminTimetablesPage() {
     setBusy(true);
     setError("");
     try {
-      const [tt, cs, rs] = await Promise.all([AdminService.listTimetables(), AdminService.listCourses(), AdminService.listRooms()]);
+      const [tt, cs, rs, ts] = await Promise.all([
+        AdminService.listTimetables(), 
+        AdminService.listCourses(), 
+        AdminService.listRooms(),
+        AdminService.listTeachers()
+      ]);
       setRows(tt);
       setCourses(cs);
       setRooms(rs);
+      setTeachers(ts);
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load timetable");
     } finally {
@@ -124,10 +135,24 @@ export default function AdminTimetablesPage() {
     const firstCourse = courses[0];
     setCCourseCode(firstCourse?.course_code ?? "");
     setCBatchNo("");
+    setCTeacherCode("");
     setCDay("Monday");
     setCSlots([{ start: "09:00", end: "10:00" }]);
     setCRoom(rooms[0]?.room_name ?? "");
     setCreateOpen(true);
+  };
+
+  const openReport = async () => {
+    setBusy(true);
+    try {
+        const data = await AdminService.getTeachingHoursReport();
+        setTeachingHours(data);
+        setReportOpen(true);
+    } catch (e: any) {
+        setError("Failed to load teaching hours report");
+    } finally {
+        setBusy(false);
+    }
   };
 
   const submitCreate = async () => {
@@ -139,6 +164,7 @@ export default function AdminTimetablesPage() {
           AdminService.createTimetable({
             course_code: cCourseCode,
             batch_no: cBatchNo || null,
+            teacher_code: cTeacherCode || null,
             day_of_week: cDay,
             start_time: slot.start,
             end_time: slot.end,
@@ -162,6 +188,7 @@ export default function AdminTimetablesPage() {
     setEEnd(r.end_time);
     setERoom(r.room_name || "");
     setEBatchNo(r.batch_no || "");
+    setETeacherCode(r.teacher_code || "");
 
     AdminService.listBatches(r.course_id).then((res) => setEBatches(res.data));
 
@@ -179,6 +206,7 @@ export default function AdminTimetablesPage() {
         end_time: eEnd,
         room_name: eRoom || null,
         batch_no: eBatchNo || null,
+        teacher_code: eTeacherCode || null,
       });
       setEditOpen(false);
       setSelected(null);
@@ -217,6 +245,10 @@ export default function AdminTimetablesPage() {
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
           </button>
+          <button onClick={openReport} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
+            <Clock className="w-4 h-4" />
+            Hours Report
+          </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
             <Plus className="w-4 h-4" />
             New Slot
@@ -242,6 +274,7 @@ export default function AdminTimetablesPage() {
                 <th className="px-6 py-4">Day</th>
                 <th className="px-6 py-4">Time</th>
                 <th className="px-6 py-4">Room</th>
+                <th className="px-6 py-4">Teacher</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -258,6 +291,10 @@ export default function AdminTimetablesPage() {
                   <td className="px-6 py-4">{r.day_of_week}</td>
                   <td className="px-6 py-4 font-semibold">{r.start_time} - {r.end_time}</td>
                   <td className="px-6 py-4">{r.room_name || "-"}</td>
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-slate-700">{r.teacher_name || "-"}</div>
+                    <div className="text-[10px] text-slate-400">{r.teacher_code || ""}</div>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
                       {isAdmin && (
@@ -312,8 +349,19 @@ export default function AdminTimetablesPage() {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Teacher (Optional)</label>
+            <select value={cTeacherCode} onChange={(e) => setCTeacherCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+              <option value="">(no teacher)</option>
+              {teachers.map((t) => (
+                <option key={t.user_id} value={t.user_code}>
+                  {t.username} ({t.user_code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Day</label>
-            <select value={cDay} onChange={(e) => setCDay(e.target.value as any)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+            <select value={cDay} onChange={(e) => setCDay(e.target.value as any)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               {DAYS.map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -406,6 +454,17 @@ export default function AdminTimetablesPage() {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Teacher (Optional)</label>
+            <select value={eTeacherCode} onChange={(e) => setETeacherCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+              <option value="">(no teacher)</option>
+              {teachers.map((t) => (
+                <option key={t.user_id} value={t.user_code}>
+                  {t.username} ({t.user_code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Start</label>
             <input value={eStart} onChange={(e) => setEStart(e.target.value)} type="time" className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" />
           </div>
@@ -421,6 +480,49 @@ export default function AdminTimetablesPage() {
               Save
             </button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal title="Teaching Hours Report" open={reportOpen} onClose={() => setReportOpen(false)}>
+        <div className="space-y-4">
+            <p className="text-sm text-slate-500 mb-4">Total teaching hours calculated from current timetable assignments.</p>
+            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                        <tr>
+                            <th className="px-4 py-3">Teacher</th>
+                            <th className="px-4 py-3">Assigned Courses</th>
+                            <th className="px-4 py-3 text-right">Total Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {teachingHours.map((h) => (
+                            <tr key={h.teacher_code} className="hover:bg-slate-50/50">
+                                <td className="px-4 py-3">
+                                    <div className="font-semibold text-slate-800">{h.teacher_name}</div>
+                                    <div className="text-xs text-slate-500">{h.teacher_code}</div>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-slate-600">
+                                    {h.courses.join(", ") || "-"}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-brand-600">
+                                    {h.total_hours} hrs
+                                </td>
+                            </tr>
+                        ))}
+                        {teachingHours.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="px-4 py-10 text-center text-slate-400">No data available.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+            <div className="flex justify-end pt-2">
+                <button onClick={() => setReportOpen(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
+                    Close
+                </button>
+            </div>
         </div>
       </Modal>
     </div>

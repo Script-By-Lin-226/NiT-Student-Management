@@ -729,14 +729,16 @@ class AdminPanelService:
         # So we explicitly delete dependent records first.
         uid = user.user_id
 
-        # Detach instructor courses (if deleting a teacher/staff)
+        # Detach instructor courses/batches/timetables (if deleting a teacher/staff)
         await session.execute(update(Course).where(Course.instructor_id == uid).values(instructor_id=None))
+        await session.execute(update(Batch).where(Batch.instructor_id == uid).values(instructor_id=None))
+        await session.execute(update(TimeTable).where(TimeTable.teacher_id == uid).values(teacher_id=None))
 
         # Remove links/child records
         await session.execute(delete(ParentStudent).where(ParentStudent.parent_id == uid))
         await session.execute(delete(ParentStudent).where(ParentStudent.student_id == uid))
         await session.execute(delete(Enrollment).where(Enrollment.student_id == uid))
-        await session.execute(delete(Grade).where(Grade.user_id == uid))
+        await session.execute(delete(Grade).where(Grade.student_id == uid))
         await session.execute(delete(Attendance).where(Attendance.user_id == uid))
         await session.execute(delete(StaffAttendance).where(StaffAttendance.user_id == uid))
 
@@ -1442,6 +1444,7 @@ class AdminPanelService:
         new_record = Attendance(
             user_id=student.user_id,
             batch_id=active_enroll.batch_id,
+            timetable_id=payload.timetable_id,
             attendance_date=today,
             slot=payload.slot,
             check_today=payload.check_today
@@ -1466,11 +1469,31 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        q = select(Attendance, User).join(User, Attendance.user_id == User.user_id).options(
-            defer(User.address), defer(User.password_hash)
-        ).order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
-
+        q = (
+            select(Attendance, User, TimeTable, User.username.label("teacher_name"))
+            .join(User, Attendance.user_id == User.user_id)
+            .outerjoin(TimeTable, Attendance.timetable_id == TimeTable.timetable_id)
+            .outerjoin(User, TimeTable.teacher_id == User.user_id) # This gives us the teacher's name
+            .options(
+                # Use a specific label alias for the teacher's name to avoid conflict with student's name
+                defer(User.address), 
+                defer(User.password_hash)
+            )
+            .order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
+        )
         
+        # We need a way to get the teacher's name specifically.
+        # SQLAlchemy join with the same table multiple times requires aliased()
+        from sqlalchemy.orm import aliased
+        Teacher = aliased(User)
+        q = (
+            select(Attendance, User, TimeTable, Teacher.username.label("teacher_name"))
+            .join(User, Attendance.user_id == User.user_id)
+            .outerjoin(TimeTable, Attendance.timetable_id == TimeTable.timetable_id)
+            .outerjoin(Teacher, TimeTable.teacher_id == Teacher.user_id)
+            .order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
+        )
+
         if days is not None:
             cutoff = get_now_local().date() - timedelta(days=days)
             q = q.where(Attendance.attendance_date >= cutoff)
@@ -1490,8 +1513,11 @@ class AdminPanelService:
                     "slot": a.slot,
                     "check_today": a.check_today,
                     "profile_picture": u.profile_picture,
+                    "timetable_id": a.timetable_id,
+                    "teacher_name": teacher_name,
+                    "time_range": f"{t.start_time} - {t.end_time}" if t else None
                 }
-                for a, u in rows
+                for a, u, t, teacher_name in rows
             ],
         })
 
@@ -1703,13 +1729,14 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(
-            select(TimeTable, Course, Batch)
+            select(TimeTable, Course, Batch, User)
             .join(Course, TimeTable.course_id == Course.course_id)
             .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
+            .outerjoin(User, TimeTable.teacher_id == User.user_id)
         )
         rows = r.all()
         data = []
-        for t, c, b in rows:
+        for t, c, b, u in rows:
             data.append(
                 {
                     "timetable_id": t.timetable_id,
@@ -1721,7 +1748,10 @@ class AdminPanelService:
                     "course_code": c.course_code,
                     "course_name": c.course_name,
                     "batch_id": t.batch_id,
-                    "batch_no": b.batch_no if b else None
+                    "batch_no": b.batch_no if b else None,
+                    "teacher_id": t.teacher_id,
+                    "teacher_code": u.user_code if u else None,
+                    "teacher_name": u.username if u else None
                 }
             )
         return JSONResponse({"status_code": 200, "message": "Timetables fetched successfully", "data": data})
@@ -1742,9 +1772,17 @@ class AdminPanelService:
             if batch:
                 batch_id = batch.batch_id
 
+        teacher_id = None
+        if payload.teacher_code:
+            t_r = await session.execute(select(User).where(and_(User.user_code == payload.teacher_code, User.role == "teacher")))
+            teacher = t_r.scalars().first()
+            if teacher:
+                teacher_id = teacher.user_id
+
         tt = TimeTable(
             course_id=course.course_id,
             batch_id=batch_id,
+            teacher_id=teacher_id,
             day_of_week=payload.day_of_week,
             start_time=payload.start_time,
             end_time=payload.end_time,
@@ -1755,6 +1793,7 @@ class AdminPanelService:
         await session.refresh(tt)
         msg = f"Timetable for {payload.course_code}"
         if payload.batch_no: msg += f" (Batch {payload.batch_no})"
+        if payload.teacher_code: msg += f" with Teacher {payload.teacher_code}"
         msg += f" on {payload.day_of_week} {payload.start_time}-{payload.end_time} created"
         await _log_activity(request, session, "Create Timetable", msg)
         return JSONResponse({"status_code": 201, "message": "Timetable created successfully", "data": {"timetable_id": tt.timetable_id}}, status_code=201)
@@ -1785,6 +1824,15 @@ class AdminPanelService:
                     tt.batch_id = batch.batch_id
             else:
                 tt.batch_id = None
+        
+        if payload.teacher_code is not None:
+            if payload.teacher_code:
+                t_r = await session.execute(select(User).where(and_(User.user_code == payload.teacher_code, User.role == "teacher")))
+                teacher = t_r.scalars().first()
+                if teacher:
+                    tt.teacher_id = teacher.user_id
+            else:
+                tt.teacher_id = None
 
         await session.commit()
         await _log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")
@@ -1880,4 +1928,65 @@ class AdminPanelService:
         await session.refresh(pay)
         await _log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({payload.month})")
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})
+
+    @staticmethod
+    def _parse_hhmm(t: str) -> int:
+        try:
+            h, m = map(int, str(t).split(':'))
+            return h * 60 + m
+        except:
+            return 0
+
+    async def get_teaching_hours_report(request: Request, session: AsyncSession):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        # Get all teachers
+        t_r = await session.execute(select(User).where(User.role == "teacher"))
+        teachers = t_r.scalars().all()
+
+        # Get all timetable entries with teachers
+        tt_r = await session.execute(
+            select(TimeTable, Course, Batch)
+            .join(Course, TimeTable.course_id == Course.course_id)
+            .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
+            .where(TimeTable.teacher_id != None)
+        )
+        timetable_entries = tt_r.all()
+
+        teacher_stats = {}
+        for teacher in teachers:
+            teacher_stats[teacher.user_id] = {
+                "teacher_code": teacher.user_code,
+                "teacher_name": teacher.username,
+                "total_hours": 0.0,
+                "courses": set()
+            }
+
+        for tt, course, batch in timetable_entries:
+            if tt.teacher_id in teacher_stats:
+                try:
+                    start = AdminPanelService._parse_hhmm(tt.start_time)
+                    end = AdminPanelService._parse_hhmm(tt.end_time)
+                    duration_minutes = end - start
+                    if duration_minutes > 0:
+                        teacher_stats[tt.teacher_id]["total_hours"] += round(duration_minutes / 60.0, 2)
+                        course_info = f"{course.course_name}"
+                        if batch:
+                            course_info += f" ({batch.batch_no})"
+                        teacher_stats[tt.teacher_id]["courses"].add(course_info)
+                except Exception:
+                    continue
+        
+        # Convert courses set to list for JSON serialization
+        data = []
+        for tid, stats in teacher_stats.items():
+            stats["courses"] = list(stats["courses"])
+            data.append(stats)
+
+        return JSONResponse({
+            "status_code": 200,
+            "message": "Teaching hours report fetched successfully",
+            "data": data
+        })
 

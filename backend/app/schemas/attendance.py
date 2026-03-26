@@ -7,6 +7,7 @@ class AttendanceMarkRequest(BaseModel):
     """Schema for marking a student's attendance."""
     student_code: str
     slot: str
+    timetable_id: Optional[int] = None
     check_today: bool = True
     attendance_date: Optional[str] = None
 

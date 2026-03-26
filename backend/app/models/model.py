@@ -256,6 +256,12 @@ class TimeTable(Base):
         index=True,
         nullable=True
     )
+    teacher_id = Column(
+        Integer,
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        index=True,
+        nullable=True
+    )
 
     day_of_week = Column(String, nullable=False) # Monday, Tuesday...
     start_time = Column(String, nullable=False) # 09:00
@@ -265,6 +271,7 @@ class TimeTable(Base):
     # Relationships
     course = relationship("Course", back_populates="timetable")
     batch = relationship("Batch", back_populates="timetables")
+    teacher = relationship("User")
 
 
 # ==============================
@@ -303,17 +310,20 @@ class Attendance(Base):
     attendance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
     batch_id = Column(Integer, ForeignKey("batches.batch_id", ondelete="SET NULL"), index=True, nullable=True)
+    timetable_id = Column(Integer, ForeignKey("timetables.timetable_id", ondelete="SET NULL"), index=True, nullable=True)
     attendance_date = Column(Date, nullable=False, default=date.today, index=True)
-    slot = Column(String, nullable=False, default="Morning") # "Morning", "Afternoon", "Evening"
+    slot = Column(String, nullable=False, default="Morning") # "Morning", "Afternoon", "Evening" or Time slot
     check_today = Column(Boolean, nullable=False, default=False)
 
-    # Enforce: one record per student per day per slot
+    # Enforce: one record per student per day per slot/timetable_id
     __table_args__ = (
+        # Note: If timetable_id is used, slot might be redundant but keeping for backward compatibility
         UniqueConstraint('user_id', 'attendance_date', 'slot', name='uq_user_attendance_date_slot'),
     )
 
     student = relationship("User", back_populates="attendance")
     batch = relationship("Batch", back_populates="attendance")
+    timetable = relationship("TimeTable")
 
 
 # ==============================

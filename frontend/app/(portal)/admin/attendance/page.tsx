@@ -236,14 +236,33 @@ export default function AdminAttendancePage() {
     if (!selectedGroup) return [];
     const groupTimetables = timetables.filter(t => t.course_code === selectedGroup.course_code && t.day_of_week === currentDayName);
     if (groupTimetables.length > 0) {
-      return Array.from(new Set(groupTimetables.map(t => `${t.start_time} - ${t.end_time}`))).sort();
+      return groupTimetables.map(t => ({
+        id: t.timetable_id,
+        text: `${t.start_time} - ${t.end_time}`,
+        teacher_name: t.teacher_name
+      })).sort((a,b) => a.text.localeCompare(b.text));
     }
     // Fallback if they search class not scheduled today
     const allTimeTables = timetables.filter(t => t.course_code === selectedGroup.course_code);
     if (allTimeTables.length > 0) {
-      return Array.from(new Set(allTimeTables.map(t => `${t.start_time} - ${t.end_time}`))).sort();
+      // Group by distinct time range for fallback? Or just show all?
+      // For now, let's keep all distinct slots
+      const seen = new Set();
+      const distinct = [];
+      for(const t of allTimeTables) {
+         const key = `${t.start_time} - ${t.end_time}`;
+         if(!seen.has(key)) {
+            seen.add(key);
+            distinct.push({ id: t.timetable_id, text: key, teacher_name: t.teacher_name });
+         }
+      }
+      return distinct.sort((a,b) => a.text.localeCompare(b.text));
     }
-    return ["Morning", "Afternoon", "Evening"];
+    return [
+       { id: null, text: "Morning", teacher_name: null },
+       { id: null, text: "Afternoon", teacher_name: null },
+       { id: null, text: "Evening", teacher_name: null }
+    ];
   }, [selectedGroup, timetables, currentDayName]);
 
   if (loading) return null;
@@ -260,10 +279,10 @@ export default function AdminAttendancePage() {
     setGroupModalOpen(true);
   };
 
-  const doMarkAttendance = async (student_code: string, slot: string, check_today: boolean) => {
+  const doMarkAttendance = async (student_code: string, slot: string, timetable_id: number | null, check_today: boolean) => {
     setError("");
     try {
-      await markMutation.mutateAsync({ student_code, slot, check_today, attendance_date: targetDate });
+      await markMutation.mutateAsync({ student_code, slot, timetable_id, check_today, attendance_date: targetDate });
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to mark attendance");
     }
@@ -390,7 +409,12 @@ export default function AdminAttendancePage() {
                     <th className="px-5 py-3 sticky left-0 bg-slate-50 z-10">Student name</th>
                     <th className="px-5 py-3">Code</th>
                     {currentSlots.map(slot => (
-                      <th key={slot} className="px-5 py-3 text-center border-l border-slate-200">{slot}</th>
+                      <th key={slot.text} className="px-5 py-3 text-center border-l border-slate-200">
+                        <div className="flex flex-col">
+                           <span>{slot.text}</span>
+                           {slot.teacher_name && <span className="text-[9px] text-brand-600 font-normal">{slot.teacher_name}</span>}
+                        </div>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -416,9 +440,13 @@ export default function AdminAttendancePage() {
                         </td>
                         <td className="px-5 py-4 font-medium text-slate-500">{stu.student_code}</td>
                         {currentSlots.map(slot => {
-                          const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && a.slot === slot);
+                          const record = attendance.find(a => 
+                             a.user_code === stu.student_code && 
+                             a.attendance_date.startsWith(targetDate) && 
+                             (a.timetable_id === slot.id || a.slot === slot.text)
+                          );
                           return (
-                            <td key={slot} className="px-5 py-4 border-l border-slate-100 text-center">
+                            <td key={slot.text} className="px-5 py-4 border-l border-slate-100 text-center">
                               {record ? (
                                 <div className="flex flex-col items-center gap-1.5 min-w-[120px]">
                                   {record.check_today ? (
@@ -440,13 +468,13 @@ export default function AdminAttendancePage() {
                               ) : (
                                 <div className="flex justify-center items-center gap-1.5 min-w-[120px]">
                                   <button
-                                    onClick={() => doMarkAttendance(stu.student_code, slot, true)}
+                                    onClick={() => doMarkAttendance(stu.student_code, slot.text, slot.id, true)}
                                     className="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] uppercase font-bold hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-colors"
                                   >
                                     P
                                   </button>
                                   <button
-                                    onClick={() => doMarkAttendance(stu.student_code, slot, false)}
+                                    onClick={() => doMarkAttendance(stu.student_code, slot.text, slot.id, false)}
                                     className="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] uppercase font-bold hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors"
                                   >
                                     A
@@ -491,10 +519,17 @@ export default function AdminAttendancePage() {
                   
                   <div className="grid grid-cols-1 gap-2">
                     {currentSlots.map(slot => {
-                      const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && a.slot === slot);
+                      const record = attendance.find(a => 
+                        a.user_code === stu.student_code && 
+                        a.attendance_date.startsWith(targetDate) && 
+                        (a.timetable_id === slot.id || a.slot === slot.text)
+                      );
                       return (
-                        <div key={slot} className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200/60">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{slot}</span>
+                        <div key={slot.text} className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200/60">
+                          <div className="flex flex-col">
+                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{slot.text}</span>
+                             {('teacher_name' in slot && slot.teacher_name) && <span className="text-[8px] text-brand-600">Tr. {slot.teacher_name}</span>}
+                          </div>
                           <div className="flex items-center gap-2">
                             {record ? (
                               <>
@@ -511,13 +546,13 @@ export default function AdminAttendancePage() {
                             ) : (
                               <div className="flex items-center gap-1.5">
                                 <button
-                                  onClick={() => doMarkAttendance(stu.student_code, slot, true)}
+                                  onClick={() => doMarkAttendance(stu.student_code, slot.text, slot.id, true)}
                                   className="px-3 py-1 bg-white border border-slate-200 text-slate-700 rounded-lg text-[10px] font-black hover:border-emerald-300 hover:text-emerald-600 active:scale-95 transition-all"
                                 >
                                   PRESENT
                                 </button>
                                 <button
-                                  onClick={() => doMarkAttendance(stu.student_code, slot, false)}
+                                  onClick={() => doMarkAttendance(stu.student_code, slot.text, slot.id, false)}
                                   className="px-3 py-1 bg-white border border-slate-200 text-slate-700 rounded-lg text-[10px] font-black hover:border-red-300 hover:text-red-600 active:scale-95 transition-all"
                                 >
                                   ABSENT
@@ -546,8 +581,8 @@ export default function AdminAttendancePage() {
                       "Student Code": stu.student_code
                     };
                     currentSlots.forEach(slot => {
-                      const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && a.slot === slot);
-                      row[slot] = record ? (record.check_today ? "Present" : "Absent") : "Not Marked";
+                      const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && (a.timetable_id === slot.id || a.slot === slot.text));
+                      row[slot.text] = record ? (record.check_today ? "Present" : "Absent") : "Not Marked";
                     });
                     return row;
                   });
@@ -585,7 +620,8 @@ export default function AdminAttendancePage() {
                 <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 sticky top-0 z-10">
                   <tr>
                     <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Slot</th>
+                    <th className="px-5 py-3">Slot / Range</th>
+                    <th className="px-5 py-3">Teacher</th>
                     <th className="px-5 py-3 text-center">Status</th>
                   </tr>
                 </thead>
@@ -593,17 +629,25 @@ export default function AdminAttendancePage() {
                   {reportRecords.map(r => (
                     <tr key={r.attendance_id} className="hover:bg-slate-50/50">
                       <td className="px-5 py-3.5 font-bold text-slate-700 whitespace-nowrap">{r.attendance_date}</td>
-                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">{r.slot}</td>
+                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                         <div className="flex flex-col">
+                            <span>{r.slot}</span>
+                            {r.time_range && <span className="text-[10px] text-brand-600 lowercase font-bold">{r.time_range}</span>}
+                         </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                         {r.teacher_name || "-"}
+                      </td>
                       <td className="px-5 py-3.5 text-center">
-                        {r.check_today ? (
-                           <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md font-bold text-xs border border-emerald-200">
-                             <CheckCircle className="w-3.5 h-3.5 mr-1" /> Present
-                           </span>
-                        ) : (
-                           <span className="inline-flex items-center text-red-700 bg-red-50 px-2 py-1 rounded-md font-bold text-xs border border-red-200">
-                             <XCircle className="w-3.5 h-3.5 mr-1" /> Absent
-                           </span>
-                        )}
+                         {r.check_today ? (
+                            <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md font-bold text-xs border border-emerald-200">
+                              <CheckCircle className="w-3.5 h-3.5 mr-1" /> Present
+                            </span>
+                         ) : (
+                            <span className="inline-flex items-center text-red-700 bg-red-50 px-2 py-1 rounded-md font-bold text-xs border border-red-200">
+                              <XCircle className="w-3.5 h-3.5 mr-1" /> Absent
+                            </span>
+                         )}
                       </td>
                     </tr>
                   ))}

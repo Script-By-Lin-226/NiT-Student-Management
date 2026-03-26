@@ -156,6 +156,10 @@ async def update_timetable(timetable_id: int, payload: AdminTimeTableUpdate, req
 async def delete_timetable(timetable_id: int, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.delete_timetable(request, session, timetable_id)
 
+@router.get("/teaching-hours")
+async def get_teaching_hours_report(request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_teaching_hours_report(request, session)
+
 # --- Academic Year CRUD ---
 
 @router.post("/academic-years")

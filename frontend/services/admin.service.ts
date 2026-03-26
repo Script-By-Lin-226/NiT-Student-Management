@@ -224,11 +224,15 @@ export interface AdminAttendanceRecord {
   attendance_date: string; // YYYY-MM-DD
   slot: string;
   check_today: boolean;
+  timetable_id?: number | null;
+  teacher_name?: string | null;
+  time_range?: string | null;
 }
 
 export interface AdminAttendanceMark {
   student_code: string;
   slot: string;
+  timetable_id?: number | null;
   check_today: boolean;
   attendance_date?: string;
 }
@@ -276,11 +280,15 @@ export interface AdminTimeTableRow {
   course_name: string;
   batch_id?: number | null;
   batch_no?: string | null;
+  teacher_id?: number | null;
+  teacher_code?: string | null;
+  teacher_name?: string | null;
 }
 
 export interface AdminTimeTableCreate {
   course_code: string;
   batch_no?: string | null;
+  teacher_code?: string | null;
   day_of_week: string;
   start_time: string;
   end_time: string;
@@ -293,6 +301,7 @@ export interface AdminTimeTableUpdate {
   end_time?: string;
   room_name?: string | null;
   batch_no?: string | null;
+  teacher_code?: string | null;
 }
 
 export interface AdminStudentRelations {
@@ -301,6 +310,13 @@ export interface AdminStudentRelations {
   attendance: { attendance_id: number; attendance_date: string; check_today: boolean }[];
   parents: { parent_code: string; parent_name: string; parent_email: string; relationship: string }[];
   payments?: AdminPayment[];
+}
+
+export interface TeachingHoursReport {
+  teacher_code: string;
+  teacher_name: string;
+  total_hours: number;
+  courses: string[];
 }
 
 export interface AdminParent {
@@ -430,6 +446,12 @@ export class AdminService {
     return res.data.data;
   }
 
+  // Teachers
+  static async listTeachers(): Promise<AdminUser[]> {
+    const res = await api.get<{ data: AdminUser[] }>("/admin/teachers");
+    return res.data.data;
+  }
+
   static async createParent(payload: AdminParentCreate): Promise<AdminParent> {
     const res = await api.post("/admin/parents", payload);
     return res.data.data;
@@ -551,6 +573,11 @@ export class AdminService {
 
   static async deleteTimetable(timetable_id: number): Promise<void> {
     await api.delete(`/admin/timetables/${timetable_id}`);
+  }
+
+  static async getTeachingHoursReport(): Promise<TeachingHoursReport[]> {
+    const res = await api.get<{ data: TeachingHoursReport[] }>("/admin/teaching-hours");
+    return res.data.data;
   }
 
   // Purge

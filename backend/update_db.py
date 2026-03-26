@@ -37,9 +37,21 @@ async def update_db():
         await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_currency VARCHAR DEFAULT 'MMK'")
         await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS fine_reason TEXT")
         
-        # Update existing records to default values if needed
-        # (Already handled by DEFAULT in SQL for currency, floats will be NULL which is fine)
-        
+        print("Adding teacher_id to timetables...")
+        await conn.execute("ALTER TABLE timetables ADD COLUMN IF NOT EXISTS teacher_id INTEGER")
+        # Add foreign key if it doesn't exist (using a try-except in SQL or just ignoring if it fails, or just the column is enough for now)
+        try:
+             await conn.execute("ALTER TABLE timetables ADD CONSTRAINT fk_teacher FOREIGN KEY (teacher_id) REFERENCES users(user_id) ON DELETE SET NULL")
+        except:
+             pass
+
+        print("Adding timetable_id to attendances...")
+        await conn.execute("ALTER TABLE attendances ADD COLUMN IF NOT EXISTS timetable_id INTEGER")
+        try:
+             await conn.execute("ALTER TABLE attendances ADD CONSTRAINT fk_attendance_timetable FOREIGN KEY (timetable_id) REFERENCES timetables(timetable_id) ON DELETE SET NULL")
+        except:
+             pass
+
         await conn.close()
         print("Database updated successfully")
         
