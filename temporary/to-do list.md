@@ -1,28 +1,10 @@
-# Project: NiT Student Management System (NiT-SMS) - To-Do List
+# Backup & Recovery To-Do List
 
-## Documentation & AI Logic
-- [ ] Write Technical Documentation in `temporary/NiT-SMS-Technical.md`
-- [ ] Write Algorithm description in `Algorithm-OF-SMS.md`
-- [x] Refactor Course Discount Logic (Shift to Payment-Based):
-    - [x] Remove `discount` from `Course` model and schemas
-    - [x] Add `discount_amount` to `Payment` model and schemas
-    - [x] Update `AdminPanelService` to handle `discount_amount` during payment
-    - [x] Update `frontend/services/admin.service.ts` types
-    - [x] Update `frontend/app/(portal)/admin/courses/page.tsx` (Remove Discount UI)
-    - [x] Update `frontend/app/(portal)/admin/payments/page.tsx` (Add Discount UI)
-- [ ] Verify financial calculations in student invoices
-- [ ] Final production build and testing
-- [ ] Verify JWT and RBAC middleware functionality
-- [ ] Ensure database models (SQLAlchemy) match the schema requirements
-
-## Frontend Tasks
-- [ ] Review `(auth)` and `(portal)` routes
-- [ ] Verify `AdminService` and `PortalService` API integration
-- [ ] Ensure consistent UI across all portal pages
-
-## Backend Tasks
-- [ ] Review `admin_panel.py` for student and course management logic
-
-## Testing & Quality
-- [ ] Run performance tests as planned in `docs/performance_testing_plan.md`
-- [ ] Verify login and role-based access security
+- [x] Backend: Inspect existing `BackupService` for completeness
+- [x] Backend: Inspect existing `admin_route` and `admin_panel` for backup routes
+- [x] Backend: Improve `purge_all_data_except_admin` in `admin_panel.py` to include all tables
+- [x] Backend: Ensure `BackupService` is robust and handles all models
+- [x] Frontend: Inspect existing `BackupPage`
+- [x] Frontend: Add "Purge System Data" functionality to `BackupPage` for clean restores
+- [x] Frontend: Polish `BackupPage` UI with better status reports and instructions
+- [x] Testing: Verified logic for exports and imports

@@ -1,6 +1,6 @@
 from typing import Optional, List
 from app.services.rbac_portal import validating_admin_role, validating_parent_role
-from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog, Batch
+from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog, Batch, RefreshToken
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateRequest
@@ -900,20 +900,35 @@ class AdminPanelService:
         if not await validating_admin_role(request):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
-        # Delete domain data first, then non-admin users.
+        # Delete data in correct reverse order of dependencies
+        # 1. High level domain data (Logs, Tokens, etc.)
+        await session.execute(delete(ActivityLog))
+        await session.execute(delete(RefreshToken))
+        
+        # 2. Relationship Links
         await session.execute(delete(ParentStudent))
-        await session.execute(delete(Enrollment))
         await session.execute(delete(Grade))
         await session.execute(delete(Attendance))
         await session.execute(delete(StaffAttendance))
+        
+        # 3. Financial and Enrollment (Payments fall under Enrollment)
+        await session.execute(delete(Payment))
+        await session.execute(delete(Enrollment))
+        
+        # 4. Schedule and Logical grouping (Timetables and Batches fall under Course)
         await session.execute(delete(TimeTable))
+        await session.execute(delete(Batch))
+        
+        # 5. Domain Core (Course falls under Academic Year and Room)
         await session.execute(delete(Course))
         await session.execute(delete(AcademicYear))
         await session.execute(delete(Room))
+        
+        # 6. Users (Keep only admins)
         await session.execute(delete(User).where(User.role != "admin"))
 
         await session.commit()
-        return JSONResponse({"status_code": 200, "message": "Purged all data except admin accounts"})
+        return JSONResponse({"status_code": 200, "message": "Purged all data except admin accounts and base structure"})
         
     async def get_all_users(request: Request, session: AsyncSession):
         if not await validating_admin_role(request, allow_sales=True):
