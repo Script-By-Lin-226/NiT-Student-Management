@@ -5,6 +5,7 @@ from typing import Optional
 class TimeTableBase(BaseModel):
     timetable_id: int
     course_id: int
+    subject_id: Optional[int] = None
     day_of_week: str
     start_time: str
     end_time: str
@@ -15,6 +16,7 @@ class TimeTableBase(BaseModel):
 class AdminTimeTableCreate(BaseModel):
     course_code: str
     batch_no: Optional[str] = None
+    subject_code: Optional[str] = None
     teacher_code: Optional[str] = None
     day_of_week: str
     start_time: str  # "HH:MM"

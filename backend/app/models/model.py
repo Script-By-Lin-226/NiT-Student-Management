@@ -126,6 +126,7 @@ class Course(Base):
     timetable = relationship("TimeTable", back_populates="course", cascade="all, delete-orphan")
     grades = relationship("Grade", back_populates="course", cascade="all, delete-orphan")
     batches = relationship("Batch", back_populates="course", cascade="all, delete-orphan")
+    subjects = relationship("Subject", back_populates="course", cascade="all, delete-orphan")
 
 # ==============================
 # Batch Model
@@ -153,6 +154,26 @@ class Batch(Base):
     enrollments = relationship("Enrollment", back_populates="batch", cascade="all, delete-orphan")
     attendance = relationship("Attendance", back_populates="batch", cascade="all, delete-orphan")
     timetables = relationship("TimeTable", back_populates="batch", cascade="all, delete-orphan")
+
+
+# ==============================
+# Subject Model
+# ==============================
+
+class Subject(Base):
+    __tablename__ = "subjects"
+
+    subject_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    subject_code = Column(String, unique=True, index=True, nullable=False) # e.g. SUB001
+    subject_name = Column(String, nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.course_id", ondelete="CASCADE"), nullable=False)
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    course = relationship("Course", back_populates="subjects")
 
 
 # ==============================
@@ -262,6 +283,12 @@ class TimeTable(Base):
         index=True,
         nullable=True
     )
+    subject_id = Column(
+        Integer,
+        ForeignKey("subjects.subject_id", ondelete="SET NULL"),
+        index=True,
+        nullable=True
+    )
 
     day_of_week = Column(String, nullable=False) # Monday, Tuesday...
     start_time = Column(String, nullable=False) # 09:00
@@ -272,6 +299,7 @@ class TimeTable(Base):
     course = relationship("Course", back_populates="timetable")
     batch = relationship("Batch", back_populates="timetables")
     teacher = relationship("User")
+    subject = relationship("Subject")
 
 
 # ==============================
@@ -309,20 +337,25 @@ class Attendance(Base):
 
     attendance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), index=True, nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.course_id", ondelete="SET NULL"), index=True, nullable=True)
     batch_id = Column(Integer, ForeignKey("batches.batch_id", ondelete="SET NULL"), index=True, nullable=True)
+    subject_id = Column(Integer, ForeignKey("subjects.subject_id", ondelete="SET NULL"), index=True, nullable=True)
     timetable_id = Column(Integer, ForeignKey("timetables.timetable_id", ondelete="SET NULL"), index=True, nullable=True)
     attendance_date = Column(Date, nullable=False, default=date.today, index=True)
     slot = Column(String, nullable=False, default="Morning") # "Morning", "Afternoon", "Evening" or Time slot
     check_today = Column(Boolean, nullable=False, default=False)
 
-    # Enforce: one record per student per day per slot/timetable_id
+    # Enforce: one record per student per day per slot/timetable_id per subject
     __table_args__ = (
         # Note: If timetable_id is used, slot might be redundant but keeping for backward compatibility
-        UniqueConstraint('user_id', 'attendance_date', 'slot', name='uq_user_attendance_date_slot'),
+        # Adding subject_id to unique constraint allows multiple subjects per day/slot
+        UniqueConstraint('user_id', 'attendance_date', 'slot', 'subject_id', name='uq_user_attendance_date_slot_subject'),
     )
 
     student = relationship("User", back_populates="attendance")
+    course = relationship("Course")
     batch = relationship("Batch", back_populates="attendance")
+    subject = relationship("Subject")
     timetable = relationship("TimeTable")
 
 

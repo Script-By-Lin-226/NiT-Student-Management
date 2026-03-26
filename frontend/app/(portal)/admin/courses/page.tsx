@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAcademicYear, AdminCourse, AdminService } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Layers } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Layers, BookOpen } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
-import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDeleteCourse, useBatches, useCreateBatch, useUpdateBatch, useDeleteBatch } from "@/hooks/useAdmin";
+import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDeleteCourse, useBatches, useCreateBatch, useUpdateBatch, useDeleteBatch, useSubjects, useCreateSubject, useUpdateSubject, useDeleteSubject } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 
 
@@ -56,6 +56,7 @@ export default function AdminCoursesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [subjectOpen, setSubjectOpen] = useState(false);
   const [selected, setSelected] = useState<AdminCourse | null>(null);
 
   // Form states... (keeping them as they are for simplicity in replacement, but I'll optimize if needed)
@@ -231,8 +232,8 @@ export default function AdminCoursesPage() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.map((c) => (
                 <tr key={c.course_code} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-brand-600 group-hover:underline underline-offset-4 decoration-brand-200 transition-all cursor-default">{c.course_code}</div>
+                  <td className="px-6 py-4 cursor-pointer" onClick={() => { setSelected(c); setSubjectOpen(true); }}>
+                    <div className="font-bold text-brand-600 group-hover:underline underline-offset-4 decoration-brand-200 transition-all">{c.course_code}</div>
                     <div className="font-bold text-slate-900 text-base">{c.course_name}</div>
                   </td>
                   <td className="px-6 py-4">
@@ -258,6 +259,9 @@ export default function AdminCoursesPage() {
                     <div className="flex justify-end gap-2 text-xs">
                       <button onClick={() => { setSelected(c); setBatchOpen(true); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 shadow-sm" title="Manage Batches">
                         <Layers className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => { setSelected(c); setSubjectOpen(true); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-600 hover:text-white transition-all active:scale-90 shadow-sm" title="Manage Subjects">
+                        <BookOpen className="w-4 h-4" />
                       </button>
                       {isAdmin && (
                         <button onClick={() => openEdit(c)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm" title="Edit Course">
@@ -299,6 +303,12 @@ export default function AdminCoursesPage() {
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
+                  <button onClick={() => { setSelected(c); setSubjectOpen(true); }} className="p-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shadow-sm transition-all active:scale-90">
+                    <BookOpen className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => { setSelected(c); setBatchOpen(true); }} className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm transition-all active:scale-90">
+                    <Layers className="w-4 h-4" />
+                  </button>
                   {isAdmin && (
                     <button onClick={() => doDelete(c)} className="p-2 rounded-lg bg-red-50 text-red-600 border border-red-100 shadow-sm transition-all active:scale-90">
                       <Trash2 className="w-4 h-4" />
@@ -469,6 +479,9 @@ export default function AdminCoursesPage() {
       <Modal title={`Batches — ${selected?.course_name}`} open={batchOpen} onClose={() => setBatchOpen(false)}>
         {selected && <BatchManagement courseId={selected.course_id} />}
       </Modal>
+      <Modal title={`Subjects — ${selected?.course_name}`} open={subjectOpen} onClose={() => setSubjectOpen(false)}>
+        {selected && <SubjectManagement courseId={selected.course_id} courseCode={selected.course_code} courseName={selected.course_name} />}
+      </Modal>
     </div>
   );
 }
@@ -556,6 +569,119 @@ function BatchManagement({ courseId }: { courseId: number }) {
                   </div>
                 </div>
                 <button onClick={() => handleDelete(b.batch_id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SubjectManagement({ courseId, courseCode, courseName }: { courseId: number; courseCode: string; courseName: string }) {
+  const { data: subjectRes, isLoading } = useSubjects(courseId);
+  const subjects = subjectRes?.data || [];
+  const createSubject = useCreateSubject();
+  const deleteSubject = useDeleteSubject();
+
+  const [newCode, setNewCode] = useState("");
+  const [newName, setNewName] = useState("");
+
+  useEffect(() => {
+    if (courseCode && !isLoading) {
+      if (subjects.length > 0) {
+        let maxNum = 0;
+        const prefix = `${courseCode}-`;
+        
+        subjects.forEach(s => {
+          if (s.subject_code.startsWith(prefix)) {
+            const numPart = s.subject_code.slice(prefix.length);
+            const num = parseInt(numPart);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+          }
+        });
+
+        if (maxNum > 0) {
+          setNewCode(`${courseCode}-${maxNum + 1}`);
+        } else {
+          // If subjects exist but none match prefix, just provide prefix
+          setNewCode(`${courseCode}-101`);
+        }
+      } else {
+        setNewCode(`${courseCode}-101`);
+      }
+    }
+  }, [courseCode, subjects, isLoading]);
+
+  const handleCreate = async () => {
+    if (!newCode.trim() || !newName.trim()) return;
+    try {
+      await createSubject.mutateAsync({
+        subject_code: newCode.trim(),
+        subject_name: newName.trim(),
+        course_id: courseId,
+      });
+      setNewCode(""); setNewName("");
+      toast.success("Subject added");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to add subject");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Delete this subject?")) return;
+    try {
+      await deleteSubject.mutateAsync(id);
+      toast.success("Subject deleted");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to delete subject");
+    }
+  };
+
+  if (isLoading) return <div className="py-10 text-center"><RefreshCw className="w-6 h-6 animate-spin mx-auto text-slate-300" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
+        <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>
+            <div className="text-[10px] font-bold text-slate-400 uppercase bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+                Course ID: {courseId}
+            </div>
+        </div>
+        <div className="text-xs font-semibold text-slate-500 px-3">
+            Adding subject for <span className="text-blue-600">{courseName}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Subject Code</label>
+            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm" placeholder="e.g. NCC-101" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Subject Name</label>
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm" placeholder="e.g. Database Systems" />
+          </div>
+        </div>
+        <button onClick={handleCreate} disabled={createSubject.isPending || !newCode || !newName} className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-95">
+          Add Subject
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <h4 className="text-sm font-bold text-slate-900 px-1">Course Subjects</h4>
+        {subjects.length === 0 ? (
+          <div className="py-8 text-center text-slate-400 text-sm bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">No subjects yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {subjects.map((s) => (
+              <div key={s.subject_id} className="p-3 bg-white border border-slate-200 rounded-2xl flex items-center justify-between hover:border-blue-200 transition-colors group">
+                <div>
+                  <div className="font-bold text-slate-900">{s.subject_name}</div>
+                  <div className="text-[10px] text-slate-500 font-medium">{s.subject_code}</div>
+                </div>
+                <button onClick={() => handleDelete(s.subject_id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

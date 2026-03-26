@@ -173,6 +173,29 @@ export interface AdminBatchUpdate {
   is_active?: boolean;
 }
 
+export interface AdminSubject {
+  subject_id: number;
+  subject_code: string;
+  subject_name: string;
+  course_id: number;
+  course_name?: string;
+  is_active: boolean;
+  created_at?: string | null;
+}
+
+export interface AdminSubjectCreate {
+  subject_code: string;
+  subject_name: string;
+  course_id: number;
+  is_active?: boolean;
+}
+
+export interface AdminSubjectUpdate {
+  subject_code?: string;
+  subject_name?: string;
+  is_active?: boolean;
+}
+
 export interface AdminEnrollment {
   enrollment_id: number;
   enrollment_code: string;
@@ -227,12 +250,16 @@ export interface AdminAttendanceRecord {
   timetable_id?: number | null;
   teacher_name?: string | null;
   time_range?: string | null;
+  course_name?: string | null;
+  subject_name?: string | null;
 }
 
 export interface AdminAttendanceMark {
   student_code: string;
   slot: string;
   timetable_id?: number | null;
+  course_id?: number | null;
+  subject_id?: number | null;
   check_today: boolean;
   attendance_date?: string;
 }
@@ -283,12 +310,16 @@ export interface AdminTimeTableRow {
   teacher_id?: number | null;
   teacher_code?: string | null;
   teacher_name?: string | null;
+  subject_id?: number | null;
+  subject_code?: string | null;
+  subject_name?: string | null;
 }
 
 export interface AdminTimeTableCreate {
   course_code: string;
   batch_no?: string | null;
   teacher_code?: string | null;
+  subject_code?: string | null;
   day_of_week: string;
   start_time: string;
   end_time: string;
@@ -302,6 +333,7 @@ export interface AdminTimeTableUpdate {
   room_name?: string | null;
   batch_no?: string | null;
   teacher_code?: string | null;
+  subject_code?: string | null;
 }
 
 export interface AdminStudentRelations {
@@ -652,6 +684,26 @@ export class AdminService {
 
   static async deleteBatch(id: number): Promise<void> {
     await api.delete(`/admin/batches/${id}`);
+  }
+
+  // Subjects
+  static async listSubjects(courseId?: number): Promise<PaginatedResponse<AdminSubject>> {
+    const res = await api.get<PaginatedResponse<AdminSubject>>("/admin/subjects", { params: { course_id: courseId } });
+    return res.data;
+  }
+
+  static async createSubject(payload: AdminSubjectCreate): Promise<AdminSubject> {
+    const res = await api.post<{ data: AdminSubject }>("/admin/subjects", payload);
+    return res.data.data;
+  }
+
+  static async updateSubject(id: number, payload: AdminSubjectUpdate): Promise<AdminSubject> {
+    const res = await api.put<{ data: AdminSubject }>(`/admin/subjects/${id}`, payload);
+    return res.data.data;
+  }
+
+  static async deleteSubject(id: number): Promise<void> {
+    await api.delete(`/admin/subjects/${id}`);
   }
 }
 

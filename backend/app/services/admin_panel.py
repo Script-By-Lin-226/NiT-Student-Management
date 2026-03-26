@@ -1,6 +1,6 @@
 from typing import Optional, List
 from app.services.rbac_portal import validating_admin_role, validating_parent_role
-from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog, Batch, RefreshToken
+from app.models.model import User, AcademicYear, Attendance, Course, Enrollment, Grade, ParentStudent, StaffAttendance, Room, TimeTable, Payment, ActivityLog, Batch, RefreshToken, Subject
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateRequest
@@ -19,6 +19,7 @@ from collections import defaultdict
 from app.schemas.time_table import AdminTimeTableCreate, AdminTimeTableUpdate
 from app.schemas.payment import PaymentCreate, PaymentUpdate
 from app.schemas.batch import AdminBatchCreate, AdminBatchUpdate
+from app.schemas.subject import AdminSubjectCreate, AdminSubjectUpdate
 from app.core.timezone_utils import get_now_local
 
 
@@ -161,6 +162,17 @@ def _serialize_batch(b: Batch) -> dict:
         "room": b.room,
         "instructor_id": b.instructor_id,
         "is_active": b.is_active,
+    }
+
+
+def _serialize_subject(s: Subject) -> dict:
+    return {
+        "subject_id": s.subject_id,
+        "subject_code": s.subject_code,
+        "subject_name": s.subject_name,
+        "course_id": s.course_id,
+        "is_active": s.is_active,
+        "created_at": f"{s.created_at.isoformat()}Z" if getattr(s, "created_at", None) else None,
     }
 
 
@@ -918,6 +930,7 @@ class AdminPanelService:
         # 4. Schedule and Logical grouping (Timetables and Batches fall under Course)
         await session.execute(delete(TimeTable))
         await session.execute(delete(Batch))
+        await session.execute(delete(Subject))
         
         # 5. Domain Core (Course falls under Academic Year and Room)
         await session.execute(delete(Course))
@@ -1238,6 +1251,88 @@ class AdminPanelService:
         await _log_activity(request, session, "Delete Batch", f"Batch ID {batch_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Batch deleted successfully"})
 
+    # --- CRUD - Subjects ---
+
+    async def list_subjects(request: Request, session: AsyncSession, course_id: Optional[int] = None):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        q = select(Subject, Course).join(Course, Subject.course_id == Course.course_id)
+        if course_id:
+            q = q.where(Subject.course_id == course_id)
+        
+        res = await session.execute(q)
+        data = []
+        for s, c in res:
+            d = _serialize_subject(s)
+            d["course_name"] = c.course_name
+            data.append(d)
+            
+        return JSONResponse({"status_code": 200, "message": "Subjects fetched successfully", "data": data})
+
+    async def create_subject(request: Request, session: AsyncSession, payload: AdminSubjectCreate):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        
+        # Check course
+        c_r = await session.execute(select(Course).where(Course.course_id == payload.course_id))
+        course = c_r.scalars().first()
+        if not course:
+            return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
+            
+        # Check code uniqueness
+        dup = await session.execute(select(Subject).where(Subject.subject_code == payload.subject_code))
+        if dup.scalars().first():
+            return JSONResponse({"status_code": 409, "message": f"Subject code {payload.subject_code} already exists"}, status_code=409)
+
+        new_subject = Subject(
+            subject_code=payload.subject_code,
+            subject_name=payload.subject_name,
+            course_id=payload.course_id,
+            is_active=payload.is_active
+        )
+        session.add(new_subject)
+        await session.commit()
+        await session.refresh(new_subject)
+        await _log_activity(request, session, "Create Subject", f"Subject {payload.subject_code} created for course {course.course_name}")
+        return JSONResponse({"status_code": 201, "message": "Subject created successfully", "data": _serialize_subject(new_subject)}, status_code=201)
+
+    async def update_subject(request: Request, session: AsyncSession, subject_id: int, payload: AdminSubjectUpdate):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+            
+        r = await session.execute(select(Subject).where(Subject.subject_id == subject_id))
+        subject = r.scalars().first()
+        if not subject:
+            return JSONResponse({"status_code": 404, "message": "Subject not found"}, status_code=404)
+            
+        if payload.subject_code is not None:
+            # Check uniqueness if code is changed
+            if payload.subject_code != subject.subject_code:
+                dup = await session.execute(select(Subject).where(Subject.subject_code == payload.subject_code))
+                if dup.scalars().first():
+                    return JSONResponse({"status_code": 409, "message": f"Subject code {payload.subject_code} already exists"}, status_code=409)
+            subject.subject_code = payload.subject_code
+            
+        if payload.subject_name is not None: subject.subject_name = payload.subject_name
+        if payload.is_active is not None: subject.is_active = payload.is_active
+                
+        await session.commit()
+        await _log_activity(request, session, "Update Subject", f"Subject ID {subject_id} updated")
+        return JSONResponse({"status_code": 200, "message": "Subject updated successfully", "data": _serialize_subject(subject)})
+
+    async def delete_subject(request: Request, session: AsyncSession, subject_id: int):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+        r = await session.execute(select(Subject).where(Subject.subject_id == subject_id))
+        subject = r.scalars().first()
+        if not subject:
+            return JSONResponse({"status_code": 404, "message": "Subject not found"}, status_code=404)
+        await session.delete(subject)
+        await session.commit()
+        await _log_activity(request, session, "Delete Subject", f"Subject ID {subject_id} deleted")
+        return JSONResponse({"status_code": 200, "message": "Subject deleted successfully"})
+
     # --- CRUD - Enrollments ---
 
     async def list_enrollments(request: Request, session: AsyncSession, status: bool = None):
@@ -1396,7 +1491,7 @@ class AdminPanelService:
     # CRUD - Attendance
 
     async def mark_attendance(request: Request, session: AsyncSession, payload: AttendanceMarkRequest):
-        """Mark attendance for a student. One record allowed per student per day."""
+        """Mark attendance for a student. One record allowed per student per day per slot/subject."""
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
@@ -1408,49 +1503,68 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Student not found"}, status_code=404)
 
         today = get_now_local().date()
-        if getattr(payload, "attendance_date", None):
+        if payload.attendance_date:
             try:
                 today = datetime.strptime(payload.attendance_date, "%Y-%m-%d").date()
             except ValueError:
                 pass
 
-        # Ensure attendance is within course/batch bounds for the student
-        enroll_q = select(Enrollment, Batch, Course).outerjoin(Batch, Enrollment.batch_id == Batch.batch_id).join(Course, Enrollment.course_id == Course.course_id).where(
-            and_(
-                Enrollment.student_id == student.user_id,
-                Enrollment.status == True
-            )
-        )
-        er = await session.execute(enroll_q)
-        row = er.first()
-        if not row:
-            return JSONResponse({"status_code": 404, "message": "No active enrollment found for student."}, status_code=404)
+        # Resolve Course/Batch if not explicitly provided
+        course_id = payload.course_id
+        batch_id = None
+        subject_id = payload.subject_id
         
-        active_enroll, active_batch, active_course = row
-        start = active_batch.start_date if active_batch and active_batch.start_date else active_course.start_date
-        end = active_batch.end_date if active_batch and active_batch.end_date else active_course.end_date
-        
-        if not start or not end:
-             # If no dates set at all, we might allow or deny. Let's assume allowed if missing but warn or just check.
-             pass
-        elif not (start <= today <= end):
-            return JSONResponse({"status_code": 400, "message": f"Attendance is only allowed within course/batch duration ({start} to {end})."}, status_code=400)
+        # If timetable_id is provided, we can resolve subject_id and potentially course_id
+        if payload.timetable_id:
+            tt_r = await session.execute(select(TimeTable).where(TimeTable.timetable_id == payload.timetable_id))
+            tt = tt_r.scalars().first()
+            if tt:
+                if not course_id: course_id = tt.course_id
+                if not batch_id: batch_id = tt.batch_id
+                if not subject_id: subject_id = tt.subject_id
 
-        # ── One-per-day guard ──────────────────────────────────────────────
-        duplicate_query = select(Attendance).where(
-            and_(
-                Attendance.user_id == student.user_id,
-                Attendance.attendance_date == today,
-                Attendance.slot == payload.slot
+        # If course_id is still not resolved, we try to find the active enrollment
+        if not course_id:
+            enroll_q = select(Enrollment, Batch, Course).outerjoin(Batch, Enrollment.batch_id == Batch.batch_id).join(Course, Enrollment.course_id == Course.course_id).where(
+                and_(
+                    Enrollment.student_id == student.user_id,
+                    Enrollment.status == True
+                )
             )
-        )
+            er = await session.execute(enroll_q)
+            row = er.first()
+            if row:
+                active_enroll, active_batch, active_course = row
+                course_id = active_course.course_id
+                if not batch_id: batch_id = active_batch.batch_id if active_batch else None
+            else:
+                return JSONResponse({"status_code": 404, "message": "No active enrollment found for student, and no course_id could be resolved."}, status_code=404)
+        elif not batch_id:
+            # If course_id provided but no batch_id yet, still try to find matching batch for this student if any
+            batch_q = select(Enrollment.batch_id).where(and_(Enrollment.student_id == student.user_id, Enrollment.course_id == course_id, Enrollment.status == True))
+            br = await session.execute(batch_q)
+            batch_id = br.scalars().first()
+
+        # ── One-per-day-per-subject guard ──────────────────────────────────
+        dup_filters = [
+            Attendance.user_id == student.user_id,
+            Attendance.attendance_date == today
+        ]
+        if subject_id:
+            dup_filters.append(Attendance.subject_id == subject_id)
+        else:
+            dup_filters.append(Attendance.slot == payload.slot)
+            dup_filters.append(Attendance.subject_id == None)
+
+        duplicate_query = select(Attendance).where(and_(*dup_filters))
         duplicate_result = await session.execute(duplicate_query)
         existing = duplicate_result.scalars().first()
         if existing:
+            subject_msg = f" for subject ID {payload.subject_id}" if payload.subject_id else ""
             return JSONResponse(
                 {
                     "status_code": 409,
-                    "message": f"Attendance already marked for student '{payload.student_code}' today ({today}) slot '{payload.slot}'"
+                    "message": f"Attendance already marked for student '{payload.student_code}' today ({today}) slot '{payload.slot}'{subject_msg}"
                 },
                 status_code=409
             )
@@ -1458,7 +1572,9 @@ class AdminPanelService:
 
         new_record = Attendance(
             user_id=student.user_id,
-            batch_id=active_enroll.batch_id,
+            course_id=course_id,
+            batch_id=batch_id,
+            subject_id=payload.subject_id,
             timetable_id=payload.timetable_id,
             attendance_date=today,
             slot=payload.slot,
@@ -1467,7 +1583,11 @@ class AdminPanelService:
         session.add(new_record)
         await session.commit()
         await session.refresh(new_record)
-        await _log_activity(request, session, "Mark Attendance", f"Attendance marked for {payload.student_code} slot={payload.slot}")
+        
+        log_msg = f"Attendance marked for {payload.student_code} slot={payload.slot}"
+        if payload.subject_id: log_msg += f" subject_id={payload.subject_id}"
+        await _log_activity(request, session, "Mark Attendance", log_msg)
+        
         return JSONResponse({
             "status_code": 201,
             "message": "Attendance marked successfully",
@@ -1476,7 +1596,9 @@ class AdminPanelService:
                 "student_code": payload.student_code,
                 "attendance_date": str(new_record.attendance_date),
                 "slot": new_record.slot,
-                "check_today": new_record.check_today
+                "check_today": new_record.check_today,
+                "course_id": new_record.course_id,
+                "subject_id": new_record.subject_id
             }
         }, status_code=201)
 
@@ -1502,8 +1624,10 @@ class AdminPanelService:
         from sqlalchemy.orm import aliased
         Teacher = aliased(User)
         q = (
-            select(Attendance, User, TimeTable, Teacher.username.label("teacher_name"))
+            select(Attendance, User, TimeTable, Teacher.username.label("teacher_name"), Course.course_name, Subject.subject_name)
             .join(User, Attendance.user_id == User.user_id)
+            .outerjoin(Course, Attendance.course_id == Course.course_id)
+            .outerjoin(Subject, Attendance.subject_id == Subject.subject_id)
             .outerjoin(TimeTable, Attendance.timetable_id == TimeTable.timetable_id)
             .outerjoin(Teacher, TimeTable.teacher_id == Teacher.user_id)
             .order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
@@ -1530,9 +1654,11 @@ class AdminPanelService:
                     "profile_picture": u.profile_picture,
                     "timetable_id": a.timetable_id,
                     "teacher_name": teacher_name,
+                    "course_name": course_name,
+                    "subject_name": subject_name,
                     "time_range": f"{t.start_time} - {t.end_time}" if t else None
                 }
-                for a, u, t, teacher_name in rows
+                for a, u, t, teacher_name, course_name, subject_name in rows
             ],
         })
 
@@ -1744,14 +1870,15 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(
-            select(TimeTable, Course, Batch, User)
+            select(TimeTable, Course, Batch, User, Subject)
             .join(Course, TimeTable.course_id == Course.course_id)
             .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
             .outerjoin(User, TimeTable.teacher_id == User.user_id)
+            .outerjoin(Subject, TimeTable.subject_id == Subject.subject_id)
         )
         rows = r.all()
         data = []
-        for t, c, b, u in rows:
+        for t, c, b, u, s in rows:
             data.append(
                 {
                     "timetable_id": t.timetable_id,
@@ -1766,7 +1893,10 @@ class AdminPanelService:
                     "batch_no": b.batch_no if b else None,
                     "teacher_id": t.teacher_id,
                     "teacher_code": u.user_code if u else None,
-                    "teacher_name": u.username if u else None
+                    "teacher_name": u.username if u else None,
+                    "subject_id": t.subject_id,
+                    "subject_code": s.subject_code if s else None,
+                    "subject_name": s.subject_name if s else None
                 }
             )
         return JSONResponse({"status_code": 200, "message": "Timetables fetched successfully", "data": data})
@@ -1794,10 +1924,18 @@ class AdminPanelService:
             if teacher:
                 teacher_id = teacher.user_id
 
+        subject_id = None
+        if payload.subject_code:
+            s_r = await session.execute(select(Subject).where(and_(Subject.course_id == course.course_id, Subject.subject_code == payload.subject_code)))
+            sub = s_r.scalars().first()
+            if sub:
+                subject_id = sub.subject_id
+
         tt = TimeTable(
             course_id=course.course_id,
             batch_id=batch_id,
             teacher_id=teacher_id,
+            subject_id=subject_id,
             day_of_week=payload.day_of_week,
             start_time=payload.start_time,
             end_time=payload.end_time,
@@ -1808,6 +1946,7 @@ class AdminPanelService:
         await session.refresh(tt)
         msg = f"Timetable for {payload.course_code}"
         if payload.batch_no: msg += f" (Batch {payload.batch_no})"
+        if payload.subject_code: msg += f" Subject {payload.subject_code}"
         if payload.teacher_code: msg += f" with Teacher {payload.teacher_code}"
         msg += f" on {payload.day_of_week} {payload.start_time}-{payload.end_time} created"
         await _log_activity(request, session, "Create Timetable", msg)
@@ -1848,6 +1987,15 @@ class AdminPanelService:
                     tt.teacher_id = teacher.user_id
             else:
                 tt.teacher_id = None
+
+        if payload.subject_code is not None:
+            if payload.subject_code:
+                s_r = await session.execute(select(Subject).where(and_(Subject.course_id == tt.course_id, Subject.subject_code == payload.subject_code)))
+                sub = s_r.scalars().first()
+                if sub:
+                    tt.subject_id = sub.subject_id
+            else:
+                tt.subject_id = None
 
         await session.commit()
         await _log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")

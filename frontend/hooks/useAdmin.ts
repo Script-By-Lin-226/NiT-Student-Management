@@ -18,6 +18,7 @@ export const adminKeys = {
   payments: () => [...adminKeys.all, "payments"] as const,
   activityLogs: () => [...adminKeys.all, "activity-logs"] as const,
   batches: (courseId?: number) => [...adminKeys.all, "batches", courseId] as const,
+  subjects: (courseId?: number) => [...adminKeys.all, "subjects", courseId] as const,
 };
 
 // --- Queries ---
@@ -83,6 +84,13 @@ export function useBatches(courseId?: number) {
   return useQuery({
     queryKey: adminKeys.batches(courseId),
     queryFn: () => AdminService.listBatches(courseId),
+  });
+}
+
+export function useSubjects(courseId?: number) {
+  return useQuery({
+    queryKey: adminKeys.subjects(courseId),
+    queryFn: () => AdminService.listSubjects(courseId),
   });
 }
 
@@ -273,6 +281,31 @@ export function useDeleteBatch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => AdminService.deleteBatch(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+// Subject Mutations
+export function useCreateSubject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) => AdminService.createSubject(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export function useUpdateSubject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => AdminService.updateSubject(id, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export function useDeleteSubject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => AdminService.deleteSubject(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   });
 }

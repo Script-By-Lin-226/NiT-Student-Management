@@ -239,7 +239,8 @@ export default function AdminAttendancePage() {
       return groupTimetables.map(t => ({
         id: t.timetable_id,
         text: `${t.start_time} - ${t.end_time}`,
-        teacher_name: t.teacher_name
+        teacher_name: t.teacher_name,
+        subject_name: t.subject_name
       })).sort((a,b) => a.text.localeCompare(b.text));
     }
     // Fallback if they search class not scheduled today
@@ -253,15 +254,15 @@ export default function AdminAttendancePage() {
          const key = `${t.start_time} - ${t.end_time}`;
          if(!seen.has(key)) {
             seen.add(key);
-            distinct.push({ id: t.timetable_id, text: key, teacher_name: t.teacher_name });
+            distinct.push({ id: t.timetable_id, text: key, teacher_name: t.teacher_name, subject_name: t.subject_name });
          }
       }
       return distinct.sort((a,b) => a.text.localeCompare(b.text));
     }
     return [
-       { id: null, text: "Morning", teacher_name: null },
-       { id: null, text: "Afternoon", teacher_name: null },
-       { id: null, text: "Evening", teacher_name: null }
+       { id: null, text: "Morning", teacher_name: null, subject_name: null },
+       { id: null, text: "Afternoon", teacher_name: null, subject_name: null },
+       { id: null, text: "Evening", teacher_name: null, subject_name: null }
     ];
   }, [selectedGroup, timetables, currentDayName]);
 
@@ -409,10 +410,11 @@ export default function AdminAttendancePage() {
                     <th className="px-5 py-3 sticky left-0 bg-slate-50 z-10">Student name</th>
                     <th className="px-5 py-3">Code</th>
                     {currentSlots.map(slot => (
-                      <th key={slot.text} className="px-5 py-3 text-center border-l border-slate-200">
+                      <th key={slot.text + (slot.id || '')} className="px-5 py-3 text-center border-l border-slate-200">
                         <div className="flex flex-col">
-                           <span>{slot.text}</span>
-                           {slot.teacher_name && <span className="text-[9px] text-brand-600 font-normal">{slot.teacher_name}</span>}
+                           <span className="text-brand-900">{slot.text}</span>
+                           {slot.subject_name && <span className="text-[10px] text-blue-600 font-bold">{slot.subject_name}</span>}
+                           {slot.teacher_name && <span className="text-[9px] text-slate-500 font-normal">{slot.teacher_name}</span>}
                         </div>
                       </th>
                     ))}
@@ -443,7 +445,7 @@ export default function AdminAttendancePage() {
                           const record = attendance.find(a => 
                              a.user_code === stu.student_code && 
                              a.attendance_date.startsWith(targetDate) && 
-                             (a.timetable_id === slot.id || a.slot === slot.text)
+                             (a.timetable_id === slot.id || (a.slot === slot.text && !a.timetable_id))
                           );
                           return (
                             <td key={slot.text} className="px-5 py-4 border-l border-slate-100 text-center">
@@ -528,7 +530,8 @@ export default function AdminAttendancePage() {
                         <div key={slot.text} className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200/60">
                           <div className="flex flex-col">
                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{slot.text}</span>
-                             {('teacher_name' in slot && slot.teacher_name) && <span className="text-[8px] text-brand-600">Tr. {slot.teacher_name}</span>}
+                             {slot.subject_name && <span className="text-[10px] text-blue-600 font-bold">{slot.subject_name}</span>}
+                             {slot.teacher_name && <span className="text-[8px] text-slate-500">Tr. {slot.teacher_name}</span>}
                           </div>
                           <div className="flex items-center gap-2">
                             {record ? (

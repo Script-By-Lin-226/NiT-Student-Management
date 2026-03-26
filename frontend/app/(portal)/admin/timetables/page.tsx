@@ -56,6 +56,9 @@ export default function AdminTimetablesPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [selected, setSelected] = useState<AdminTimeTableRow | null>(null);
+  const [quickSubjectOpen, setQuickSubjectOpen] = useState(false);
+  const [newSubCode, setNewSubCode] = useState("");
+  const [newSubName, setNewSubName] = useState("");
 
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
@@ -72,6 +75,10 @@ export default function AdminTimetablesPage() {
   const [eBatchNo, setEBatchNo] = useState("");
   const [eTeacherCode, setETeacherCode] = useState("");
   const [eBatches, setEBatches] = useState<any[]>([]);
+  const [cSubjectCode, setCSubjectCode] = useState("");
+  const [eSubjectCode, setESubjectCode] = useState("");
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [eSubjects, setESubjects] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !isAdminOrSales) router.replace("/dashboard");
@@ -121,12 +128,42 @@ export default function AdminTimetablesPage() {
     if (cCourseCode) {
       const c = courses.find((x) => x.course_code === cCourseCode);
       if (c) {
-        AdminService.listBatches(c.course_id).then((res) => setBatches(res.data));
+        Promise.all([
+          AdminService.listBatches(c.course_id),
+          AdminService.listSubjects(c.course_id)
+        ]).then(([bRes, sRes]) => {
+          setBatches(bRes.data);
+          setSubjects(sRes.data);
+        });
       } else {
         setBatches([]);
+        setSubjects([]);
       }
     }
   }, [cCourseCode, courses]);
+
+  useEffect(() => {
+    if (quickSubjectOpen && cCourseCode) {
+      if (subjects.length > 0) {
+        let maxNum = 0;
+        const prefix = `${cCourseCode}-`;
+        subjects.forEach(s => {
+          if (s.subject_code && s.subject_code.startsWith(prefix)) {
+            const numPart = s.subject_code.slice(prefix.length);
+            const num = parseInt(numPart);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+          }
+        });
+        if (maxNum > 0) {
+            setNewSubCode(`${cCourseCode}-${maxNum + 1}`);
+        } else {
+            setNewSubCode(`${cCourseCode}-101`);
+        }
+      } else {
+        setNewSubCode(`${cCourseCode}-101`);
+      }
+    }
+  }, [quickSubjectOpen, cCourseCode, subjects]);
 
   if (loading) return null;
   if (!isAdminOrSales) return null;
@@ -135,6 +172,7 @@ export default function AdminTimetablesPage() {
     const firstCourse = courses[0];
     setCCourseCode(firstCourse?.course_code ?? "");
     setCBatchNo("");
+    setCSubjectCode("");
     setCTeacherCode("");
     setCDay("Monday");
     setCSlots([{ start: "09:00", end: "10:00" }]);
@@ -155,6 +193,30 @@ export default function AdminTimetablesPage() {
     }
   };
 
+  const submitQuickSubject = async () => {
+    if (!cCourseCode || !newSubCode || !newSubName) return;
+    const c = courses.find(x => x.course_code === cCourseCode);
+    if (!c) return;
+    setBusy(true);
+    try {
+        await AdminService.createSubject({
+            subject_code: newSubCode,
+            subject_name: newSubName,
+            course_id: c.course_id
+        });
+        const updatedSubs = await AdminService.listSubjects(c.course_id);
+        setSubjects(updatedSubs.data);
+        setCSubjectCode(newSubCode);
+        setQuickSubjectOpen(false);
+        setNewSubCode("");
+        setNewSubName("");
+    } catch (e: any) {
+        setError("Failed to add subject");
+    } finally {
+        setBusy(false);
+    }
+  };
+
   const submitCreate = async () => {
     setBusy(true);
     setError("");
@@ -164,6 +226,7 @@ export default function AdminTimetablesPage() {
           AdminService.createTimetable({
             course_code: cCourseCode,
             batch_no: cBatchNo || null,
+            subject_code: cSubjectCode || null,
             teacher_code: cTeacherCode || null,
             day_of_week: cDay,
             start_time: slot.start,
@@ -188,9 +251,11 @@ export default function AdminTimetablesPage() {
     setEEnd(r.end_time);
     setERoom(r.room_name || "");
     setEBatchNo(r.batch_no || "");
+    setESubjectCode(r.subject_code || "");
     setETeacherCode(r.teacher_code || "");
 
     AdminService.listBatches(r.course_id).then((res) => setEBatches(res.data));
+    AdminService.listSubjects(r.course_id).then((res) => setESubjects(res.data));
 
     setEditOpen(true);
   };
@@ -206,6 +271,7 @@ export default function AdminTimetablesPage() {
         end_time: eEnd,
         room_name: eRoom || null,
         batch_no: eBatchNo || null,
+        subject_code: eSubjectCode || null,
         teacher_code: eTeacherCode || null,
       });
       setEditOpen(false);
@@ -283,7 +349,12 @@ export default function AdminTimetablesPage() {
                 <tr key={r.timetable_id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-semibold text-slate-800">{r.course_name}</div>
-                    <div className="text-xs text-slate-500 font-medium">{r.course_code}</div>
+                    <div className="text-xs text-brand-600 font-bold uppercase tracking-tight">{r.course_code}</div>
+                    {r.subject_name && (
+                      <div className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                        {r.subject_name}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="font-bold text-slate-700">{r.batch_no || "-"}</span>
@@ -347,6 +418,30 @@ export default function AdminTimetablesPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="sm:col-span-2 flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject (Optional)</label>
+              <select value={cSubjectCode} onChange={(e) => setCSubjectCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                 <option value="">(no subject)</option>
+                 {subjects.map((s) => (
+                   <option key={s.subject_id} value={s.subject_code}>
+                     {s.subject_name} ({s.subject_code})
+                   </option>
+                 ))}
+              </select>
+            </div>
+            {cCourseCode && (
+              <button 
+                type="button" 
+                onClick={() => setQuickSubjectOpen(true)}
+                className="p-2.5 mb-0.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-all font-bold text-xs flex items-center gap-1"
+                title="Quick Add Subject"
+              >
+                <Plus className="w-4 h-4" />
+                New
+              </button>
+            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Teacher (Optional)</label>
@@ -454,6 +549,17 @@ export default function AdminTimetablesPage() {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject (Optional)</label>
+            <select value={eSubjectCode} onChange={(e) => setESubjectCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+               <option value="">(no subject)</option>
+               {eSubjects.map((s) => (
+                 <option key={s.subject_id} value={s.subject_code}>
+                   {s.subject_name} ({s.subject_code})
+                 </option>
+               ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Teacher (Optional)</label>
             <select value={eTeacherCode} onChange={(e) => setETeacherCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               <option value="">(no teacher)</option>
@@ -523,6 +629,42 @@ export default function AdminTimetablesPage() {
                     Close
                 </button>
             </div>
+        </div>
+      </Modal>
+
+      <Modal title="Quick Add Subject" open={quickSubjectOpen} onClose={() => setQuickSubjectOpen(false)}>
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+             <div className="text-[10px] font-bold text-blue-600 uppercase mb-1">Target Course</div>
+             <div className="text-sm font-bold text-slate-900">{courses.find(x => x.course_code === cCourseCode)?.course_name} ({cCourseCode})</div>
+             <div className="text-[10px] text-slate-500">ID: {courses.find(x => x.course_code === cCourseCode)?.course_id}</div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject Code</label>
+            <input 
+              value={newSubCode} 
+              onChange={(e) => setNewSubCode(e.target.value)} 
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" 
+              placeholder="e.g. NET-101" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject Name</label>
+            <input 
+              value={newSubName} 
+              onChange={(e) => setNewSubName(e.target.value)} 
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" 
+              placeholder="e.g. Networking Fundamentals" 
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={() => setQuickSubjectOpen(false)} className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">
+                Cancel
+            </button>
+            <button onClick={submitQuickSubject} disabled={busy || !newSubCode || !newSubName} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
+                Add Subject
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

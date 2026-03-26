@@ -8,7 +8,7 @@ from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boo
 from app.models.model import (
     User, AcademicYear, Course, Enrollment, Payment, 
     Room, TimeTable, Grade, Attendance, StaffAttendance, 
-    ParentStudent, ActivityLog, Batch
+    ParentStudent, ActivityLog, Batch, Subject
 )
 from app.services.rbac_portal import validating_admin_role
 from app.core.timezone_utils import get_now_local
@@ -29,6 +29,7 @@ class BackupService:
             (Enrollment, "Enrollments"),
             (Payment, "Payments"),
             (Batch, "Batches"),
+            (Subject, "Subjects"),
             (TimeTable, "Timetables"),
             (Grade, "Grades"),
             (Attendance, "Attendances"),
@@ -87,6 +88,7 @@ class BackupService:
                 ("Users", User),
                 ("Courses", Course),
                 ("Batches", Batch),
+                ("Subjects", Subject),
                 ("Enrollments", Enrollment),
                 ("Payments", Payment),
                 ("Timetables", TimeTable),
