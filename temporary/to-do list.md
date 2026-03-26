@@ -1,10 +1,12 @@
-# Backup & Recovery To-Do List
+# Monitoring Dashboard To-do List
 
-- [x] Backend: Inspect existing `BackupService` for completeness
-- [x] Backend: Inspect existing `admin_route` and `admin_panel` for backup routes
-- [x] Backend: Improve `purge_all_data_except_admin` in `admin_panel.py` to include all tables
-- [x] Backend: Ensure `BackupService` is robust and handles all models
-- [x] Frontend: Inspect existing `BackupPage`
-- [x] Frontend: Add "Purge System Data" functionality to `BackupPage` for clean restores
-- [x] Frontend: Polish `BackupPage` UI with better status reports and instructions
-- [x] Testing: Verified logic for exports and imports
+- [x] Create `./monitoring` directory
+- [x] Initialize a standalone Next.js app in `./monitoring`
+- [x] Implement a login mechanism with credentials `operation@nit.com` / `operation`
+- [x] Build a dashboard UI for real-time performance monitoring
+    - [x] Dynamic charts for response times
+    - [x] Metric indicators (Up/Down status, AVG latency)
+    - [x] API health checks
+- [x] Add static / simulated data for extended metrics
+- [x] Ensure responsive and modern design as per UI instructions
+

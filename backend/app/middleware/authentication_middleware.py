@@ -8,7 +8,7 @@ from jose import jwt, JWTError
 from datetime import datetime
 
 
-EXCLUDE_PATH = ["/auth/login" , "/auth/register" , "/auth/courses", "/docs" , "/openapi.json" , "/redoc" , "/favicon.ico", "/register"]
+EXCLUDE_PATH = ["/auth/login" , "/auth/register" , "/auth/courses", "/docs" , "/openapi.json" , "/redoc" , "/favicon.ico", "/register" , "/health"]
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -99,4 +99,4 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if existing_expose:
                 response.headers["Access-Control-Expose-Headers"] = f"{existing_expose}, x-new-token"
             else:
-                response.headers["Access-Control-Expose-Headers"] = "x-new-token"
+                response.headers["Access-Control-Expose-Headers"] = "x-new-token"
