@@ -6,6 +6,8 @@ import { AdminService } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw, Clock, Search, Download, Trash2 } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
+import ConfirmModal from "@/components/ConfirmModal";
+import { toast } from "sonner";
 
 
 import { useActivityLogs, useDeleteActivityLog, useClearActivityLogs } from "@/hooks/useAdmin";
@@ -36,6 +38,8 @@ export default function ActivityLogsPage() {
   
   const [q, setQ] = useState("");
   const [dateQ, setDateQ] = useState("");
+  const [logToDelete, setLogToDelete] = useState<number | null>(null);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const busy = logsLoading || deleteMutation.isPending || clearMutation.isPending;
   const error = (queryError as any)?.response?.data?.message || (queryError as any)?.message || "";
@@ -45,20 +49,33 @@ export default function ActivityLogsPage() {
   }, [authLoading, isAdmin, router]);
 
   const handleDelete = async (logId: number) => {
-    if (!confirm("Are you sure you want to delete this log entry?")) return;
+    setLogToDelete(logId);
+  };
+
+  const executeDelete = async () => {
+    if (!logToDelete) return;
     try {
-      await deleteMutation.mutateAsync(logId);
+      await deleteMutation.mutateAsync(logToDelete);
+      toast.success("Log entry deleted");
     } catch (e: any) {
-      alert(e?.response?.data?.message || "Failed to delete log.");
+      toast.error(e?.response?.data?.message || "Failed to delete log");
+    } finally {
+      setLogToDelete(null);
     }
   };
 
-  const handleClearAll = async () => {
-    if (!confirm("Are you sure you want to CLEAR ALL activity logs? This cannot be undone.")) return;
+  const handleClearAll = () => {
+    setClearConfirmOpen(true);
+  };
+
+  const executeClearAll = async () => {
     try {
       await clearMutation.mutateAsync();
+      toast.success("All logs cleared");
     } catch (e: any) {
-      alert(e?.response?.data?.message || "Failed to clear logs.");
+      toast.error(e?.response?.data?.message || "Failed to clear logs");
+    } finally {
+      setClearConfirmOpen(false);
     }
   };
 
@@ -281,6 +298,28 @@ export default function ActivityLogsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal 
+        open={!!logToDelete}
+        onClose={() => setLogToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Log Entry"
+        message="Are you sure you want to delete this specific log entry? This action is permanent."
+        confirmText="Delete Log"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
+
+      <ConfirmModal 
+        open={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        onConfirm={executeClearAll}
+        title="Clear All Logs"
+        message="Are you sure you want to CLEAR ALL activity logs? This will permanently remove all history from the database."
+        confirmText="Clear All"
+        variant="danger"
+        isLoading={clearMutation.isPending}
+      />
     </div>
   );
 }

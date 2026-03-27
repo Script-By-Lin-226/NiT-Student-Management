@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminParent, AdminService } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { Users, Link2, UserPlus } from "lucide-react";
+import { Users, Link2, UserPlus, AlertCircle, X } from "lucide-react";
 
 export default function AdminParentsPage() {
   const { isAdminOrSales } = useAuth();
@@ -103,9 +103,15 @@ export default function AdminParentsPage() {
       </div>
 
       {error && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-rose-100">
-          <div className="text-sm font-semibold text-rose-700">Error</div>
-          <div className="text-sm text-rose-600 mt-1">{error}</div>
+        <div className="px-5 py-4 bg-red-50 border-2 border-red-100 text-red-700 text-sm font-bold rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+          <AlertCircle size={18} className="shrink-0 text-red-600" />
+          <div className="flex-1">
+            <span className="font-extrabold mr-2 uppercase tracking-tighter">System Error:</span>
+            {error}
+          </div>
+          <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 rounded-lg transition-colors">
+            <X size={16} />
+          </button>
         </div>
       )}
 

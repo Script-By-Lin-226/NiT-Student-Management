@@ -9,6 +9,8 @@ import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Layers, BookOpen 
 import { exportToExcel } from "@/utils/excelExport";
 import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDeleteCourse, useBatches, useCreateBatch, useUpdateBatch, useDeleteBatch, useSubjects, useCreateSubject, useUpdateSubject, useDeleteSubject } from "@/hooks/useAdmin";
 import { toast } from "sonner";
+import { formatAmount } from "@/utils/format";
+import ConfirmModal from "@/components/ConfirmModal";
 
 
 function Modal({
@@ -58,14 +60,15 @@ export default function AdminCoursesPage() {
   const [batchOpen, setBatchOpen] = useState(false);
   const [subjectOpen, setSubjectOpen] = useState(false);
   const [selected, setSelected] = useState<AdminCourse | null>(null);
+  const [courseToDelete, setCourseToDelete] = useState<AdminCourse | null>(null);
 
   // Form states... (keeping them as they are for simplicity in replacement, but I'll optimize if needed)
   const [cName, setCName] = useState("");
   const [cYearId, setCYearId] = useState<number | "">("");
   const [cInstructor, setCInstructor] = useState("");
-  const [cFeeFull, setCFeeFull] = useState<number | "">("");
-  const [cFeeInst, setCFeeInst] = useState<number | "">("");
-  const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">("");
+  const [cFeeFull, setCFeeFull] = useState<number | "">(0);
+  const [cFeeInst, setCFeeInst] = useState<number | "">(0);
+  const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">(0);
   const [cFocItems, setCFocItems] = useState("");
   const [cCategory, setCCategory] = useState("");
 
@@ -100,7 +103,7 @@ export default function AdminCoursesPage() {
   if (!isAdminOrSales) return null;
 
   const openCreate = () => {
-    setCName(""); setCInstructor(""); setCFeeFull(""); setCFeeInst("");    setCExamFeeGbp("");
+    setCName(""); setCInstructor(""); setCFeeFull(0); setCFeeInst(0); setCExamFeeGbp(0);
     setCFocItems("");
     setCCategory("");
     setCYearId(years[0]?.academic_year_id ?? "");
@@ -160,12 +163,18 @@ export default function AdminCoursesPage() {
   };
 
   const doDelete = async (c: AdminCourse) => {
-    if (!window.confirm(`Delete course ${c.course_code} (${c.course_name})?`)) return;
+    setCourseToDelete(c);
+  };
+
+  const executeDelete = async () => {
+    if (!courseToDelete) return;
     try {
-      await deleteCourse.mutateAsync(c.course_code);
+      await deleteCourse.mutateAsync(courseToDelete.course_code);
       toast.success("Course deleted successfully");
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to delete course");
+    } finally {
+      setCourseToDelete(null);
     }
   };
 
@@ -240,11 +249,11 @@ export default function AdminCoursesPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase text-slate-400 w-8">Full</span>
-                        <span className="font-bold text-slate-900">{c.fee_full_payment ? c.fee_full_payment.toLocaleString() : "-"}</span>
+                        <span className="font-bold text-slate-900">{formatAmount(c.fee_full_payment)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase text-slate-400 w-8">Inst</span>
-                        <span className="font-bold text-slate-700">{c.fee_installment ? c.fee_installment.toLocaleString() : "-"}</span>
+                        <span className="font-bold text-slate-700">{formatAmount(c.fee_installment)}</span>
                       </div>
                     </div>
                   </td>
@@ -321,7 +330,7 @@ export default function AdminCoursesPage() {
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                   <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Fees (Full/Inst)</div>
                   <div className="font-semibold text-slate-700">
-                    {c.fee_full_payment?.toLocaleString() || "-"}/{c.fee_installment?.toLocaleString() || "-"}
+                    {formatAmount(c.fee_full_payment)} / {formatAmount(c.fee_installment)}
                   </div>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
@@ -482,6 +491,17 @@ export default function AdminCoursesPage() {
       <Modal title={`Subjects — ${selected?.course_name}`} open={subjectOpen} onClose={() => setSubjectOpen(false)}>
         {selected && <SubjectManagement courseId={selected.course_id} courseCode={selected.course_code} courseName={selected.course_name} />}
       </Modal>
+
+      <ConfirmModal 
+        open={!!courseToDelete}
+        onClose={() => setCourseToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Course"
+        message={`Are you sure you want to delete course ${courseToDelete?.course_code} (${courseToDelete?.course_name})? All enrollments and batches for this course will be affected.`}
+        confirmText="Delete Course"
+        variant="danger"
+        isLoading={deleteCourse.isPending}
+      />
     </div>
   );
 }
@@ -497,6 +517,7 @@ function BatchManagement({ courseId }: { courseId: number }) {
   const [newStart, setNewStart] = useState("");
   const [newEnd, setNewEnd] = useState("");
   const [newRoom, setNewRoom] = useState("");
+  const [batchToDelete, setBatchToDelete] = useState<number | null>(null);
 
   const handleCreate = async () => {
     if (!newNo.trim()) return;
@@ -516,12 +537,18 @@ function BatchManagement({ courseId }: { courseId: number }) {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Delete this batch?")) return;
+    setBatchToDelete(id);
+  };
+
+  const executeDelete = async () => {
+    if (!batchToDelete) return;
     try {
-      await deleteBatch.mutateAsync(id);
+      await deleteBatch.mutateAsync(batchToDelete);
       toast.success("Batch deleted");
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to delete batch");
+    } finally {
+      setBatchToDelete(null);
     }
   };
 
@@ -588,6 +615,7 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
 
   const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
+  const [subjectToDelete, setSubjectToDelete] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseCode && !isLoading) {
@@ -631,12 +659,18 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Delete this subject?")) return;
+    setSubjectToDelete(id);
+  };
+
+  const executeDelete = async () => {
+    if (!subjectToDelete) return;
     try {
-      await deleteSubject.mutateAsync(id);
+      await deleteSubject.mutateAsync(subjectToDelete);
       toast.success("Subject deleted");
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to delete subject");
+    } finally {
+      setSubjectToDelete(null);
     }
   };
 

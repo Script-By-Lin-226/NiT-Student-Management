@@ -4,7 +4,9 @@ import { useEffect, useState, useMemo, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService, AdminUser } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, RefreshCw, X, Trash2, Edit2, Key } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
+import { toast } from "sonner";
 
 function Modal({
   title,
@@ -60,6 +62,7 @@ export default function AdminStaffPage() {
   const [uEmail, setUEmail] = useState("");
   const [uDob, setUDob] = useState("");
   const [uActive, setUActive] = useState(true);
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [pCode, setPCode] = useState("");
@@ -126,16 +129,22 @@ export default function AdminStaffPage() {
     }
   };
 
-  const handleDeleteStaff = async (user_code: string) => {
-    if (!confirm("Are you sure you want to delete this staff member? This action cannot be undone.")) return;
+  const handleDeleteStaff = async (u: AdminUser) => {
+    setUserToDelete(u);
+  };
+
+  const executeDelete = async () => {
+    if (!userToDelete) return;
     setBusy(true);
     setError("");
     try {
-      await AdminService.deleteUser(user_code);
+      await AdminService.deleteUser(userToDelete.user_code);
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message || e.message || "Failed to delete staff.");
+    } finally {
       setBusy(false);
+      setUserToDelete(null);
     }
   };
 
@@ -176,7 +185,7 @@ export default function AdminStaffPage() {
 
   const submitPassword = async () => {
     if (!pNewPassword || pNewPassword.length < 6) {
-      alert("Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
       return;
     }
     setBusy(true);
@@ -184,7 +193,7 @@ export default function AdminStaffPage() {
     try {
       await AdminService.changeUserPassword(pCode, { new_password: pNewPassword });
       setPasswordOpen(false);
-      alert("Password updated successfully.");
+      toast.success("Password updated successfully.");
     } catch (e: any) {
       setError(e?.response?.data?.message || e.message || "Failed to change password.");
     } finally {
@@ -231,7 +240,13 @@ export default function AdminStaffPage() {
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
           </div>
-          {error && <div className="text-sm font-semibold text-red-600">{error}</div>}
+          {error && (
+            <div className="mx-6 mb-4 px-4 py-3 bg-red-50 border border-red-100 text-red-700 text-sm font-bold rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+              <AlertCircle size={16} className="shrink-0" />
+              <div className="flex-1">{error}</div>
+              <button onClick={() => setError("")} className="p-1 hover:bg-red-100 rounded-lg transition-colors"><X size={14} /></button>
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -273,10 +288,10 @@ export default function AdminStaffPage() {
                       className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-colors disabled:opacity-50"
                       title="Edit Staff"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteStaff(r.user_code)}
+                      onClick={() => handleDeleteStaff(r)}
                       disabled={busy}
                       className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
                       title="Delete Staff"
@@ -379,12 +394,23 @@ export default function AdminStaffPage() {
           </div>
           <p className="text-xs text-slate-500">Updating the password will not log the user out of their current session, but will take effect upon their next login.</p>
           <div className="flex justify-end mt-4">
-            <button onClick={submitPassword} disabled={busy} className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700">
+            <button onClick={submitPassword} disabled={busy} className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700">
               {busy ? "Updating..." : "Update Password"}
             </button>
           </div>
         </div>
       </Modal>
+
+      <ConfirmModal 
+        open={!!userToDelete}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Staff"
+        message={`Are you sure you want to delete staff member ${userToDelete?.username} (${userToDelete?.user_code})? This action cannot be undone.`}
+        confirmText="Delete Staff"
+        variant="danger"
+        isLoading={busy}
+      />
     </div>
   );
 }

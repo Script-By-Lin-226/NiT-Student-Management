@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCourse, AdminEnrollment, AdminService } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, RefreshCw, X, Download, AlertCircle, LayoutGrid, List } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
 import { exportToExcel } from "@/utils/excelExport";
 import { useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment, useCourses, useEnrollments, useBatches } from "@/hooks/useAdmin";
 import { toast } from "sonner";
+import { formatAmount } from "@/utils/format";
 
 
 function Modal({
@@ -51,8 +53,10 @@ export default function AdminEnrollmentsPage() {
   const [q, setQ] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selected, setSelected] = useState<AdminEnrollment | null>(null);
+  const [enrollToDelete, setEnrollToDelete] = useState<AdminEnrollment | null>(null);
 
   const createMutation = useCreateEnrollment();
   const deleteMutation = useDeleteEnrollment();
@@ -62,17 +66,17 @@ export default function AdminEnrollmentsPage() {
   const [cCourseCode, setCCourseCode] = useState("");
   const [cStatus, setCStatus] = useState(true);
   const [cBatchNo, setCBatchNo] = useState("");
-  const [cBatchId, setCBatchId] = useState<number | "">("");
+  const [cBatchId, setCBatchId] = useState<number | "">(0);
   const [cPaymentPlan, setCPaymentPlan] = useState("");
-  const [cDownpayment, setCDownpayment] = useState<number | "">("");
-  const [cInstallment, setCInstallment] = useState<number | "">("");
+  const [cDownpayment, setCDownpayment] = useState<number | "">(0);
+  const [cInstallment, setCInstallment] = useState<number | "">(0);
 
   const [eStatus, setEStatus] = useState(true);
   const [eBatchNo, setEBatchNo] = useState("");
-  const [eBatchId, setEBatchId] = useState<number | "">("");
+  const [eBatchId, setEBatchId] = useState<number | "">(0);
   const [ePaymentPlan, setEPaymentPlan] = useState("");
-  const [eDownpayment, setEDownpayment] = useState<number | "">("");
-  const [eInstallment, setEInstallment] = useState<number | "">("");
+  const [eDownpayment, setEDownpayment] = useState<number | "">(0);
+  const [eInstallment, setEInstallment] = useState<number | "">(0);
 
   const updateMutation = useUpdateEnrollment();
 
@@ -121,9 +125,10 @@ export default function AdminEnrollmentsPage() {
     setCCourseCode(courses[0]?.course_code ?? "");
     setCStatus(true);
     setCBatchNo("");
+    setCBatchId(0);
     setCPaymentPlan("");
-    setCDownpayment("");
-    setCInstallment("");
+    setCDownpayment(0);
+    setCInstallment(0);
     setCreateOpen(true);
   };
 
@@ -182,13 +187,19 @@ export default function AdminEnrollmentsPage() {
   };
 
   const doDelete = async (e: AdminEnrollment) => {
-    if (!window.confirm(`Delete enrollment ${e.enrollment_code}?`)) return;
+    setEnrollToDelete(e);
+  };
+
+  const executeDelete = async () => {
+    if (!enrollToDelete) return;
     try {
-      await deleteMutation.mutateAsync(e.enrollment_code);
+      await deleteMutation.mutateAsync(enrollToDelete.enrollment_code);
       reload();
       toast.success("Enrollment deleted");
     } catch (er: any) {
       toast.error(er?.response?.data?.message || "Failed to delete enrollment");
+    } finally {
+      setEnrollToDelete(null);
     }
   };
 
@@ -289,7 +300,7 @@ export default function AdminEnrollmentsPage() {
                   <td className="px-6 py-4">
                     <div className="font-bold text-slate-900 uppercase tracking-tighter text-xs">{e.payment_plan || "-"}</div>
                     {e.payment_plan === "installment" && (
-                      <div className="text-[10px] text-slate-400 font-bold">Res: {e.installment_amount?.toLocaleString()} MMK</div>
+                      <div className="text-[10px] text-slate-400 font-bold">Res: {formatAmount(e.installment_amount)} MMK</div>
                     )}
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-600">{e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"}</td>
@@ -526,6 +537,18 @@ export default function AdminEnrollmentsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Modal */}
+      <ConfirmModal 
+        open={!!enrollToDelete}
+        onClose={() => setEnrollToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Enrollment"
+        message={`Are you sure you want to delete enrollment ${enrollToDelete?.enrollment_code}? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

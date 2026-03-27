@@ -7,6 +7,8 @@ class PaymentCreate(BaseModel):
     amount: float
     month: str
     payment_method: Optional[str] = None
+    amount_2: Optional[float] = 0.0
+    payment_method_2: Optional[str] = None
     status: Optional[str] = "Paid"
     fine_amount: Optional[float] = None
     fine_reason: Optional[str] = None
@@ -22,6 +24,8 @@ class PaymentUpdate(BaseModel):
     month: Optional[str] = None
     status: Optional[str] = None
     payment_method: Optional[str] = None
+    amount_2: Optional[float] = None
+    payment_method_2: Optional[str] = None
     fine_amount: Optional[float] = None
     fine_reason: Optional[str] = None
     extra_items_fee: Optional[float] = None

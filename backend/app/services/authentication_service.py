@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.repositories.token_repository import TokenRepository
 from app.core.database_initialization import AsyncSessionLocal
 from datetime import datetime, timedelta, timezone
+from app.core.cache import cache_manager
 
 class AuthenticationService:
 
@@ -98,6 +99,18 @@ class AuthenticationService:
             token=refresh_token,
             expires_at=refresh_token_expires_at
         )
+
+        # Cache user info for subsequent fast access
+        user_cache_data = {
+            "user_id": existent_user.user_id,
+            "user_code": existent_user.user_code,
+            "username": existent_user.username,
+            "role": existent_user.role,
+            "email": existent_user.email,
+            "is_active": existent_user.is_active,
+            "profile_picture": existent_user.profile_picture
+        }
+        await cache_manager.set(f"user:{existent_user.user_code.lower()}", user_cache_data, expire=3600)
 
         response = JSONResponse({
             "access_token": access_token,

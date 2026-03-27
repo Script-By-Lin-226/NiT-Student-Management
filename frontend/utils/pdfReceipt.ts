@@ -16,6 +16,7 @@ export const generateReceiptPDF = async (
   enrollment: AdminEnrollment,
   payments: AdminPayment[],
   leftAmount: number,
+  leftExamGbp: number = 0,
   generatedBy: string = "Admin",
   isFirstPayment: boolean = false
 ) => {
@@ -76,6 +77,9 @@ export const generateReceiptPDF = async (
     doc.text(`Monthly Installment: ${enrollment.installment_amount ? enrollment.installment_amount.toLocaleString() + ' MMK' : '0 MMK'}`, 120, contentY + 7);
   }
   doc.text(`Remaining Balance: ${leftAmount.toLocaleString()} MMK`, 120, contentY + 14);
+  if (leftExamGbp > 0) {
+    doc.text(`Exam Fee Balance: ${leftExamGbp} GBP`, 120, contentY + 21);
+  }
 
   contentY += 22;
 
@@ -86,9 +90,9 @@ export const generateReceiptPDF = async (
       index + 1,
       new Date(p.payment_date).toLocaleDateString(),
       p.month || "N/A",
-      p.payment_method || "N/A",
+      p.amount_2 && p.amount_2 > 0 ? `${p.payment_method}\n${p.payment_method_2 || "N/A"}` : (p.payment_method || "N/A"),
       p.status || "Completed",
-      `${p.amount.toLocaleString()} MMK`,
+      p.amount_2 && p.amount_2 > 0 ? `${p.amount.toLocaleString()} MMK\n${p.amount_2.toLocaleString()} MMK` : `${(p.amount + (p.amount_2 || 0)).toLocaleString()} MMK`,
       (p.fine_amount && p.fine_amount > 0) ? `${p.fine_amount.toLocaleString()} MMK` : "-",
       (p.extra_items_fee && p.extra_items_fee > 0) ? `${p.extra_items_fee.toLocaleString()} MMK` : "-",
       (p.discount_amount && p.discount_amount > 0) ? `${p.discount_amount.toLocaleString()} MMK` : "-",
@@ -108,6 +112,15 @@ export const generateReceiptPDF = async (
       7: { halign: "right" },
       8: { halign: "right" },
       9: { halign: "right" },
+    },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index === 6) { // Fine column
+        const val = data.cell.text[0];
+        if (val && val !== "-") {
+            data.cell.styles.textColor = [220, 38, 38]; // Red-600 color
+            data.cell.styles.fontStyle = 'bold';
+        }
+      }
     }
   });
 
@@ -124,9 +137,11 @@ export const generateReceiptPDF = async (
 
   const fineReasons = payments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ");
   if (fineReasons) {
-    doc.setFont("helvetica", "italic");
+    doc.setTextColor(220, 38, 38); // Red-600
+    doc.setFont("helvetica", "bolditalic");
     doc.setFontSize(8);
     doc.text(`* Fine reason: ${fineReasons}`, 14, finalY + 8);
+    doc.setTextColor(0, 0, 0);
     finalY += 8;
   }
 
@@ -138,7 +153,7 @@ export const generateReceiptPDF = async (
   }
 
   // Summary
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount + (p.amount_2 || 0), 0);
   const totalDiscount = payments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
   const totalFine = payments.reduce((sum, p) => sum + (p.fine_amount || 0), 0);
   const totalExtra = payments.reduce((sum, p) => sum + (p.extra_items_fee || 0), 0);
@@ -147,8 +162,16 @@ export const generateReceiptPDF = async (
   
   doc.setFont("helvetica", "bold");
   doc.text(`Tuition Paid: ${totalPaid.toLocaleString()} MMK`, 196, finalY + 10, { align: "right" });
-  if (totalDiscount > 0) doc.text(`Discount Applied: -${totalDiscount.toLocaleString()} MMK`, 196, finalY + 16, { align: "right" });
-  if (totalFine > 0) doc.text(`Fine: ${totalFine.toLocaleString()} MMK`, 196, finalY + (totalDiscount > 0 ? 22 : 16), { align: "right" });
+  if (totalDiscount > 0) doc.text(`Discount Applied: -${totalDiscount.toLocaleString()} MMK`, 196, finalY + 17, { align: "right" });
+  
+  let currentSummaryY = finalY + (totalDiscount > 0 ? 17 : 10);
+  
+  if (totalFine > 0) {
+    currentSummaryY += 7;
+    doc.setTextColor(220, 38, 38);
+    doc.text(`Fine: ${totalFine.toLocaleString()} MMK`, 196, currentSummaryY, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+  }
   if (totalExtra > 0) doc.text(`Extra Items: ${totalExtra.toLocaleString()} MMK`, 196, finalY + (totalDiscount > 0 ? 28 : 22), { align: "right" });
   
   let examY = finalY + (totalDiscount > 0 ? 34 : 28);

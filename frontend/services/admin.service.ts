@@ -390,6 +390,8 @@ export interface AdminPayment {
   course_name: string;
   payment_plan: string | null;
   payment_method?: string | null;
+  amount_2?: number;
+  payment_method_2?: string | null;
   course_cost?: number;
   foc_items?: string | null;
   downpayment?: number;
@@ -409,6 +411,8 @@ export interface AdminPaymentCreate {
   amount: number;
   month: string;
   payment_method?: string;
+  amount_2?: number | null;
+  payment_method_2?: string | null;
   status?: string;
   fine_amount?: number | null;
   fine_reason?: string | null;

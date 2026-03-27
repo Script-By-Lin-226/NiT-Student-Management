@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminRoom, AdminService, RoomAvailability } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, AlertCircle } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
 
 function Modal({
   title,
@@ -52,6 +53,7 @@ export default function AdminRoomsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selected, setSelected] = useState<AdminRoom | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<AdminRoom | null>(null);
 
   const [cName, setCName] = useState("");
   const [cCapacity, setCCapacity] = useState(30);
@@ -150,17 +152,21 @@ export default function AdminRoomsPage() {
   };
 
   const doDelete = async (r: AdminRoom) => {
-    const ok = window.confirm(`Delete room "${r.room_name}"?`);
-    if (!ok) return;
+    setRoomToDelete(r);
+  };
+
+  const executeDelete = async () => {
+    if (!roomToDelete) return;
     setBusy(true);
     setError("");
     try {
-      await AdminService.deleteRoom(r.room_id);
+      await AdminService.deleteRoom(roomToDelete.room_id);
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to delete room");
     } finally {
       setBusy(false);
+      setRoomToDelete(null);
     }
   };
 
@@ -411,6 +417,17 @@ export default function AdminRoomsPage() {
           {!availabilityLoading && !availability && <div className="text-sm font-semibold text-slate-500">No availability data.</div>}
         </div>
       </Modal>
+
+      <ConfirmModal 
+        open={!!roomToDelete}
+        onClose={() => setRoomToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Room"
+        message={`Are you sure you want to delete room "${roomToDelete?.room_name}"? This will affect all timetables and courses linked to this room.`}
+        confirmText="Delete Room"
+        variant="danger"
+        isLoading={busy}
+      />
     </div>
   );
 }

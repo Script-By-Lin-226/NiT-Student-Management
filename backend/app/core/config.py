@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = ""
     RENDER_EXTERNAL_URL: str | None = None
     TZ_OFFSET: float = 6.5  # Myanmar timezone by default
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    ENABLE_CACHE: bool = True
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

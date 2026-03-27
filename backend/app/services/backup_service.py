@@ -147,6 +147,7 @@ class BackupService:
                         
                         for k, v in record.items():
                             if k not in model_columns:
+                                # Still handle the pops/aliases in record for these specific cases
                                 continue
                                 
                             if pd.isna(v):
@@ -156,19 +157,21 @@ class BackupService:
                             else:
                                 clean_record[k] = v
                         
+                        # Apply specialized transformations on the cleaned record
+                        record = clean_record
+                        
                         if model == User:
-                            # Required fields fallbacks
-                            if not record.get('data_of_birth') or pd.isna(record.get('data_of_birth')):
+                            # Required fields fallbacks if they are still missing/null in the cleaned record
+                            if not record.get('data_of_birth'):
                                 # Use a neutral default if missing to prevent DB failure
                                 record['data_of_birth'] = datetime(2000, 1, 1)
-                            if (not record.get('username') or pd.isna(record.get('username'))) and record.get('email'):
+                            
+                            if not record.get('username') and record.get('email'):
                                 email_str = str(record.get('email'))
                                 if '@' in email_str:
                                     record['username'] = email_str.split('@')[0]
                                 else:
                                     record['username'] = email_str
-                        
-                        record = clean_record
 
                         # Special case: Password hashing for Users
                         if model == User and record.get('password_hash'):

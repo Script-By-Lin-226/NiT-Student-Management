@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { AdminService } from "@/services/admin.service";
-import { Database, Download, Upload, AlertTriangle, CheckCircle, RefreshCcw } from "lucide-react";
+import { Database, Download, Upload, AlertTriangle, CheckCircle, RefreshCcw, FileText } from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function BackupPage() {
   const [isExporting, setIsExporting] = useState(false);
@@ -11,6 +13,9 @@ export default function BackupPage() {
   const [isPurging, setIsPurging] = useState(false);
   const [importStatus, setImportStatus] = useState<{ success: boolean; message: string; data?: any } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -26,7 +31,7 @@ export default function BackupPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Failed to export backup. Please try again.");
+      toast.error("Failed to export backup. Please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -40,11 +45,11 @@ export default function BackupPage() {
 
   const handleImport = async () => {
     if (!selectedFile) return;
-    
-    if (!confirm("Warning: Importing data may overwrite current records. Are you sure you want to proceed?")) {
-      return;
-    }
+    setImportOpen(true);
+  };
 
+  const executeImport = async () => {
+    if (!selectedFile) return;
     setIsImporting(true);
     setImportStatus(null);
     try {
@@ -67,14 +72,10 @@ export default function BackupPage() {
   };
 
   const handlePurge = async () => {
-    if (!confirm("CRITICAL WARNING: This will delete ALL data (Students, Courses, Payments, etc.) except admin accounts. This cannot be undone. Are you absolutely sure?")) {
-      return;
-    }
-    
-    if (!confirm("Final Confirmation: Do you really want to PURGE the database?")) {
-      return;
-    }
+    setPurgeOpen(true);
+  };
 
+  const executePurge = async () => {
     setIsPurging(true);
     setImportStatus(null);
     try {
@@ -260,6 +261,28 @@ export default function BackupPage() {
       )}
 
       
+      
+      <ConfirmModal 
+        open={purgeOpen}
+        onClose={() => setPurgeOpen(false)}
+        onConfirm={executePurge}
+        title="Critical Purge Data"
+        message="This action will permanently delete all students, courses, enrollments, and payments from the system. This cannot be undone. Are you absolutely sure?"
+        confirmText="Yes, Purge Everything"
+        variant="danger"
+        isLoading={isPurging}
+      />
+
+      <ConfirmModal 
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onConfirm={executeImport}
+        title="Restore Data"
+        message="Restore data from the selected Excel file? This will merge and update existing records. It is recommended to have a backup first."
+        confirmText="Start Restore"
+        variant="warning"
+        isLoading={isImporting}
+      />
     </div>
   );
 }

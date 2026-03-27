@@ -36,6 +36,34 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if token:
             try:
                 payload = await decode_token(token)
+                
+                # Verify active status via cache (Fast Transaction)
+                from app.core.cache import cache_manager
+                user_code = payload.get("user_code")
+                if user_code:
+                    cache_key = f"user:{str(user_code).lower()}"
+                    cached_user = await cache_manager.get(cache_key)
+                    
+                    if cached_user:
+                        if not cached_user.get("is_active"):
+                            return JSONResponse(status_code=403, content={"detail": "Account deactivated"})
+                    else:
+                        # Cache miss: Verify in DB once and re-cache
+                        from app.core.database_initialization import AsyncSessionLocal
+                        from sqlalchemy.future import select
+                        from app.models.model import User
+                        async with AsyncSessionLocal() as session:
+                            res = await session.execute(select(User).where(User.user_code == user_code))
+                            db_user = res.scalar_one_or_none()
+                            if db_user:
+                                if not db_user.is_active:
+                                    return JSONResponse(status_code=403, content={"detail": "Account deactivated"})
+                                # Re-populate cache
+                                await cache_manager.set(cache_key, {
+                                    "is_active": db_user.is_active,
+                                    "role": db_user.role
+                                }, expire=3600)
+                
                 request.state.user = payload
             except JWTError:
                 # Token expired or invalid, try rotation
@@ -61,27 +89,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if new_tokens:
             self._set_token_cookies(response, new_tokens["access_token"], new_tokens["refresh_token"])
             response.headers["x-new-token"] = new_tokens["access_token"]
-        else:
-            # Check for proactive rotation (if token expires in < 5 mins)
-            try:
-                exp = payload.get("exp")
-                if exp:
-                    exp_time = datetime.utcfromtimestamp(exp)
-                    now = datetime.utcnow()
-                    if (exp_time - now).total_seconds() < 300:
-                        user_data = {k: v for k, v in payload.items() if k not in ("exp", "type")}
-                        # Note: This proactive rotation doesn't rotate the refresh token in DB
-                        # for simplicity here, but in a real app you might want to call rotate_token anyway.
-                        # For now, we'll just keep it simple or use the rotate_token service if we have a refresh token.
-                        refresh_token = request.cookies.get("refresh_token")
-                        if refresh_token:
-                            try:
-                                new_tokens = await AuthenticationService.rotate_token(refresh_token)
-                                self._set_token_cookies(response, new_tokens["access_token"], new_tokens["refresh_token"])
-                                response.headers["x-new-token"] = new_tokens["access_token"]
-                            except: pass
-            except: pass
-
         return response
 
     def _set_token_cookies(self, response, access_token, refresh_token):

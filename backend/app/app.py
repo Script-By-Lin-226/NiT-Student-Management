@@ -5,6 +5,7 @@ from app.controller.v1.admin_route import router as admin_router
 from app.controller.v1.portal_route import router as portal_router
 from app.controller.v1.staff_route import router as staff_router
 from app.middleware.authentication_middleware import AuthMiddleware
+from app.middleware.token_rotation_middleware import TokenRotationMiddleware
 from app.middleware.latency_middleware import LatencyLoggingMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from app.core.database_initialization import init_db
@@ -18,14 +19,17 @@ import asyncio
 
 @asynccontextmanager
 async def life_cycle(app: FastAPI):
+    from app.core.cache import cache_manager
     print("Starting the application...")
     await init_db()
+    await cache_manager.connect()
     
     # Start the keep-alive background task if RENDER_EXTERNAL_URL is configured
     if settings.RENDER_EXTERNAL_URL:
         asyncio.create_task(keep_alive_task())
     
     yield
+    await cache_manager.close()
     print("Stopping the application...")
 
 app = FastAPI(lifespan=life_cycle)
@@ -39,7 +43,11 @@ app.include_router(admin_router)
 app.include_router(portal_router)
 app.include_router(staff_router)
 
+# Basic Middlewares
 app.add_middleware(LatencyLoggingMiddleware)
+
+# Security Middlewares
+app.add_middleware(TokenRotationMiddleware)
 app.add_middleware(AuthMiddleware)
 
 # Build allowed origins: localhost for dev + FRONTEND_URL for Railway
@@ -68,4 +76,3 @@ async def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-

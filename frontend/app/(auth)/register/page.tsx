@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService, PublicCourse } from "@/services/auth.service";
-import { Loader2, User, ChevronRight, ChevronLeft, Check, Camera } from "lucide-react";
+import { Loader2, User, ChevronRight, ChevronLeft, Check, Camera, AlertCircle, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { clsx, type ClassValue } from "clsx";
@@ -43,8 +43,15 @@ export default function RegisterPage() {
   const [howDidYouHear, setHowDidYouHear] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [otherHearAbout, setOtherHearAbout] = useState("");
-  const [error, setError] = useState("");
+   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   const totalSteps = STEPS.length;
 
@@ -78,11 +85,16 @@ export default function RegisterPage() {
       await AuthService.register(finalFormData);
       setIsSuccess(true);
     } catch (err: any) {
-      setError(
-        err.response?.data?.detail ||
+      const details = err.response?.data?.detail;
+      if (Array.isArray(details)) {
+        setError(details.map((d: any) => `${d.loc.join(".")}: ${d.msg}`).join(", "));
+      } else {
+        setError(
           err.response?.data?.message ||
+          err.message ||
           "Registration failed. Please check your inputs."
-      );
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -119,7 +131,38 @@ export default function RegisterPage() {
     }
   };
 
+  const validateStep = (step: number) => {
+    setError("");
+    if (step === 1) {
+      if (!formData.username.trim()) return "Full name is required";
+      if (!formData.email.trim()) return "Email address is required";
+      if (!formData.phone.trim()) return "Phone number is required";
+      if (!formData.date_of_birth.trim()) return "Date of birth is required";
+      if (!formData.gender.trim()) return "Gender selection is required";
+      if (!formData.nrc.trim()) return "NRC number is required";
+    }
+    if (step === 2) {
+      if (!formData.course_code.trim()) return "Please select a course";
+      if (!formData.student_type.trim()) return "Please select student type";
+    }
+    if (step === 3) {
+      if (!formData.parent_name.trim()) return "Guardian name is required";
+      if (!formData.parent_phone.trim()) return "Guardian phone is required";
+      if (!formData.address.trim()) return "Address is required";
+    }
+    if (step === 4) {
+      if (howDidYouHear.length === 0) return "Please select at least one source";
+      if (howDidYouHear.includes("Other (Please Specify)") && !otherHearAbout.trim()) return "Please specify the other source";
+    }
+    return "";
+  };
+
   const nextStep = () => {
+    const errorMsg = validateStep(currentStep);
+    if (errorMsg) {
+      setError(errorMsg);
+      return;
+    }
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -256,8 +299,18 @@ export default function RegisterPage() {
 
                 <div className="flex-1 overflow-y-auto pr-1 md:pr-2 custom-scrollbar">
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium rounded-r-xl">
-                            {error}
+                        <div 
+                            ref={errorRef}
+                            className="mb-8 p-5 bg-red-50 border-2 border-red-100 text-red-700 text-sm font-bold rounded-3xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm"
+                        >
+                            <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                                <AlertCircle size={14} className="text-red-600" />
+                            </div>
+                            <div className="flex-1 leading-relaxed">
+                                <p className="text-red-800 font-extrabold mb-1">Registration Error</p>
+                                {error}
+                            </div>
+                            <button onClick={() => setError("")} className="text-red-400 hover:text-red-600 transition-colors p-1"><X size={16} /></button>
                         </div>
                     )}
 
@@ -285,33 +338,33 @@ export default function RegisterPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Full Name</label>
+                                        <label className="text-sm font-bold text-slate-700">Full Name <span className="text-red-500">*</span></label>
                                         <input name="username" value={formData.username} onChange={handleChange} placeholder="e.g. John Doe" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Email Address</label>
+                                        <label className="text-sm font-bold text-slate-700">Email Address <span className="text-red-500">*</span></label>
                                         <input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="john@example.com" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Phone Number</label>
+                                        <label className="text-sm font-bold text-slate-700">Phone Number <span className="text-red-500">*</span></label>
                                         <input name="phone" value={formData.phone} onChange={handleChange} placeholder="+95 9..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Date of Birth</label>
+                                        <label className="text-sm font-bold text-slate-700">Date of Birth <span className="text-red-500">*</span></label>
                                         <input name="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">NRC Number</label>
+                                        <label className="text-sm font-bold text-slate-700">NRC Number <span className="text-red-500">*</span></label>
                                         <input name="nrc" value={formData.nrc} onChange={handleChange} placeholder="Enter NRC" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Gender</label>
+                                        <label className="text-sm font-bold text-slate-700">Gender <span className="text-red-500">*</span></label>
                                         <div className="grid grid-cols-3 gap-2">
                                             {["Male", "Female", "Other"].map((g) => (
                                                 <button key={g} type="button" onClick={() => setFormData(p => ({...p, gender: g}))} className={cn("py-3 rounded-2xl border-2 text-sm font-medium transition-all", formData.gender === g ? "border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]" : "border-slate-100 text-slate-500 hover:border-slate-200")}>{g}</button>
@@ -344,7 +397,7 @@ export default function RegisterPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Select Your Course</label>
+                                        <label className="text-sm font-bold text-slate-700">Select Your Course <span className="text-red-500">*</span></label>
                                         <select 
                                             name="course_code"
                                             value={formData.course_code} 
@@ -366,7 +419,7 @@ export default function RegisterPage() {
                                         )}
                                     </div>
                                 <div className="space-y-4">
-                                    <label className="text-sm font-bold text-slate-700">Student Type</label>
+                                    <label className="text-sm font-bold text-slate-700">Student Type <span className="text-red-500">*</span></label>
                                     <div className="grid grid-cols-2 gap-3">
                                         {["New Student", "Old Student"].map((type) => (
                                             <button key={type} type="button" onClick={() => setFormData(p => ({...p, student_type: type}))} className={cn("px-4 py-3 rounded-2xl border-2 transition-all text-sm font-medium", formData.student_type === type ? "border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]" : "border-slate-100 hover:border-slate-200 text-slate-500")}>{type}</button>
@@ -379,15 +432,15 @@ export default function RegisterPage() {
                         {currentStep === 3 && (
                             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Parent/Guardian Name</label>
+                                    <label className="text-sm font-bold text-slate-700">Parent/Guardian Name <span className="text-red-500">*</span></label>
                                     <input name="parent_name" value={formData.parent_name} onChange={handleChange} placeholder="Enter guardian name" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Guardian Phone Number</label>
+                                    <label className="text-sm font-bold text-slate-700">Guardian Phone Number <span className="text-red-500">*</span></label>
                                     <input name="parent_phone" value={formData.parent_phone} onChange={handleChange} placeholder="+95 9..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Full Address</label>
+                                    <label className="text-sm font-bold text-slate-700">Full Address <span className="text-red-500">*</span></label>
                                     <textarea name="address" value={formData.address} onChange={handleChange} rows={3} placeholder="Enter your current address" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all resize-none" />
                                 </div>
                             </div>
@@ -396,7 +449,7 @@ export default function RegisterPage() {
                         {currentStep === 4 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="space-y-4">
-                                    <label className="text-sm font-bold text-slate-700">How Did You Hear About Us?</label>
+                                    <label className="text-sm font-bold text-slate-700">How Did You Hear About Us? <span className="text-red-500">*</span></label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {["Facebook", "TikTok", "Friend Referral", "NiT Event", "Other (Please Specify)"].map((option) => (
                                             <label key={option} className={cn("flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer", howDidYouHear.includes(option) ? "border-[#0d4d4d] bg-[#0d4d4d]/5" : "border-slate-100 bg-white hover:border-slate-200")}>

@@ -1,14 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AdminService, AdminStudent, AdminStudentRelations, AdminCourse } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment } from "@/hooks/useAdmin";
+import { formatAmount } from "@/utils/format";
+import ConfirmModal from "@/components/ConfirmModal";
+import { toast } from "sonner";
 
 function Modal({
   title,
@@ -56,7 +59,18 @@ export default function AdminStudentsPage() {
   const { data: courses = [], isLoading: coursesLoading } = useCourses();
 
   const [busy, setBusy] = useState(false); // Used for generic busy state when not in mutation
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
+
+  const [studentToDelete, setStudentToDelete] = useState<AdminStudent | null>(null);
+  const [fastEnrollData, setFastEnrollData] = useState<{uCode: string, cCode: string} | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
 
   const createMutation = useCreateStudent();
   const deleteMutation = useDeleteUser();
@@ -119,8 +133,8 @@ export default function AdminStudentsPage() {
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
   const [cPaymentPlan, setCPaymentPlan] = useState(""); 
-  const [cDownpayment, setCDownpayment] = useState<number | "">("");
-  const [cInstallment, setCInstallment] = useState<number | "">("");
+  const [cDownpayment, setCDownpayment] = useState<number | "">(0);
+  const [cInstallment, setCInstallment] = useState<number | "">(0);
 
   // Edit form
   const [eUsername, setEUsername] = useState("");
@@ -178,8 +192,8 @@ export default function AdminStudentsPage() {
     setCCourseCode("");
     setCBatchNo("");
     setCPaymentPlan("");
-    setCDownpayment("");
-    setCInstallment("");
+    setCDownpayment(0);
+    setCInstallment(0);
     setCreateOpen(true);
   };
 
@@ -246,7 +260,6 @@ export default function AdminStudentsPage() {
       .then(data => {
         setRelations(data);
         if (data.student) {
-          setSelected(data.student);
           // Don't override eUsername etc if user already started editing, 
           // but we do need the full details for the student object.
         }
@@ -276,13 +289,18 @@ export default function AdminStudentsPage() {
   };
 
   const doDelete = async (s: AdminStudent) => {
-    const ok = window.confirm(`Delete student ${s.user_code} (${s.username})? This cannot be undone.`);
-    if (!ok) return;
+    setStudentToDelete(s);
+  };
+
+  const executeDelete = async () => {
+    if (!studentToDelete) return;
     setError("");
     try {
-      await deleteMutation.mutateAsync(s.user_code);
+      await deleteMutation.mutateAsync(studentToDelete.user_code);
     } catch (e: any) {
       handleError(e, "Failed to delete student");
+    } finally {
+      setStudentToDelete(null);
     }
   };
 
@@ -346,23 +364,26 @@ export default function AdminStudentsPage() {
     }
   };
 
-  const handleFastEnroll = async (uCode: string, cCode: string) => {
-    const ok = window.confirm(`Create a formal enrollment for ${cCode}? You can configure payment details after creation.`);
-    if (!ok) return;
+  const handleFastEnroll = (uCode: string, cCode: string) => {
+    setFastEnrollData({ uCode, cCode });
+  };
+
+  const executeFastEnroll = async () => {
+    if (!fastEnrollData) return;
     setBusy(true);
     try {
       await fastEnrollMutation.mutateAsync({
-        student_code: uCode,
-        course_code: cCode,
-        status: false, // Start as inactive/pending
+        user_code: fastEnrollData.uCode,
+        course_code: fastEnrollData.cCode,
       });
       // Refresh relations
-      const updated = await AdminService.getStudentRelations(uCode);
+      const updated = await AdminService.getStudentRelations(fastEnrollData.uCode);
       setRelations(updated);
     } catch (e: any) {
       handleError(e, "Failed to create enrollment");
     } finally {
       setBusy(false);
+      setFastEnrollData(null);
     }
   };
 
@@ -598,8 +619,8 @@ export default function AdminStudentsPage() {
       XLSX.utils.book_append_sheet(wb, wsAttendance, "All Attendance");
 
       XLSX.writeFile(wb, `System_Backup_Data_${new Date().toISOString().slice(0,10)}.xlsx`);
-    } catch (e: any) {
-      handleError(e, "Failed to aggregate export data");
+    } catch (error) {
+       toast.error("Failed to export backup. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -623,7 +644,7 @@ export default function AdminStudentsPage() {
                   url: link,
                 }).catch(console.error);
               } else {
-                navigator.clipboard.writeText(link).then(() => alert("Registration link copied to clipboard!"));
+                navigator.clipboard.writeText(link).then(() => toast.success("Registration link copied to clipboard!"));
               }
             }}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-100 shadow-sm text-sm transition-all active:scale-95 whitespace-nowrap"
@@ -649,20 +670,7 @@ export default function AdminStudentsPage() {
           </button>
           {isAdmin && (
             <button
-              onClick={async () => {
-                const ok = window.confirm("This will DELETE all data (students/courses/enrollments/attendance/rooms/etc.) except admin accounts. Continue?");
-                if (!ok) return;
-                try {
-                  setBusy(true);
-                  setError("");
-                  await AdminService.purgeData();
-                  await load();
-                } catch (e: any) {
-                  handleError(e, "Failed to purge data");
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              onClick={() => setClearAllOpen(true)}
               disabled={busy}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-sm disabled:opacity-60 text-sm transition-all active:scale-95"
             >
@@ -692,8 +700,13 @@ export default function AdminStudentsPage() {
             />
           </div>
           {error && (
-            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl animate-in shake duration-300">
-              {error}
+            <div 
+              ref={errorRef}
+              className="px-4 py-3 bg-red-50 border border-red-100 text-red-700 text-sm font-bold rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm"
+            >
+              <AlertCircle size={16} className="shrink-0" />
+              <div className="flex-1">{error}</div>
+              <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 rounded-lg transition-colors"><X size={14} /></button>
             </div>
           )}
         </div>
@@ -932,6 +945,15 @@ export default function AdminStudentsPage() {
 
       <Modal title="Create Student" open={createOpen} onClose={() => setCreateOpen(false)}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {error && (
+            <div className="sm:col-span-2 p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Registration Error</p>
+                {error}
+              </div>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Profile Picture</label>
             <div className="flex items-center gap-4">
@@ -1197,6 +1219,15 @@ export default function AdminStudentsPage() {
 
       <Modal title={`Edit Student${selected ? ` — ${selected.user_code}` : ""}`} open={editOpen} onClose={() => setEditOpen(false)}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {error && (
+            <div className="sm:col-span-2 p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Update Error</p>
+                {error}
+              </div>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name</label>
             <input
@@ -1482,8 +1513,8 @@ export default function AdminStudentsPage() {
                         <div><span className="font-semibold text-slate-500">Plan:</span> {enr.payment_plan === "full" ? "Cash Down" : enr.payment_plan === "installment" ? "Installment" : "-"}</div>
                         {enr.payment_plan === "installment" && (
                           <>
-                            <div><span className="font-semibold text-slate-500">Downpayment:</span> {enr.downpayment ? `${enr.downpayment} MMK` : "-"}</div>
-                            <div><span className="font-semibold text-slate-500">Monthly:</span> {enr.installment_amount ? `${enr.installment_amount} MMK` : "-"}</div>
+                            <div><span className="font-semibold text-slate-500">Downpayment:</span> {enr.downpayment ? `${formatAmount(enr.downpayment)} MMK` : "-"}</div>
+                            <div><span className="font-semibold text-slate-500">Monthly:</span> {enr.installment_amount ? `${formatAmount(enr.installment_amount)} MMK` : "-"}</div>
                           </>
                         )}
                       </div>
@@ -1512,9 +1543,9 @@ export default function AdminStudentsPage() {
                       </div>
                       <div className="mt-2 text-sm grid grid-cols-2 gap-2 text-slate-600">
                         <div><span className="font-semibold text-slate-500">Method:</span> {p.payment_method || "-"}</div>
-                        <div><span className="font-semibold text-slate-500">Amount:</span> {p.amount.toLocaleString()} MMK</div>
+                        <div><span className="font-semibold text-slate-500">Amount:</span> {formatAmount(p.amount)} MMK</div>
                         {p.discount_amount != null && p.discount_amount > 0 && (
-                          <div className="col-span-2 text-emerald-600 font-semibold italic"><span className="font-semibold text-slate-500">Discount:</span> -{p.discount_amount.toLocaleString()} MMK</div>
+                          <div className="col-span-2 text-emerald-600 font-semibold italic"><span className="font-semibold text-slate-500">Discount:</span> -{formatAmount(p.discount_amount)} MMK</div>
                         )}
                         <div><span className="font-semibold text-slate-500">Date:</span> {p.payment_date ? p.payment_date.slice(0, 10) : "-"}</div>
                         <div><span className="font-semibold text-slate-500">Receipt ID:</span> #{p.payment_id}</div>
@@ -1564,6 +1595,15 @@ export default function AdminStudentsPage() {
           onClose={() => setApproveOpen(false)}
       >
           <div className="space-y-6">
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Approval Error</p>
+                    {error}
+                  </div>
+                </div>
+              )}
               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-sm text-amber-800">
                   Review or change the student code before activating the account. 
                   You can either set a manual code or auto-generate one with a prefix.
@@ -1633,6 +1673,51 @@ export default function AdminStudentsPage() {
               </div>
           </div>
       </Modal>
+
+      {/* Confirmation Modals */}
+      <ConfirmModal 
+        open={!!studentToDelete}
+        onClose={() => setStudentToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Student"
+        message={`Are you sure you want to delete student ${studentToDelete?.user_code} (${studentToDelete?.username})? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
+
+      <ConfirmModal 
+        open={!!fastEnrollData}
+        onClose={() => setFastEnrollData(null)}
+        onConfirm={executeFastEnroll}
+        title="Confirm Enrollment"
+        message={`Create a formal enrollment for student ${fastEnrollData?.uCode} in course ${fastEnrollData?.cCode}? This will initialize the course and payment record.`}
+        confirmText="Enroll"
+        variant="info"
+        isLoading={busy}
+      />
+
+      <ConfirmModal 
+        open={clearAllOpen}
+        onClose={() => setClearAllOpen(false)}
+        onConfirm={async () => {
+          try {
+            setBusy(true);
+            await AdminService.purgeData();
+            await load();
+          } catch (err: any) {
+            handleError(err, "Failed to purge data");
+          } finally {
+            setBusy(false);
+            setClearAllOpen(false);
+          }
+        }}
+        title="CRITICAL: Purge All Data"
+        message="This will DELETE all system data including students, courses, enrollments, attendance, and more. Only administrator accounts will remain. Are you absolutely certain?"
+        confirmText="YES, I AM SURE"
+        variant="danger"
+        isLoading={busy}
+      />
     </div>
   );
 }

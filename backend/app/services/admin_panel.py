@@ -489,6 +489,8 @@ class AdminPanelService:
                     "month": p.month,
                     "status": p.status,
                     "payment_method": getattr(p, "payment_method", None),
+                    "amount_2": getattr(p, "amount_2", 0.0) or 0.0,
+                    "payment_method_2": getattr(p, "payment_method_2", None),
                     "course_name": c.course_name,
                     "course_code": c.course_code,
                     "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
@@ -2046,6 +2048,8 @@ class AdminPanelService:
                 "course_name": c.course_name,
                 "payment_plan": e.payment_plan,
                 "payment_method": getattr(p, "payment_method", None),
+                "amount_2": getattr(p, "amount_2", 0.0) or 0.0,
+                "payment_method_2": getattr(p, "payment_method_2", None),
                 "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
                 "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0,
                 "foc_items": getattr(c, "foc_items", None),
@@ -2071,12 +2075,52 @@ class AdminPanelService:
         if not enroll:
             return JSONResponse({"status_code": 404, "message": "Enrollment not found"}, status_code=404)
 
+        # Validation Logic: Ensure payment doesn't exceed course fee or exam fee
+        course_r = await session.execute(select(Course).where(Course.course_id == enroll.course_id))
+        course = course_r.scalars().first()
+        if not course:
+            return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
+
+        # 1. Course Fee Validation
+        total_cost = (course.fee_full_payment if enroll.payment_plan == "full" else course.fee_installment) or 0
+        payments_r = await session.execute(select(Payment).where(Payment.enrollment_id == enroll.enrollment_id))
+        existing_payments = payments_r.scalars().all()
+
+        total_paid_prev = sum((p.amount or 0) + (p.amount_2 or 0) for p in existing_payments)
+        total_discount_prev = sum(p.discount_amount or 0 for p in existing_payments)
+        left_amount = total_cost - (total_paid_prev + total_discount_prev)
+        
+        new_amount = (payload.amount or 0) + (getattr(payload, "amount_2", 0) or 0)
+        new_discount = getattr(payload, "discount_amount", 0) or 0
+        
+        # We use max(0, left_amount) to handle over-payments and allow 0-amount payments
+        if (new_amount + new_discount) > max(0, left_amount) + 0.1:
+            return JSONResponse({
+                "status_code": 400, 
+                "message": f"Payment/Discount total ({new_amount + new_discount:,.0f} MMK) exceeds remaining balance ({max(0, left_amount):,.0f} MMK)"
+            }, status_code=400)
+
+        # 2. Exam Fee Validation (GBP)
+        total_exam_gbp = course.exam_fee_gbp or 0
+        if total_exam_gbp > 0:
+            existing_exam_gbp = sum(p.exam_fee_paid_gbp or 0 for p in existing_payments)
+            left_exam_gbp = total_exam_gbp - existing_exam_gbp
+            new_exam_gbp = getattr(payload, "exam_fee_paid_gbp", 0) or 0
+            
+            if new_exam_gbp > max(0, left_exam_gbp) + 0.001:
+                return JSONResponse({
+                    "status_code": 400, 
+                    "message": f"Exam fee payment ({new_exam_gbp} GBP) exceeds remaining balance ({max(0, left_exam_gbp)} GBP)"
+                }, status_code=400)
+
         pay = Payment(
             enrollment_id=payload.enrollment_id,
             amount=payload.amount,
             month=payload.month,
             status=payload.status or "Paid",
             payment_method=payload.payment_method,
+            amount_2=getattr(payload, "amount_2", 0.0),
+            payment_method_2=getattr(payload, "payment_method_2", None),
             fine_amount=getattr(payload, "fine_amount", None),
             fine_reason=getattr(payload, "fine_reason", None),
             extra_items_fee=getattr(payload, "extra_items_fee", None),

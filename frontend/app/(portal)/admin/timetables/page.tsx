@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCourse, AdminRoom, AdminService, AdminTimeTableRow, AdminUser, TeachingHoursReport } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, GraduationCap } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, GraduationCap, AlertCircle } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
 
 function Modal({
   title,
@@ -59,6 +60,7 @@ export default function AdminTimetablesPage() {
   const [quickSubjectOpen, setQuickSubjectOpen] = useState(false);
   const [newSubCode, setNewSubCode] = useState("");
   const [newSubName, setNewSubName] = useState("");
+  const [ttToDelete, setTtToDelete] = useState<AdminTimeTableRow | null>(null);
 
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
@@ -285,17 +287,21 @@ export default function AdminTimetablesPage() {
   };
 
   const doDelete = async (r: AdminTimeTableRow) => {
-    const ok = window.confirm(`Delete timetable for ${r.course_code} on ${r.day_of_week} ${r.start_time}-${r.end_time}?`);
-    if (!ok) return;
+    setTtToDelete(r);
+  };
+
+  const executeDelete = async () => {
+    if (!ttToDelete) return;
     setBusy(true);
     setError("");
     try {
-      await AdminService.deleteTimetable(r.timetable_id);
+      await AdminService.deleteTimetable(ttToDelete.timetable_id);
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to delete timetable");
     } finally {
       setBusy(false);
+      setTtToDelete(null);
     }
   };
 
@@ -667,6 +673,17 @@ export default function AdminTimetablesPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmModal 
+        open={!!ttToDelete}
+        onClose={() => setTtToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Timetable Slot"
+        message={`Are you sure you want to delete the timetable for ${ttToDelete?.course_code} on ${ttToDelete?.day_of_week} at ${ttToDelete?.start_time}-${ttToDelete?.end_time}?`}
+        confirmText="Delete Slot"
+        variant="danger"
+        isLoading={busy}
+      />
     </div>
   );
 }

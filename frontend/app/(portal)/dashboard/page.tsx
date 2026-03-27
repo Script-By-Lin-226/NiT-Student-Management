@@ -169,7 +169,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
           {[
             { label: "Students", val: adminKpis.students, icon: Users, color: "text-blue-500", bg: "bg-blue-50", loadingKey: 'students' },
             { label: "Courses", val: adminKpis.courses, icon: BookOpen, color: "text-indigo-500", bg: "bg-indigo-50", loadingKey: 'courses' },
@@ -410,7 +410,7 @@ export default function DashboardPage() {
           </>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
             <div className="relative">
@@ -608,7 +608,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           { label: "Enrolled Courses", val: courses.length, icon: BookOpen, color: "text-blue-500", bg: "bg-blue-50" },
           { label: "Attendance Rate", val: `${attendance?.summary?.attendance_rate || 0}%`, icon: Fingerprint, color: "text-emerald-500", bg: "bg-emerald-50" },

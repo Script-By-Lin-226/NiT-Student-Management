@@ -240,6 +240,11 @@ class Payment(Base):
     status = Column(String, default="Paid") # Paid, Pending, Overdue
     
     payment_method = Column(String, nullable=True) # Cash, Bank Transfer, KPay, etc.
+    
+    # Split payment support
+    amount_2 = Column(Float, nullable=True, default=0.0)
+    payment_method_2 = Column(String, nullable=True)
+
     fine_amount = Column(Float, nullable=True)
     fine_reason = Column(String, nullable=True)
     extra_items_fee = Column(Float, nullable=True)

@@ -14,12 +14,12 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
         <Sidebar />
         
         {/* Main Content Area */}
-        <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+        <div className="flex-1 lg:pl-60 flex flex-col min-w-0">
           
           {/* Mobile Header */}
           <MobileHeader />
 
-          <main className="flex-1 pb-8 pt-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+          <main className="flex-1 pb-8 pt-6 px-4 sm:px-6 lg:px-6 xl:px-8 max-w-[1600px] mx-auto w-full">
             {children}
           </main>
         </div>
