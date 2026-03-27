@@ -153,7 +153,22 @@ export default function AdminPaymentsPage() {
     if (!selectedEnrollment) return;
     
     const totalAmount = (Number(pAmount) || 0) + (Number(pAmount2) || 0);
+    const totalFine = Number(pFine) || 0;
+    const totalExtra = Number(pExtraFee) || 0;
+    const totalExamMMK = Number(pExamFeePaidMmk) || 0;
     const totalDiscount = Number(pDiscountAmount) || 0;
+
+    if (totalAmount <= 0 && totalFine <= 0 && totalExtra <= 0 && totalExamMMK <= 0) {
+      toast.error("Total transaction value must be greater than 0.");
+      return;
+    }
+    
+    // Check for negative values
+    if (Number(pAmount) < 0 || Number(pAmount2) < 0 || totalFine < 0 || totalExtra < 0 || totalDiscount < 0 || Number(pExamFeePaidGbp) < 0) {
+      toast.error("Negative values are not allowed in any field.");
+      return;
+    }
+
     const left = calculateLeftAmount(selectedEnrollment);
 
     if ((totalAmount + totalDiscount) > left + 0.1) {
@@ -172,11 +187,20 @@ export default function AdminPaymentsPage() {
       return;
     }
     if ((Number(pAmount) > 0) && !pMethod) {
-      toast.error("Please select a payment method for the first amount.");
+      toast.error("Please select a primary payment method.");
       return;
     }
+    if (pMethod && (Number(pAmount) <= 0)) {
+      toast.error("Primary amount must be greater than 0 if a method is selected.");
+      return;
+    }
+
     if ((Number(pAmount2) > 0) && !pMethod2) {
-      toast.error("Please select a payment method for the second amount.");
+      toast.error("Please select a secondary payment method.");
+      return;
+    }
+    if (pMethod2 && (Number(pAmount2) <= 0)) {
+      toast.error("Secondary payment amount must be greater than 0.");
       return;
     }
 
@@ -583,6 +607,11 @@ export default function AdminPaymentsPage() {
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                   placeholder="0"
                 />
+                {pAmount !== "" && Number(pAmount) > 0 && (
+                  <div className="mt-1 ml-1 text-[10px] font-bold text-brand-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                    Display: <span className="text-slate-900">{formatAmount(pAmount)}</span> <span className="text-brand-400 font-normal">MMK</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Primary Method</label>
@@ -609,14 +638,19 @@ export default function AdminPaymentsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">Extra Amount (MMK)</label>
-                  <input
-                    type="number"
-                    value={pAmount2}
-                    onChange={(e) => setPAmount2(e.target.value ? Number(e.target.value) : "")}
-                    onFocus={(e) => pAmount2 === 0 && setPAmount2("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
-                    placeholder="0"
-                  />
+                    <input
+                      type="number"
+                      value={pAmount2}
+                      onChange={(e) => setPAmount2(e.target.value ? Number(e.target.value) : "")}
+                      onFocus={(e) => pAmount2 === 0 && setPAmount2("")}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+                      placeholder="0"
+                    />
+                    {pAmount2 !== "" && Number(pAmount2) > 0 && (
+                      <div className="mt-1 ml-1 text-[10px] font-bold text-brand-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                        Display: <span className="text-slate-900">{formatAmount(pAmount2)}</span> <span className="text-brand-400 font-normal">MMK</span>
+                      </div>
+                    )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">Method</label>
@@ -681,9 +715,14 @@ export default function AdminPaymentsPage() {
                     value={pFine}
                     onChange={(e) => setPFine(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pFine === 0 && setPFine("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-red-50/50 border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
                     placeholder="0"
                   />
+                  {pFine !== "" && Number(pFine) > 0 && (
+                    <div className="mt-1 ml-1 text-[10px] font-bold text-red-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                      Display: <span className="text-slate-900">{formatAmount(pFine)}</span> <span className="text-red-300 font-normal">MMK</span>
+                    </div>
+                  )}
                   {pFine !== "" && pFine !== 0 && (
                     <input
                       type="text"
@@ -701,9 +740,14 @@ export default function AdminPaymentsPage() {
                     value={pExtraFee}
                     onChange={(e) => setPExtraFee(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pExtraFee === 0 && setPExtraFee("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-amber-50/50 border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
                     placeholder="0"
                   />
+                  {pExtraFee !== "" && Number(pExtraFee) > 0 && (
+                    <div className="mt-1 ml-1 text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                      Display: <span className="text-slate-900">{formatAmount(pExtraFee)}</span> <span className="text-amber-300 font-normal">MMK</span>
+                    </div>
+                  )}
                   {pExtraFee !== "" && pExtraFee !== 0 && (
                     <input
                       type="text"
@@ -721,9 +765,14 @@ export default function AdminPaymentsPage() {
                     value={pDiscountAmount}
                     onChange={(e) => setPDiscountAmount(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pDiscountAmount === 0 && setPDiscountAmount("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-green-50/50 border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"
                     placeholder="0"
                   />
+                  {pDiscountAmount !== "" && Number(pDiscountAmount) > 0 && (
+                    <div className="mt-1 ml-1 text-[10px] font-bold text-emerald-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                      Display: <span className="text-slate-900">{formatAmount(pDiscountAmount)}</span> <span className="text-emerald-300 font-normal">MMK</span>
+                    </div>
+                  )}
                 </div>
                 <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
