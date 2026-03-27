@@ -1431,7 +1431,7 @@ export default function AdminStudentsPage() {
                         <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Interest Showcase (From Register)</div>
                         <div className="font-bold text-slate-800 mt-1 flex items-center gap-2 text-lg">
                           <Check className="w-5 h-5 text-amber-500" />
-                          {selected.intended_course_code}
+                          {(courses.find(c => c.course_code === selected.intended_course_code))?.course_name || selected.intended_course_code}
                         </div>
                       </div>
                       {(!relations || relations.enrollments.length === 0) && (
@@ -1489,7 +1489,7 @@ export default function AdminStudentsPage() {
                   {relations.enrollments.map((enr, i) => (
                     <div key={i} className="bg-white p-3 rounded-lg border border-slate-200">
                       <div className="font-semibold text-slate-800 flex items-center justify-between">
-                        <span>{enr.course_name || enr.course_code}</span>
+                        <span>{enr.course_name}</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => openEnrollEdit(enr)}
@@ -1691,7 +1691,7 @@ export default function AdminStudentsPage() {
         onClose={() => setFastEnrollData(null)}
         onConfirm={executeFastEnroll}
         title="Confirm Enrollment"
-        message={`Create a formal enrollment for student ${fastEnrollData?.uCode} in course ${fastEnrollData?.cCode}? This will initialize the course and payment record.`}
+        message={`Create a formal enrollment for student ${fastEnrollData?.uCode} in course ${(courses.find(c => c.course_code === fastEnrollData?.cCode))?.course_name || fastEnrollData?.cCode}? This will initialize the course and payment record.`}
         confirmText="Enroll"
         variant="info"
         isLoading={busy}

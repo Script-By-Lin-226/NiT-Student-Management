@@ -341,8 +341,7 @@ export default function AdminPaymentsPage() {
                       <div className="text-xs text-slate-500 mt-0.5">{enr.student_code}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-800">{enr.course_name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{enr.course_code}</div>
+                      <div className="font-semibold text-slate-800 tracking-tight group-hover:text-brand-600 transition-colors">{enr.course_name}</div>
                     </td>
                     <td className="px-6 py-4">
                       {enr.payment_plan ? (

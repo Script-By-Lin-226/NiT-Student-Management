@@ -66,14 +66,14 @@ export default function AdminEnrollmentsPage() {
   const [cCourseCode, setCCourseCode] = useState("");
   const [cStatus, setCStatus] = useState(true);
   const [cBatchNo, setCBatchNo] = useState("");
-  const [cBatchId, setCBatchId] = useState<number | "">(0);
+  const [cBatchId, setCBatchId] = useState<number | "">("");
   const [cPaymentPlan, setCPaymentPlan] = useState("");
   const [cDownpayment, setCDownpayment] = useState<number | "">(0);
   const [cInstallment, setCInstallment] = useState<number | "">(0);
 
   const [eStatus, setEStatus] = useState(true);
   const [eBatchNo, setEBatchNo] = useState("");
-  const [eBatchId, setEBatchId] = useState<number | "">(0);
+  const [eBatchId, setEBatchId] = useState<number | "">("");
   const [ePaymentPlan, setEPaymentPlan] = useState("");
   const [eDownpayment, setEDownpayment] = useState<number | "">(0);
   const [eInstallment, setEInstallment] = useState<number | "">(0);
@@ -125,7 +125,7 @@ export default function AdminEnrollmentsPage() {
     setCCourseCode(courses[0]?.course_code ?? "");
     setCStatus(true);
     setCBatchNo("");
-    setCBatchId(0);
+    setCBatchId("");
     setCPaymentPlan("");
     setCDownpayment(0);
     setCInstallment(0);
@@ -290,8 +290,7 @@ export default function AdminEnrollmentsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-bold text-slate-900">{(e as any).course_name || "-"}</div>
-                    <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{(e as any).course_code || `ID ${e.course_id}`}</div>
+                    <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{(e as any).course_name || "-"}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-slate-700">{e.batch_no || "-"}</div>
@@ -378,7 +377,6 @@ export default function AdminEnrollmentsPage() {
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100/50">
                   <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Enrolled Course</div>
                   <div className="font-bold text-slate-800">{(e as any).course_name || "-"}</div>
-                  <div className="text-xs text-slate-500 font-medium">{(e as any).course_code || `ID ${e.course_id}`} • Room: {(e as any).room || "-"}</div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -414,13 +412,17 @@ export default function AdminEnrollmentsPage() {
             <input value={cStudentCode} onChange={(e) => setCStudentCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="STU0001" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Course code</label>
-            <input value={cCourseCode} onChange={(e) => setCCourseCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="CRS0001" list="courseCodes" />
-            <datalist id="courseCodes">
-              {courses.map((c) => (
-                <option key={c.course_code} value={c.course_code} />
-              ))}
-            </datalist>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Course</label>
+            <select 
+              value={cCourseCode} 
+              onChange={(e) => setCCourseCode(e.target.value)} 
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            >
+               <option value="">Select Course...</option>
+               {courses.map((c) => (
+                 <option key={c.course_id} value={c.course_code}>{c.course_name}</option>
+               ))}
+            </select>
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Batch (Populated from Course)</label>

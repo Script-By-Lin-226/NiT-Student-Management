@@ -354,8 +354,7 @@ export default function AdminAttendancePage() {
             <div key={g.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 leading-tight">{g.course_name}</h3>
-                  <div className="text-sm font-medium text-slate-500 mt-1">{g.course_code}</div>
+                  <h3 className="text-lg font-bold text-slate-800 leading-tight group-hover:text-brand-600 transition-colors">{g.course_name}</h3>
                 </div>
                 <div className="px-2.5 py-1 bg-brand-50 text-brand-700 text-xs font-bold rounded-lg border border-brand-100 whitespace-nowrap">
                   {g.batch_no || "No Batch"}

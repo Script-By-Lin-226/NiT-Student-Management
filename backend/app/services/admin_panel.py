@@ -1385,8 +1385,9 @@ class AdminPanelService:
             return JSONResponse({"status_code": 409, "message": "Student already enrolled in this course"}, status_code=409)
 
         # Find matching Batch if possible
-        batch_id = payload.batch_id
-        batch_no = payload.batch_no
+        batch_id = payload.batch_id if payload.batch_id and payload.batch_id != 0 else None
+        batch_no = payload.batch_no if payload.batch_no else None
+
         if not batch_id and batch_no:
             b_res = await session.execute(select(Batch).where(and_(Batch.course_id == course.course_id, Batch.batch_no == batch_no)))
             batch = b_res.scalars().first()
@@ -1412,7 +1413,7 @@ class AdminPanelService:
             course_id=course.course_id,
             batch_id=batch_id,
             status=payload.status,
-            batch_no=payload.batch_no,
+            batch_no=batch_no,
             payment_plan=payload.payment_plan,
             downpayment=payload.downpayment,
             installment_amount=payload.installment_amount
