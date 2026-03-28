@@ -106,14 +106,14 @@ export default function AdminTimetablesPage() {
     try {
       const [tt, cs, rs, ts] = await Promise.all([
         AdminService.listTimetables(), 
-        AdminService.listCourses(), 
+        AdminService.listCourses(1, 1000), 
         AdminService.listRooms(),
-        AdminService.listTeachers()
+        AdminService.listTeachers(1, 1000)
       ]);
       setRows(tt);
-      setCourses(cs);
+      setCourses(cs.data || []);
       setRooms(rs);
-      setTeachers(ts);
+      setTeachers(ts.data || []);
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load timetable");
     } finally {

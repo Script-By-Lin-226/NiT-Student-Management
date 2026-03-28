@@ -59,18 +59,18 @@ export default function AdminAttendancePage() {
   const router = useRouter();
   const { isAdminOrSales, loading } = useAuth();
 
-  const { data: enrollmentsData = [], isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useEnrollments();
+  const { data: enrollmentsData, isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useEnrollments(undefined, 1, 1000);
   const { data: attendanceData = [], isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendance();
   const { data: timetablesData = [], isLoading: timetablesLoading, refetch: refetchTimetables } = useTimetables();
-  const { data: coursesData = [], isLoading: coursesLoading, refetch: refetchCourses } = useCourses();
+  const { data: coursesData, isLoading: coursesLoading, refetch: refetchCourses } = useCourses(1, 100);
 
   const markMutation = useMarkAttendance();
   const updateMutation = useUpdateAttendance();
   
-  const enrollments = enrollmentsData;
+  const enrollments = enrollmentsData?.data || [];
   const attendance = attendanceData;
   const timetables = timetablesData;
-  const courses = coursesData;
+  const courses = coursesData?.data || [];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
