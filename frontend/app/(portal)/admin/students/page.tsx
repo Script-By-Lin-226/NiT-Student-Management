@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus } from "lucide-react";
 import * as XLSX from "xlsx";
-import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment } from "@/hooks/useAdmin";
+import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment, useBatches } from "@/hooks/useAdmin";
 import { formatAmount } from "@/utils/format";
 import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "sonner";
@@ -58,6 +58,15 @@ export default function AdminStudentsPage() {
   const { data: studentResponse, isLoading: studentsLoading, refetch: refetchStudents } = useStudents(page, limit);
   const { data: courses = [], isLoading: coursesLoading } = useCourses();
 
+  // Selected course IDs for batch filtering
+  const cSelectedCourseId = courses.find(c => c.course_code === cCourseCode)?.course_id;
+  const { data: cBatchesResponse, isLoading: cBatchesLoading } = useBatches(cSelectedCourseId);
+  const cBatches = cBatchesResponse?.data || [];
+
+  const fSelectedCourseId = courses.find(c => c.course_code === fCourseCode)?.course_id;
+  const { data: fBatchesResponse, isLoading: fBatchesLoading } = useBatches(fSelectedCourseId);
+  const fBatches = fBatchesResponse?.data || [];
+
   const [busy, setBusy] = useState(false); // Used for generic busy state when not in mutation
   const [error, setError] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -69,7 +78,6 @@ export default function AdminStudentsPage() {
   }, [error]);
 
   const [studentToDelete, setStudentToDelete] = useState<AdminStudent | null>(null);
-  const [fastEnrollData, setFastEnrollData] = useState<{uCode: string, cCode: string} | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
 
   const createMutation = useCreateStudent();
@@ -135,6 +143,17 @@ export default function AdminStudentsPage() {
   const [cPaymentPlan, setCPaymentPlan] = useState(""); 
   const [cDownpayment, setCDownpayment] = useState<number | "">(0);
   const [cInstallment, setCInstallment] = useState<number | "">(0);
+  const [cBatchId, setCBatchId] = useState<number | "" | "manual">("");
+
+  // Formalize enrollment state
+  const [formalizeOpen, setFormalizeOpen] = useState(false);
+  const [fCourseCode, setFCourseCode] = useState("");
+  const [fUserCode, setFUserCode] = useState("");
+  const [fBatchNo, setFBatchNo] = useState("");
+  const [fPlan, setFPlan] = useState("");
+  const [fDown, setFDown] = useState<number | "">("");
+  const [fInst, setFInst] = useState<number | "">("");
+  const [fBatchId, setFBatchId] = useState<number | "" | "manual">("");
 
   // Edit form
   const [eUsername, setEUsername] = useState("");
@@ -191,6 +210,7 @@ export default function AdminStudentsPage() {
     setCProfilePicture("");
     setCCourseCode("");
     setCBatchNo("");
+    setCBatchId("");
     setCPaymentPlan("");
     setCDownpayment(0);
     setCInstallment(0);
@@ -203,9 +223,9 @@ export default function AdminStudentsPage() {
       await createMutation.mutateAsync({
         user_code: cUserCode.trim() || undefined,
         username: cUsername.trim(),
-        email: cEmail.trim(),
+        email: cEmail.trim() || undefined,
         password: cPassword,
-        date_of_birth: cDob,
+        date_of_birth: cDob || undefined,
         is_active: cActive,
         department: cDepartment,
         student_type: cStudentType,
@@ -221,6 +241,7 @@ export default function AdminStudentsPage() {
         profile_picture: cProfilePicture || null,
         course_code: cCourseCode || null,
         batch_no: cBatchNo || null,
+        batch_id: Number(cBatchId) || null,
         payment_plan: cPaymentPlan || null,
         downpayment: cDownpayment !== "" ? Number(cDownpayment) : null,
         installment_amount: cInstallment !== "" ? Number(cInstallment) : null,
@@ -365,25 +386,44 @@ export default function AdminStudentsPage() {
   };
 
   const handleFastEnroll = (uCode: string, cCode: string) => {
-    setFastEnrollData({ uCode, cCode });
+    setFUserCode(uCode);
+    setFCourseCode(cCode);
+    setFBatchNo("");
+    setFBatchId("");
+    setFPlan("");
+    setFDown("");
+    setFInst("");
+    setError("");
+    setBusy(false);
+    setFormalizeOpen(true);
   };
 
-  const executeFastEnroll = async () => {
-    if (!fastEnrollData) return;
+  const submitFormalize = async () => {
     setBusy(true);
+    setError("");
     try {
       await fastEnrollMutation.mutateAsync({
-        user_code: fastEnrollData.uCode,
-        course_code: fastEnrollData.cCode,
+        student_code: fUserCode,
+        course_code: fCourseCode,
+        batch_no: fBatchNo || undefined,
+        batch_id: Number(fBatchId) || undefined,
+        payment_plan: fPlan || undefined,
+        downpayment: fDown !== "" ? Number(fDown) : undefined,
+        installment_amount: fInst !== "" ? Number(fInst) : undefined,
       });
+      
       // Refresh relations
-      const updated = await AdminService.getStudentRelations(fastEnrollData.uCode);
-      setRelations(updated);
+      if (selected && selected.user_code === fUserCode) {
+        const updated = await AdminService.getStudentRelations(fUserCode);
+        setRelations(updated);
+      }
+      
+      setFormalizeOpen(false);
+      toast.success("Enrollment formalized!");
     } catch (e: any) {
-      handleError(e, "Failed to create enrollment");
+      handleError(e, "Failed to formalize enrollment");
     } finally {
       setBusy(false);
-      setFastEnrollData(null);
     }
   };
 
@@ -1152,14 +1192,46 @@ export default function AdminStudentsPage() {
               {cCourseCode && (
                 <>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch No</label>
-                    <input
-                      type="text"
-                      value={cBatchNo}
-                      onChange={(e) => setCBatchNo(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                      placeholder="e.g. Batch 1"
-                    />
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch</label>
+                    {cBatches.length > 0 ? (
+                      <select
+                        value={cBatchId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCBatchId(val ? (val === "manual" ? "manual" : Number(val)) : "");
+                          if (val !== "manual" && val !== "") {
+                            const b = cBatches.find(x => x.batch_id === Number(val));
+                            if (b) setCBatchNo(b.batch_no);
+                          } else if (val === "manual") {
+                            setCBatchNo("");
+                          }
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      >
+                        <option value="">Select Existing Batch...</option>
+                        {cBatches.map(b => (
+                          <option key={b.batch_id} value={b.batch_id}>{b.batch_no}</option>
+                        ))}
+                        <option value="manual">Enter New Batch Name...</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={cBatchNo}
+                        onChange={(e) => setCBatchNo(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                        placeholder="e.g. Batch 1"
+                      />
+                    )}
+                    {cBatchId === "manual" && (
+                      <input
+                        type="text"
+                        value={cBatchNo}
+                        onChange={(e) => setCBatchNo(e.target.value)}
+                        className="mt-2 w-full px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        placeholder="Enter new batch name..."
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Plan</label>
@@ -1674,6 +1746,130 @@ export default function AdminStudentsPage() {
           </div>
       </Modal>
 
+      {/* Formalize Enrollment Modal */}
+      <Modal 
+        title={`Formalize Enrollment — ${(courses.find(c => c.course_code === fCourseCode))?.course_name || fCourseCode}`} 
+        open={formalizeOpen} 
+        onClose={() => setFormalizeOpen(false)}
+      >
+          <div className="space-y-4">
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl animate-in fade-in duration-300">
+                  {error}
+                </div>
+              )}
+              <div className="p-4 bg-brand-50 rounded-2xl border border-brand-100 text-sm text-brand-800">
+                  Completing this will convert the student's interest into a formal course enrollment.
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Course</label>
+                      <input 
+                        value={(courses.find(c => c.course_code === fCourseCode))?.course_name || fCourseCode}
+                        disabled
+                        className="w-full px-4 py-3 bg-slate-100 rounded-2xl border border-slate-200 text-slate-500 cursor-not-allowed"
+                      />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Batch</label>
+                    {fBatches.length > 0 ? (
+                      <select
+                        value={fBatchId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFBatchId(val ? (val === "manual" ? "manual" : Number(val)) : "");
+                          if (val !== "manual" && val !== "") {
+                            const b = fBatches.find(x => x.batch_id === Number(val));
+                            if (b) setFBatchNo(b.batch_no);
+                          } else if (val === "manual") {
+                            setFBatchNo("");
+                          }
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      >
+                        <option value="">Select Existing Batch...</option>
+                        {fBatches.map(b => (
+                          <option key={b.batch_id} value={b.batch_id}>{b.batch_no}</option>
+                        ))}
+                        <option value="manual">Enter New Batch Name...</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={fBatchNo}
+                        onChange={(e) => setFBatchNo(e.target.value)}
+                        placeholder="e.g. Batch 1"
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      />
+                    )}
+                    {fBatchId === "manual" && (
+                      <input
+                        type="text"
+                        value={fBatchNo}
+                        onChange={(e) => setFBatchNo(e.target.value)}
+                        placeholder="Enter manual batch name..."
+                        className="mt-2 w-full px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Payment Plan</label>
+                    <select
+                      value={fPlan}
+                      onChange={(e) => setFPlan(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    >
+                      <option value="">Select Plan...</option>
+                      <option value="full">Cash Down</option>
+                      <option value="installment">Installment</option>
+                    </select>
+                  </div>
+                  
+                  {fPlan === "installment" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Deposit (MMK)</label>
+                        <input
+                          type="number"
+                          value={fDown}
+                          onChange={(e) => setFDown(e.target.value ? Number(e.target.value) : "")}
+                          placeholder="0"
+                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Monthly Paid (MMK)</label>
+                        <input
+                          type="number"
+                          value={fInst}
+                          onChange={(e) => setFInst(e.target.value ? Number(e.target.value) : "")}
+                          placeholder="0"
+                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        />
+                      </div>
+                    </>
+                  )}
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex gap-3">
+                  <button 
+                        onClick={() => setFormalizeOpen(false)}
+                        className="flex-1 py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-50 transition-all"
+                  >
+                      Cancel
+                  </button>
+                  <button 
+                        onClick={submitFormalize}
+                        disabled={busy || !fPlan}
+                        className="flex-[2] py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-200/50 disabled:opacity-50"
+                  >
+                      Formalize Enrollment
+                  </button>
+              </div>
+          </div>
+      </Modal>
+
       {/* Confirmation Modals */}
       <ConfirmModal 
         open={!!studentToDelete}
@@ -1686,16 +1882,7 @@ export default function AdminStudentsPage() {
         isLoading={deleteMutation.isPending}
       />
 
-      <ConfirmModal 
-        open={!!fastEnrollData}
-        onClose={() => setFastEnrollData(null)}
-        onConfirm={executeFastEnroll}
-        title="Confirm Enrollment"
-        message={`Create a formal enrollment for student ${fastEnrollData?.uCode} in course ${(courses.find(c => c.course_code === fastEnrollData?.cCode))?.course_name || fastEnrollData?.cCode}? This will initialize the course and payment record.`}
-        confirmText="Enroll"
-        variant="info"
-        isLoading={busy}
-      />
+
 
       <ConfirmModal 
         open={clearAllOpen}
@@ -1704,7 +1891,7 @@ export default function AdminStudentsPage() {
           try {
             setBusy(true);
             await AdminService.purgeData();
-            await load();
+            await refetchStudents();
           } catch (err: any) {
             handleError(err, "Failed to purge data");
           } finally {

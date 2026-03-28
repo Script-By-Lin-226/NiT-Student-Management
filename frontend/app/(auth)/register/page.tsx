@@ -76,10 +76,18 @@ export default function RegisterPage() {
     try {
       const finalFormData = {
         ...formData,
+        email: formData.email.trim() || undefined,
+        date_of_birth: formData.date_of_birth || undefined,
+        nrc: formData.nrc.trim() || undefined,
+        gender: formData.gender || undefined,
+        parent_name: formData.parent_name.trim() || undefined,
+        parent_phone: formData.parent_phone.trim() || undefined,
+        address: formData.address.trim() || undefined,
+        student_type: formData.student_type || undefined,
         how_did_you_hear: [
           ...howDidYouHear.filter((item) => item !== "Other (Please Specify)"),
           ...(howDidYouHear.includes("Other (Please Specify)") && otherHearAbout ? [`Other: ${otherHearAbout}`] : [])
-        ].join(", ")
+        ].join(", ") || undefined
       };
       
       await AuthService.register(finalFormData);
@@ -135,25 +143,13 @@ export default function RegisterPage() {
     setError("");
     if (step === 1) {
       if (!formData.username.trim()) return "Full name is required";
-      if (!formData.email.trim()) return "Email address is required";
       if (!formData.phone.trim()) return "Phone number is required";
-      if (!formData.date_of_birth.trim()) return "Date of birth is required";
-      if (!formData.gender.trim()) return "Gender selection is required";
-      if (!formData.nrc.trim()) return "NRC number is required";
+      // Others are now optional for Interest Showcase
     }
     if (step === 2) {
-      if (!formData.course_code.trim()) return "Please select a course";
-      if (!formData.student_type.trim()) return "Please select student type";
+      if (!formData.course_code.trim()) return "Please select a course of interest";
     }
-    if (step === 3) {
-      if (!formData.parent_name.trim()) return "Guardian name is required";
-      if (!formData.parent_phone.trim()) return "Guardian phone is required";
-      if (!formData.address.trim()) return "Address is required";
-    }
-    if (step === 4) {
-      if (howDidYouHear.length === 0) return "Please select at least one source";
-      if (howDidYouHear.includes("Other (Please Specify)") && !otherHearAbout.trim()) return "Please specify the other source";
-    }
+    // Step 3 and 4 are now fully optional
     return "";
   };
 
@@ -342,7 +338,7 @@ export default function RegisterPage() {
                                         <input name="username" value={formData.username} onChange={handleChange} placeholder="e.g. John Doe" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Email Address <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-bold text-slate-700">Email Address (Optional)</label>
                                         <input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="john@example.com" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                 </div>
@@ -353,18 +349,18 @@ export default function RegisterPage() {
                                         <input name="phone" value={formData.phone} onChange={handleChange} placeholder="+95 9..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Date of Birth <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-bold text-slate-700">Date of Birth (Optional)</label>
                                         <input name="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">NRC Number <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-bold text-slate-700">NRC Number (Optional)</label>
                                         <input name="nrc" value={formData.nrc} onChange={handleChange} placeholder="Enter NRC" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Gender <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-bold text-slate-700">Gender (Optional)</label>
                                         <div className="grid grid-cols-3 gap-2">
                                             {["Male", "Female", "Other"].map((g) => (
                                                 <button key={g} type="button" onClick={() => setFormData(p => ({...p, gender: g}))} className={cn("py-3 rounded-2xl border-2 text-sm font-medium transition-all", formData.gender === g ? "border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]" : "border-slate-100 text-slate-500 hover:border-slate-200")}>{g}</button>
@@ -390,7 +386,8 @@ export default function RegisterPage() {
                                             <option value="">All Categories</option>
                                             <option value="Diploma">Diploma</option>
                                             <option value="Certificate">Certificate</option>
-                                            <option value="NCC">NCC</option>
+                                            <option value="NCC Level 4">NCC Level 4</option>
+                                            <option value="NCC Level 5">NCC Level 5</option>
                                             <option value="International Qualification">International Qualification</option>
                                             <option value="GED Courses">GED Courses</option>
                                             <option value="ABE courses">ABE courses</option>
@@ -432,15 +429,15 @@ export default function RegisterPage() {
                         {currentStep === 3 && (
                             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Parent/Guardian Name <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-bold text-slate-700">Parent/Guardian Name (Optional)</label>
                                     <input name="parent_name" value={formData.parent_name} onChange={handleChange} placeholder="Enter guardian name" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Guardian Phone Number <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-bold text-slate-700">Guardian Phone Number (Optional)</label>
                                     <input name="parent_phone" value={formData.parent_phone} onChange={handleChange} placeholder="+95 9..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Full Address <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-bold text-slate-700">Full Address (Optional)</label>
                                     <textarea name="address" value={formData.address} onChange={handleChange} rows={3} placeholder="Enter your current address" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all resize-none" />
                                 </div>
                             </div>
@@ -449,7 +446,7 @@ export default function RegisterPage() {
                         {currentStep === 4 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="space-y-4">
-                                    <label className="text-sm font-bold text-slate-700">How Did You Hear About Us? <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-bold text-slate-700">How Did You Hear About Us? (Optional)</label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {["Facebook", "TikTok", "Friend Referral", "NiT Event", "Other (Please Specify)"].map((option) => (
                                             <label key={option} className={cn("flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer", howDidYouHear.includes(option) ? "border-[#0d4d4d] bg-[#0d4d4d]/5" : "border-slate-100 bg-white hover:border-slate-200")}>

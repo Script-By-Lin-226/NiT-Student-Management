@@ -404,12 +404,13 @@ export default function AdminCoursesPage() {
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
             <select value={cCategory} onChange={(e) => setCCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               <option value="">Select Category…</option>
-              <option value="Diploma">Diploma</option>
-              <option value="Certificate">Certificate</option>
-              <option value="NCC">NCC</option>
-              <option value="International Qualification">International Qualification</option>
-              <option value="GED Courses">GED Courses</option>
-              <option value="ABE courses">ABE courses</option>
+               <option value="Diploma">Diploma</option>
+               <option value="Certificate">Certificate</option>
+               <option value="NCC Level 4">NCC Level 4</option>
+               <option value="NCC Level 5">NCC Level 5</option>
+               <option value="International Qualification">International Qualification</option>
+               <option value="GED Courses">GED Courses</option>
+               <option value="ABE courses">ABE courses</option>
             </select>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
@@ -467,12 +468,13 @@ export default function AdminCoursesPage() {
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
             <select value={eCategory} onChange={(e) => setECategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               <option value="">Select Category…</option>
-              <option value="Diploma">Diploma</option>
-              <option value="Certificate">Certificate</option>
-              <option value="NCC">NCC</option>
-              <option value="International Qualification">International Qualification</option>
-              <option value="GED Courses">GED Courses</option>
-              <option value="ABE courses">ABE courses</option>
+               <option value="Diploma">Diploma</option>
+               <option value="Certificate">Certificate</option>
+               <option value="NCC Level 4">NCC Level 4</option>
+               <option value="NCC Level 5">NCC Level 5</option>
+               <option value="International Qualification">International Qualification</option>
+               <option value="GED Courses">GED Courses</option>
+               <option value="ABE courses">ABE courses</option>
             </select>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">

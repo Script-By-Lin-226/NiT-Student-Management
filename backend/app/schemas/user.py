@@ -120,8 +120,8 @@ class AdminParentLinkChild(BaseModel):
 
 class StudentRegister(BaseModel):
     username: str
-    email: str
-    date_of_birth: date
+    email: Optional[str] = None
+    date_of_birth: Optional[date] = None
     
     # Contact info
     phone: str
