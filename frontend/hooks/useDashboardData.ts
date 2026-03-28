@@ -68,7 +68,7 @@ export function useDashboardData(selectedChildCode?: string) {
         totalStudents: summary.data?.total_students || 0,
         courses: [], // No longer fetching full list for dashboard
         totalCourses: summary.data?.total_courses || 0,
-        enrollments: enrollments.data || [],
+        enrollments: enrollments.data?.data || [],
         attendance: attendance.data || [],
         rooms: rooms.data || [],
         today_attendance_count: summary.data?.today_attendance_count || 0,

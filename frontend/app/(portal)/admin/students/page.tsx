@@ -12,6 +12,7 @@ import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser
 import { formatAmount } from "@/utils/format";
 import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "sonner";
+import { Pagination } from "@/components/ui/Pagination";
 
 function Modal({
   title,
@@ -53,7 +54,7 @@ export default function AdminStudentsPage() {
   const { isAdminOrSales, isAdmin, loading: authLoading } = useAuth();
 
   const [page, setPage] = useState(1);
-  const limit = 50;
+  const [limit, setLimit] = useState(50);
 
   // Form states moved up to avoid ReferenceError
   const [q, setQ] = useState("");
@@ -92,6 +93,7 @@ export default function AdminStudentsPage() {
   const [cProfilePicture, setCProfilePicture] = useState("");
 
   // Enrollment form integration
+  const [cCategory, setCCategory] = useState("");
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
   const [cPaymentPlan, setCPaymentPlan] = useState(""); 
@@ -101,6 +103,7 @@ export default function AdminStudentsPage() {
 
   // Formalize enrollment state
   const [formalizeOpen, setFormalizeOpen] = useState(false);
+  const [fCategory, setFCategory] = useState("");
   const [fCourseCode, setFCourseCode] = useState("");
   const [fUserCode, setFUserCode] = useState("");
   const [fBatchNo, setFBatchNo] = useState("");
@@ -128,9 +131,24 @@ export default function AdminStudentsPage() {
 
   // Queries and Mutations
   const { data: studentResponse, isLoading: studentsLoading, refetch: refetchStudents } = useStudents(page, limit);
-  const { data: courses = [], isLoading: coursesLoading } = useCourses();
+  const { data: coursesResponse, isLoading: coursesLoading } = useCourses(1, 1000); // Fetch all for dropdowns
+  const courses = coursesResponse?.data || [];
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    courses.forEach((c: AdminCourse) => {
+      if (c.category) cats.add(c.category);
+    });
+    return Array.from(cats).sort();
+  }, [courses]);
 
-  // Selected course IDs for batch filtering
+  const filteredCourses_C = useMemo(() => {
+    return courses.filter((c: AdminCourse) => !cCategory || c.category === cCategory);
+  }, [courses, cCategory]);
+
+  const filteredCourses_F = useMemo(() => {
+    return courses.filter((c: AdminCourse) => !fCategory || c.category === fCategory);
+  }, [courses, fCategory]);
+
   const cSelectedCourseId = courses.find(c => c.course_code === cCourseCode)?.course_id;
   const { data: cBatchesResponse, isLoading: cBatchesLoading } = useBatches(cSelectedCourseId);
   const cBatches = cBatchesResponse?.data || [];
@@ -210,6 +228,7 @@ export default function AdminStudentsPage() {
     setCParentPhone("");
     setCAddress("");
     setCProfilePicture("");
+    setCCategory("");
     setCCourseCode("");
     setCBatchNo("");
     setCBatchId("");
@@ -283,8 +302,7 @@ export default function AdminStudentsPage() {
       .then(data => {
         setRelations(data);
         if (data.student) {
-          // Don't override eUsername etc if user already started editing, 
-          // but we do need the full details for the student object.
+          // Additional student info is now included in relations.student
         }
       })
       .catch(() => setRelations(null))
@@ -390,6 +408,19 @@ export default function AdminStudentsPage() {
   const handleFastEnroll = (uCode: string, cCode: string) => {
     setFUserCode(uCode);
     setFCourseCode(cCode);
+    
+    // Auto-select category if course is found
+    if (cCode) {
+      const course = courses.find(c => c.course_code === cCode);
+      if (course && course.category) {
+        setFCategory(course.category);
+      } else {
+        setFCategory("");
+      }
+    } else {
+      setFCategory("");
+    }
+
     setFBatchNo("");
     setFBatchId("");
     setFPlan("");
@@ -463,6 +494,7 @@ export default function AdminStudentsPage() {
       return {
         "Course Code": e.course_code,
         "Course Name": e.course_name,
+        "Category": (courses.find((c: AdminCourse) => c.course_code === e.course_code))?.category || "-",
         "Status": e.status ? "Active" : "Inactive",
         "Batch": e.batch_no || "-",
         "Payment Plan": e.payment_plan === "full" ? "Cash Down" : e.payment_plan === "installment" ? "Installment" : "-",
@@ -493,6 +525,7 @@ export default function AdminStudentsPage() {
           "Receipt ID": p.payment_id,
           "Date": p.payment_date ? p.payment_date.slice(0, 10) : "-",
           "Course Name": p.course_name,
+          "Category": (courses.find((c: AdminCourse) => c.course_name === p.course_name))?.category || "-",
           "Month": p.month,
           "Method": p.payment_method || "N/A",
           "Course Amount (MMK)": courseCost,
@@ -554,14 +587,16 @@ export default function AdminStudentsPage() {
   const exportAllData = async () => {
     try {
       setBusy(true);
-      const [studentsRes, enrollments, attendance, payments] = await Promise.all([
+      const [studentsRes, enrollmentsRes, attendance, paymentsRes] = await Promise.all([
         AdminService.listStudents(1, -1),
-        AdminService.listEnrollments(),
+        AdminService.listEnrollments(undefined, 1, -1),
         AdminService.listAttendance(),
-        AdminService.listPayments()
+        AdminService.listPayments(1, -1)
       ]);
 
       const students = studentsRes.data || [];
+      const enrollments = enrollmentsRes.data || [];
+      const payments = paymentsRes.data || [];
 
       const wb = XLSX.utils.book_new();
 
@@ -582,7 +617,7 @@ export default function AdminStudentsPage() {
       // Compute total paid per enrollment for left amount
       const paidPerEnrollment: Record<number, number> = {};
       const discountPerEnrollment: Record<number, number> = {};
-      for (const p of payments) {
+      for (const p of (payments as any[])) {
         paidPerEnrollment[p.enrollment_id] = (paidPerEnrollment[p.enrollment_id] || 0) + (p.amount || 0);
         discountPerEnrollment[p.enrollment_id] = (discountPerEnrollment[p.enrollment_id] || 0) + (p.discount_amount || 0);
       }
@@ -595,6 +630,7 @@ export default function AdminStudentsPage() {
           "Student Code": p.student_code,
           "Student Name": p.student_name,
           "Course Name": p.course_name,
+          "Category": (courses.find((c: AdminCourse) => c.course_name === p.course_name))?.category || "-",
           "Month": p.month,
           "Method": p.payment_method || "-",
           "Date": p.payment_date ? p.payment_date.slice(0, 10) : "-",
@@ -615,7 +651,7 @@ export default function AdminStudentsPage() {
 
       // Monthly Summary across the entire system
       const monthlyMap: Record<string, { totalPaid: number; count: number }> = {};
-      for (const p of payments) {
+      for (const p of (payments as any[])) {
         const key = p.month || "Unknown";
         if (!monthlyMap[key]) monthlyMap[key] = { totalPaid: 0, count: 0 };
         monthlyMap[key].totalPaid += p.amount || 0;
@@ -638,6 +674,7 @@ export default function AdminStudentsPage() {
           "Enrollment ID": e.enrollment_id,
           "Student Name": e.student_name,
           "Course Name": e.course_name,
+          "Category": (courses.find((c: AdminCourse) => c.course_name === e.course_name))?.category || "-",
           "Batch": e.batch_no || "-",
           "Plan": e.payment_plan || "-",
           "Course Amount (MMK)": courseCost,
@@ -932,56 +969,16 @@ export default function AdminStudentsPage() {
           )}
         </div>
 
-        {pagination && (pagination.total_pages || 0) > 1 && (
-          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <div className="text-sm text-slate-500">
-              Showing <span className="font-semibold text-slate-900">{((page - 1) * limit) + 1}</span> to <span className="font-semibold text-slate-900">{Math.min(page * limit, pagination.total_count || 0)}</span> of <span className="font-semibold text-slate-900">{pagination.total_count || 0}</span> students
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
-                  let pageNum: number;
-                  if (pagination.total_pages <= 5) {
-                    pageNum = i + 1;
-                  } else if (page <= 3) {
-                    pageNum = i + 1;
-                  } else if (page >= (pagination.total_pages || 0) - 2) {
-                    pageNum = (pagination.total_pages || 0) - 4 + i;
-                  } else {
-                    pageNum = page - 2 + i;
-                  }
-                  if (pageNum <= 0) return null;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setPage(pageNum)}
-                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                        page === pageNum
-                          ? "bg-brand-600 text-white shadow-sm"
-                          : "text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                onClick={() => setPage(p => Math.min(pagination.total_pages || 1, p + 1))}
-                disabled={page === pagination.total_pages}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+        {/* Pagination Controls */}
+        {pagination && (
+          <Pagination
+            currentPage={page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => { setLimit(l); setPage(1); }}
+          />
         )}
       </div>
 
@@ -1178,6 +1175,23 @@ export default function AdminStudentsPage() {
             <h4 className="font-bold text-slate-800 mb-3">Course Enrollment (Optional)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Course Category</label>
+                <select
+                  value={cCategory}
+                  onChange={(e) => {
+                    setCCategory(e.target.value);
+                    setCCourseCode("");
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Course</label>
                 <select
                   value={cCourseCode}
@@ -1185,7 +1199,7 @@ export default function AdminStudentsPage() {
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                 >
                   <option value="">No course (skip enrollment)</option>
-                  {courses.map(c => (
+                  {filteredCourses_C.map(c => (
                     <option key={c.course_code} value={c.course_code}>{c.course_name}</option>
                   ))}
                 </select>
@@ -1763,15 +1777,35 @@ export default function AdminStudentsPage() {
               <div className="p-4 bg-brand-50 rounded-2xl border border-brand-100 text-sm text-brand-800">
                   Completing this will convert the student's interest into a formal course enrollment.
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
+                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Course Category</label>
+                       <select 
+                         value={fCategory}
+                         onChange={(e) => {
+                           setFCategory(e.target.value);
+                           setFCourseCode("");
+                         }}
+                         className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-brand-500 focus:outline-none transition-all"
+                       >
+                         <option value="">All Categories</option>
+                         {categories.map(cat => (
+                           <option key={cat} value={cat}>{cat}</option>
+                         ))}
+                       </select>
+                  </div>
+                  <div className="sm:col-span-2">
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Course</label>
-                      <input 
-                        value={(courses.find(c => c.course_code === fCourseCode))?.course_name || fCourseCode}
-                        disabled
-                        className="w-full px-4 py-3 bg-slate-100 rounded-2xl border border-slate-200 text-slate-500 cursor-not-allowed"
-                      />
+                      <select 
+                        value={fCourseCode}
+                        onChange={(e) => setFCourseCode(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-brand-500 focus:outline-none transition-all"
+                      >
+                        <option value="">Select Course...</option>
+                        {filteredCourses_F.map(c => (
+                          <option key={c.course_code} value={c.course_code}>{c.course_name}</option>
+                        ))}
+                      </select>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Batch</label>

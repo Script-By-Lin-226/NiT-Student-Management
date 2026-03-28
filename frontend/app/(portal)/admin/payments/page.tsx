@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import { AdminService, AdminEnrollment, AdminPayment, AdminPaymentCreate } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 import { generateReceiptPDF } from "@/utils/pdfReceipt";
-import { useCreatePayment } from "@/hooks/useAdmin";
 import { formatAmount } from "@/utils/format";
+import { useEnrollments, useCourses, useCreatePayment } from "@/hooks/useAdmin";
+import { Pagination } from "@/components/ui/Pagination";
 
 function Modal({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null;
@@ -39,10 +40,17 @@ export default function AdminPaymentsPage() {
   const router = useRouter();
   const { isAdminOrSales, loading, user } = useAuth();
 
-  const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
-  const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+
+  const { data: enrollmentsResponse, isLoading: enrollmentsLoading, refetch: reload } = useEnrollments(undefined, page, limit);
+  const rawEnrollments = enrollmentsResponse?.data || [];
+  const pagination = enrollmentsResponse?.pagination;
+
+  const { data: coursesResponse } = useCourses(1, 1000);
+  const courses = coursesResponse?.data || [];
   
-  const [courses, setCourses] = useState<any[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
   const [q, setQ] = useState("");
@@ -71,22 +79,14 @@ export default function AdminPaymentsPage() {
   const [pMethod2, setPMethod2] = useState("");
 
   const calculateLeftAmount = (enr: AdminEnrollment) => {
-    const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
-    const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount + (p.amount_2 || 0), 0);
-    const totalDiscount = enrPayments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
-    const cost = enr.course_cost || 0;
-    return Math.max(0, cost - (totalPaid + totalDiscount));
+    return enr.balance_due || 0;
   };
 
   const calculateLeftExamFeeGbp = (enr: AdminEnrollment) => {
-    const course = courses.find(c => c.course_id === enr.course_id);
-    const totalDue = course?.exam_fee_gbp || 0;
-    const enrPayments = payments.filter((p) => p.enrollment_id === enr.enrollment_id);
-    const totalPaidGbp = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
-    return Math.max(0, totalDue - totalPaidGbp);
+    return enr.exam_fee_pending_gbp || 0;
   };
 
-  const filteredEnrollments = enrollments.filter((e) => {
+  const displayedEnrollments = rawEnrollments.filter((e) => {
     if (!q) return true;
     const s = q.toLowerCase();
     return (
@@ -98,22 +98,7 @@ export default function AdminPaymentsPage() {
   });
 
   const load = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const [enrData, payData, courseData] = await Promise.all([
-        AdminService.listEnrollments(),
-        AdminService.listPayments(),
-        AdminService.listCourses()
-      ]);
-      setEnrollments(enrData);
-      setPayments(payData);
-      setCourses(courseData);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to load data");
-    } finally {
-      setBusy(false);
-    }
+    reload();
   };
 
   useEffect(() => {
@@ -124,7 +109,7 @@ export default function AdminPaymentsPage() {
   const openRecordPayment = (enr: AdminEnrollment) => {
     setSelectedEnrollment(enr);
     setPAmount(0);
-    
+
     // auto select current month and year setup
     const d = new Date();
     if (enr.payment_plan === 'full') {
@@ -145,13 +130,13 @@ export default function AdminPaymentsPage() {
     setPExamFeeCurrency("MMK");
     setPAmount2(0);
     setPMethod2("");
-    
+
     setPaymentModalOpen(true);
   };
 
   const submitPayment = async () => {
     if (!selectedEnrollment) return;
-    
+
     const totalAmount = (Number(pAmount) || 0) + (Number(pAmount2) || 0);
     const totalFine = Number(pFine) || 0;
     const totalExtra = Number(pExtraFee) || 0;
@@ -162,7 +147,7 @@ export default function AdminPaymentsPage() {
       toast.error("Total transaction value must be greater than 0.");
       return;
     }
-    
+
     // Check for negative values
     if (Number(pAmount) < 0 || Number(pAmount2) < 0 || totalFine < 0 || totalExtra < 0 || totalDiscount < 0 || Number(pExamFeePaidGbp) < 0) {
       toast.error("Negative values are not allowed in any field.");
@@ -236,9 +221,18 @@ export default function AdminPaymentsPage() {
     }
   };
 
-  const openHistory = (enr: AdminEnrollment) => {
+  const openHistory = async (enr: AdminEnrollment) => {
     setSelectedEnrollment(enr);
-    setHistoryModalOpen(true);
+    setBusy(true);
+    try {
+      const res = await AdminService.listPayments(1, 100, enr.enrollment_id);
+      setPayments(res.data);
+      setHistoryModalOpen(true);
+    } catch {
+      toast.error("Failed to load payment history");
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) return null;
@@ -262,37 +256,37 @@ export default function AdminPaymentsPage() {
           </button>
           <button
             onClick={() => {
-              const dataToExport = filteredEnrollments.map(enr => {
-                  const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
-                  const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount + (p.amount_2 || 0), 0);
-                  const totalDiscount = enrPayments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
-                  const totalFine = enrPayments.reduce((sum, p) => sum + (p.fine_amount || 0), 0);
-                  const totalExtra = enrPayments.reduce((sum, p) => sum + (p.extra_items_fee || 0), 0);
-                  const totalExamGbp = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
-                  const totalExamMmk = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_mmk || 0), 0);
-                  
-                  return {
-                    "Student Name": enr.student_name,
-                    "Student Code": enr.student_code,
-                    "Course": enr.course_name,
-                    "Batch": enr.batch_no || "-",
-                    "Payment Plan": enr.payment_plan === 'full' ? 'Full Payment' : 'Installment',
-                    "Course Fee (MMK)": enr.course_cost || 0,
-                    "Total Paid (MMK)": totalPaid,
-                    "Total Discount (MMK)": totalDiscount,
-                    "Total Fine Paid (MMK)": totalFine,
-                    "Fine Reasons": enrPayments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ") || "-",
-                    "Total Extra Items Fee (MMK)": totalExtra,
-                    "Exam Fee Paid (GBP)": totalExamGbp,
-                    "Exam Fee Paid (MMK)": totalExamMmk,
-                    "Balance Due (MMK)": calculateLeftAmount(enr),
-                    "FOC Items": enr.foc_items || "-",
-                    "Status": (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? "Fully Paid" : "Balance Due"
-                  };
-                });
-                exportToExcel(dataToExport, "Payments_Overview", "Payments");
+              const dataToExport = displayedEnrollments.map(enr => {
+                const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
+                const totalPaid = enrPayments.reduce((sum, p) => sum + p.amount + (p.amount_2 || 0), 0);
+                const totalDiscount = enrPayments.reduce((sum, p) => sum + (p.discount_amount || 0), 0);
+                const totalFine = enrPayments.reduce((sum, p) => sum + (p.fine_amount || 0), 0);
+                const totalExtra = enrPayments.reduce((sum, p) => sum + (p.extra_items_fee || 0), 0);
+                const totalExamGbp = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
+                const totalExamMmk = enrPayments.reduce((sum, p) => sum + (p.exam_fee_paid_mmk || 0), 0);
+
+                return {
+                  "Student Name": enr.student_name,
+                  "Student Code": enr.student_code,
+                  "Course": enr.course_name,
+                  "Batch": enr.batch_no || "-",
+                  "Payment Plan": enr.payment_plan === 'full' ? 'Full Payment' : 'Installment',
+                  "Course Fee (MMK)": enr.course_cost || 0,
+                  "Total Paid (MMK)": totalPaid,
+                  "Total Discount (MMK)": totalDiscount,
+                  "Total Fine Paid (MMK)": totalFine,
+                  "Fine Reasons": enrPayments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ") || "-",
+                  "Total Extra Items Fee (MMK)": totalExtra,
+                  "Exam Fee Paid (GBP)": totalExamGbp,
+                  "Exam Fee Paid (MMK)": totalExamMmk,
+                  "Balance Due (MMK)": calculateLeftAmount(enr),
+                  "FOC Items": enr.foc_items || "-",
+                  "Status": (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? "Fully Paid" : "Balance Due"
+                };
+              });
+              exportToExcel(dataToExport, "Payments_Overview", "Payments");
             }}
-            disabled={busy || filteredEnrollments.length === 0}
+            disabled={busy || displayedEnrollments.length === 0}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap"
           >
             <Download className="w-4 h-4" />
@@ -332,7 +326,7 @@ export default function AdminPaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredEnrollments.map((enr) => {
+              {displayedEnrollments.map((enr) => {
                 const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
                 return (
                   <tr key={enr.enrollment_id} className="hover:bg-slate-50/50 transition-colors">
@@ -351,7 +345,7 @@ export default function AdminPaymentsPage() {
                               {enr.payment_plan === 'full' ? 'Full Plan' : 'Installment'}
                             </span>
                           </div>
-                          
+
                           <div className="space-y-1.5 px-0.5">
                             <div className="flex items-center gap-4">
                               <div className="flex flex-col">
@@ -367,20 +361,20 @@ export default function AdminPaymentsPage() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 pt-1.5 border-t border-slate-50">
-                               <div className="flex flex-col">
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Remaining</span>
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-sm font-black text-rose-600 tracking-tight">{formatAmount(calculateLeftAmount(enr))}</span>
-                                    <span className="text-[10px] font-bold text-rose-300">MMK</span>
-                                  </div>
-                               </div>
-                               <div className="flex flex-col border-l border-slate-100 pl-3">
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Exam Fee</span>
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-sm font-black text-indigo-700 tracking-tight">{calculateLeftExamFeeGbp(enr)}</span>
-                                    <span className="text-[10px] font-bold text-indigo-300">GBP</span>
-                                  </div>
-                               </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Remaining</span>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-sm font-black text-rose-600 tracking-tight">{formatAmount(calculateLeftAmount(enr))}</span>
+                                  <span className="text-[10px] font-bold text-rose-300">MMK</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col border-l border-slate-100 pl-3">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Exam Fee</span>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-sm font-black text-indigo-700 tracking-tight">{calculateLeftExamFeeGbp(enr)}</span>
+                                  <span className="text-[10px] font-bold text-indigo-300">GBP</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -404,16 +398,16 @@ export default function AdminPaymentsPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Due Balance</span>
                           </div>
                         ) : null}
-                        
+
                         <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50/50 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                            <Receipt className="w-3 h-3 text-slate-400" />
-                            <span className="text-xs font-bold text-slate-600 tracking-tight">
-                                {enrPayments.length} <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">Entries</span>
-                            </span>
+                          <Receipt className="w-3 h-3 text-slate-400" />
+                          <span className="text-xs font-bold text-slate-600 tracking-tight">
+                            {enr.payment_count} <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">Entries</span>
+                          </span>
                         </div>
                       </div>
                     </td>
-                  <td className="px-6 py-4">
+                    <td className="px-6 py-4">
                       <div className="flex justify-end gap-2 text-xs">
                         <button
                           onClick={() => generateReceiptPDF(enr, enrPayments, calculateLeftAmount(enr), calculateLeftExamFeeGbp(enr), user?.username || "Admin", true)}
@@ -452,7 +446,7 @@ export default function AdminPaymentsPage() {
                   </tr>
                 );
               })}
-              {filteredEnrollments.length === 0 && (
+              {displayedEnrollments.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
                     {busy ? "Loading…" : "No enrollments found."}
@@ -465,9 +459,9 @@ export default function AdminPaymentsPage() {
 
         {/* Mobile/Tablet Card View */}
         <div className="block lg:hidden divide-y divide-slate-100">
-          {filteredEnrollments.map((enr) => {
-             const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
-             return (
+          {displayedEnrollments.map((enr) => {
+            const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
+            return (
               <div key={enr.enrollment_id} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col">
@@ -488,8 +482,8 @@ export default function AdminPaymentsPage() {
                       <span className="text-sm font-semibold text-slate-700 leading-tight">{enr.course_name}</span>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Due Date</span>
-                       <span className="text-xs font-bold text-slate-700">Monthly</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Due Date</span>
+                      <span className="text-xs font-bold text-slate-700">Monthly</span>
                     </div>
                   </div>
 
@@ -513,21 +507,21 @@ export default function AdminPaymentsPage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
-                     <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-lg border border-slate-200">
-                        <Receipt className="w-3 h-3 text-slate-400" />
-                        <span className="text-[10px] font-bold text-slate-600 tracking-tight">
-                            {enrPayments.length} Entries
-                        </span>
-                     </div>
-                     {enr.payment_plan && ((calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? (
-                        <div className="flex items-center gap-1.5 text-emerald-600 px-2 py-0.5 bg-emerald-50 rounded-lg border border-emerald-100">
-                          <span className="text-[10px] font-black uppercase tracking-widest">Fully Paid</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-amber-600 px-2 py-0.5 bg-amber-50 rounded-lg border border-amber-100">
-                          <span className="text-[10px] font-black uppercase tracking-widest">Due Balance</span>
-                        </div>
-                      ))}
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-lg border border-slate-200">
+                      <Receipt className="w-3 h-3 text-slate-400" />
+                      <span className="text-[10px] font-bold text-slate-600 tracking-tight">
+                        {enrPayments.length} Entries
+                      </span>
+                    </div>
+                    {enr.payment_plan && ((calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? (
+                      <div className="flex items-center gap-1.5 text-emerald-600 px-2 py-0.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Fully Paid</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-amber-600 px-2 py-0.5 bg-amber-50 rounded-lg border border-amber-100">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Due Balance</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1.5">
@@ -554,15 +548,25 @@ export default function AdminPaymentsPage() {
                 </div>
 
               </div>
-             );
+            );
           })}
-          {filteredEnrollments.length === 0 && (
+          {displayedEnrollments.length === 0 && (
             <div className="p-10 text-center text-slate-400 font-medium text-sm">
               {busy ? "Loading…" : "No enrollments found."}
             </div>
           )}
         </div>
 
+        {pagination && (
+          <Pagination
+            currentPage={page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => { setLimit(l); setPage(1); }}
+          />
+        )}
       </div>
 
       <Modal title={selectedEnrollment?.payment_plan === 'full' ? "Record Full Payment" : "Record Installment Payment"} open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
@@ -637,19 +641,19 @@ export default function AdminPaymentsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">Extra Amount (MMK)</label>
-                    <input
-                      type="number"
-                      value={pAmount2}
-                      onChange={(e) => setPAmount2(e.target.value ? Number(e.target.value) : "")}
-                      onFocus={(e) => pAmount2 === 0 && setPAmount2("")}
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
-                      placeholder="0"
-                    />
-                    {pAmount2 !== "" && Number(pAmount2) > 0 && (
-                      <div className="mt-1 ml-1 text-[10px] font-bold text-brand-600 animate-in fade-in slide-in-from-top-1 duration-200">
-                        Display: <span className="text-slate-900">{formatAmount(pAmount2)}</span> <span className="text-brand-400 font-normal">MMK</span>
-                      </div>
-                    )}
+                  <input
+                    type="number"
+                    value={pAmount2}
+                    onChange={(e) => setPAmount2(e.target.value ? Number(e.target.value) : "")}
+                    onFocus={(e) => pAmount2 === 0 && setPAmount2("")}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+                    placeholder="0"
+                  />
+                  {pAmount2 !== "" && Number(pAmount2) > 0 && (
+                    <div className="mt-1 ml-1 text-[10px] font-bold text-brand-600 animate-in fade-in slide-in-from-top-1 duration-200">
+                      Display: <span className="text-slate-900">{formatAmount(pAmount2)}</span> <span className="text-brand-400 font-normal">MMK</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">Method</label>
@@ -685,10 +689,10 @@ export default function AdminPaymentsPage() {
                   {selectedEnrollment?.payment_plan === 'full' && (
                     <option value="Full Payment">Full Payment</option>
                   )}
-                  {selectedEnrollment?.payment_plan === 'installment' && 
+                  {selectedEnrollment?.payment_plan === 'installment' &&
                     ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
                       <option key={m} value={m}>{m}</option>
-                  ))}
+                    ))}
                 </select>
                 <select
                   value={pYear}
@@ -882,7 +886,7 @@ export default function AdminPaymentsPage() {
                           )}
                           {(p.extra_items_fee != null && p.extra_items_fee > 0) && (
                             <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md inline-block uppercase tracking-tight">
-                               Extra: {formatAmount(p.extra_items_fee)} MMK ({p.extra_items || "Items"})
+                              Extra: {formatAmount(p.extra_items_fee)} MMK ({p.extra_items || "Items"})
                             </div>
                           )}
                           {((p.exam_fee_paid_gbp != null && p.exam_fee_paid_gbp > 0)) && (

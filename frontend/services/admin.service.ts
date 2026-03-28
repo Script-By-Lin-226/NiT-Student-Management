@@ -215,6 +215,12 @@ export interface AdminEnrollment {
   downpayment?: number | null;
   installment_amount?: number | null;
   course_cost?: number | null;
+  total_paid?: number;
+  balance_due?: number;
+  exam_fee_paid_gbp?: number;
+  exam_fee_total_gbp?: number;
+  exam_fee_pending_gbp?: number;
+  payment_count?: number;
   foc_items?: string | null;
   profile_picture?: string | null;
 }
@@ -477,15 +483,15 @@ export class AdminService {
   }
 
   // Parents
-  static async listParents(): Promise<AdminParent[]> {
-    const res = await api.get("/admin/parents");
-    return res.data.data;
+  static async listParents(page: number = 1, limit: number = 50): Promise<PaginatedResponse<AdminUser>> {
+    const res = await api.get<PaginatedResponse<AdminUser>>("/admin/parents", { params: { page, limit } });
+    return res.data;
   }
 
   // Teachers
-  static async listTeachers(): Promise<AdminUser[]> {
-    const res = await api.get<{ data: AdminUser[] }>("/admin/teachers");
-    return res.data.data;
+  static async listTeachers(page: number = 1, limit: number = 50): Promise<PaginatedResponse<AdminUser>> {
+    const res = await api.get<PaginatedResponse<AdminUser>>("/admin/teachers", { params: { page, limit } });
+    return res.data;
   }
 
   static async createParent(payload: AdminParentCreate): Promise<AdminParent> {
@@ -518,9 +524,9 @@ export class AdminService {
   }
 
   // Courses
-  static async listCourses(): Promise<AdminCourse[]> {
-    const res = await api.get("/admin/courses");
-    return res.data.data;
+  static async listCourses(page: number = 1, limit: number = 50): Promise<PaginatedResponse<AdminCourse>> {
+    const res = await api.get<PaginatedResponse<AdminCourse>>("/admin/courses", { params: { page, limit } });
+    return res.data;
   }
 
   static async createCourse(payload: AdminCourseCreate): Promise<AdminCourse> {
@@ -538,9 +544,9 @@ export class AdminService {
   }
 
   // Enrollments
-  static async listEnrollments(status?: boolean): Promise<AdminEnrollment[]> {
-    const res = await api.get("/admin/enrollments", { params: { status } });
-    return res.data.data;
+  static async listEnrollments(status?: boolean, page: number = 1, limit: number = 50): Promise<PaginatedResponse<AdminEnrollment>> {
+    const res = await api.get<PaginatedResponse<AdminEnrollment>>("/admin/enrollments", { params: { status, page, limit } });
+    return res.data;
   }
 
   static async createEnrollment(payload: AdminEnrollmentCreate): Promise<AdminEnrollment> {
@@ -622,9 +628,9 @@ export class AdminService {
   }
 
   // Payments
-  static async listPayments(): Promise<AdminPayment[]> {
-    const res = await api.get("/admin/payments");
-    return res.data.data;
+  static async listPayments(page: number = 1, limit: number = 50, enrollmentId?: number): Promise<PaginatedResponse<AdminPayment>> {
+    const res = await api.get<PaginatedResponse<AdminPayment>>("/admin/payments", { params: { page, limit, enrollment_id: enrollmentId } });
+    return res.data;
   }
 
   static async createPayment(payload: AdminPaymentCreate): Promise<void> {
@@ -636,7 +642,7 @@ export class AdminService {
     return res.data;
   }
 
-  
+
   static async deleteActivityLog(logId: number): Promise<void> {
     await api.delete(`/admin/activity-logs/${logId}`);
   }

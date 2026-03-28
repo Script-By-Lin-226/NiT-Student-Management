@@ -90,7 +90,7 @@ export const generateReceiptPDF = async (
       index + 1,
       new Date(p.payment_date).toLocaleDateString(),
       p.month || "N/A",
-      p.amount_2 && p.amount_2 > 0 ? `${p.payment_method}\n${p.payment_method_2 || "N/A"}` : (p.payment_method || "N/A"),
+      p.amount_2 && p.amount_2 > 0 ? `${p.payment_method || "N/A"}\n${p.payment_method_2 || "N/A"}` : (p.payment_method || "N/A"),
       p.status || "Completed",
       p.amount_2 && p.amount_2 > 0 ? `${p.amount.toLocaleString()} MMK\n${p.amount_2.toLocaleString()} MMK` : `${(p.amount + (p.amount_2 || 0)).toLocaleString()} MMK`,
       (p.fine_amount && p.fine_amount > 0) ? `${p.fine_amount.toLocaleString()} MMK` : "-",

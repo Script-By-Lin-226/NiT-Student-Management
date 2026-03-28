@@ -68,16 +68,16 @@ async def get_student_relations(user_code: str, request: Request, session: Async
 
 
 @router.get("/teachers")
-async def get_teachers_details(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.get_teachers_details(request, session)
+async def get_teachers_details(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_teachers_details(request, session, page, limit)
 
 @router.get("/teachers/{user_code}")
 async def get_specific_teacher(user_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_specific_teacher(user_code, request, session)
 
 @router.get("/parents")
-async def get_parents_details(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.get_parents_details(request, session)
+async def get_parents_details(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_parents_details(request, session, page, limit)
 
 @router.post("/parents")
 async def create_parent(payload: AdminParentCreate, request: Request, session: AsyncSession = Depends(get_db)):
@@ -202,8 +202,8 @@ async def get_specific_attendance(student_code: str, request: Request, session: 
 # --- Courses CRUD ---
 
 @router.get("/courses")
-async def list_courses(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.list_courses(request, session)
+async def list_courses(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.list_courses(request, session, page, limit)
 
 @router.post("/courses")
 async def create_course(payload: AdminCourseCreate, request: Request, session: AsyncSession = Depends(get_db)):
@@ -256,8 +256,8 @@ async def delete_subject(subject_id: int, request: Request, session: AsyncSessio
 # --- Enrollments CRUD ---
 
 @router.get("/enrollments")
-async def list_enrollments(request: Request, status: bool = None, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.list_enrollments(request, session, status)
+async def list_enrollments(request: Request, status: bool = None, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.list_enrollments(request, session, status, page, limit)
 
 @router.post("/enrollments")
 async def create_enrollment(payload: AdminEnrollmentCreate, request: Request, session: AsyncSession = Depends(get_db)):
@@ -274,8 +274,8 @@ async def delete_enrollment(enrollment_code: str, request: Request, session: Asy
 # --- Payments CRUD ---
 
 @router.get("/payments")
-async def list_payments(request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.list_payments(request, session)
+async def list_payments(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.list_payments(request, session, page, limit)
 
 @router.post("/payments")
 async def create_payment(payload: PaymentCreate, request: Request, session: AsyncSession = Depends(get_db)):

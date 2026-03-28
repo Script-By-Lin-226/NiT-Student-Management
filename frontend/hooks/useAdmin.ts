@@ -45,10 +45,10 @@ export function useAcademicYears() {
   });
 }
 
-export function useCourses() {
+export function useCourses(page: number = 1, limit: number = 50) {
   return useQuery({
-    queryKey: adminKeys.courses(),
-    queryFn: () => AdminService.listCourses(),
+    queryKey: [...adminKeys.courses(), page, limit],
+    queryFn: () => AdminService.listCourses(page, limit),
   });
 }
 
@@ -59,10 +59,31 @@ export function useActivityLogs(page: number = 1, limit: number = 50) {
   });
 }
 
-export function useEnrollments() {
+export function useEnrollments(status?: boolean, page: number = 1, limit: number = 50) {
   return useQuery({
-    queryKey: adminKeys.enrollments(),
-    queryFn: () => AdminService.listEnrollments(),
+    queryKey: [...adminKeys.enrollments(), status, page, limit],
+    queryFn: () => AdminService.listEnrollments(status, page, limit),
+  });
+}
+
+export function useParents(page: number = 1, limit: number = 50) {
+  return useQuery({
+    queryKey: [...adminKeys.parents(), page, limit],
+    queryFn: () => AdminService.listParents(page, limit),
+  });
+}
+
+export function useTeachers(page: number = 1, limit: number = 50) {
+  return useQuery({
+    queryKey: [...adminKeys.teachers(), page, limit],
+    queryFn: () => AdminService.listTeachers(page, limit),
+  });
+}
+
+export function usePayments(page: number = 1, limit: number = 50) {
+  return useQuery({
+    queryKey: [...adminKeys.payments(), page, limit],
+    queryFn: () => AdminService.listPayments(page, limit),
   });
 }
 
@@ -306,6 +327,23 @@ export function useDeleteSubject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => AdminService.deleteSubject(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export function useCreateParent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) => AdminService.createParent(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export function useLinkParentChild() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ parentCode, payload }: { parentCode: string; payload: any }) =>
+      AdminService.linkParentChild(parentCode, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   });
 }

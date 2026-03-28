@@ -11,6 +11,7 @@ import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDele
 import { toast } from "sonner";
 import { formatAmount } from "@/utils/format";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Pagination } from "@/components/ui/Pagination";
 
 
 function Modal({
@@ -47,8 +48,13 @@ export default function AdminCoursesPage() {
   const router = useRouter();
   const { isAdminOrSales, isAdmin, loading: authLoading } = useAuth();
 
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+
   const { data: years = [], isLoading: yearsLoading } = useAcademicYears();
-  const { data: rows = [], isLoading: coursesLoading, refetch: reload } = useCourses();
+  const { data: coursesResponse, isLoading: coursesLoading, refetch: reload } = useCourses(page, limit);
+  const rows = coursesResponse?.data || [];
+  const pagination = coursesResponse?.pagination;
   
   const createCourse = useCreateCourse();
   const updateCourse = useUpdateCourse();
@@ -96,7 +102,7 @@ export default function AdminCoursesPage() {
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return rows;
-    return rows.filter((c) => c.course_code.toLowerCase().includes(term) || c.course_name.toLowerCase().includes(term));
+    return rows.filter((c: AdminCourse) => c.course_code.toLowerCase().includes(term) || c.course_name.toLowerCase().includes(term));
   }, [q, rows]);
 
   if (authLoading) return null;
@@ -195,6 +201,7 @@ export default function AdminCoursesPage() {
               const dataToExport = filtered.map(c => ({
                 "Course Code": c.course_code,
                 "Course Name": c.course_name,
+                "Category": c.category || "-",
                 "Full Fee (MMK)": c.fee_full_payment || 0,
                 "Installment Fee (MMK)": c.fee_installment || 0,
                 "Exam Fee (GBP)": c.exam_fee_gbp || 0,
@@ -355,6 +362,17 @@ export default function AdminCoursesPage() {
           )}
         </div>
 
+        {/* Pagination */}
+        {pagination && (
+          <Pagination
+            currentPage={page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        )}
       </div>
 
       <Modal title="Create Course" open={createOpen} onClose={() => setCreateOpen(false)}>
@@ -400,18 +418,24 @@ export default function AdminCoursesPage() {
               placeholder="e.g. Uniform, Books (comma separated)"
             />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
-            <select value={cCategory} onChange={(e) => setCCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
-              <option value="">Select Category…</option>
-               <option value="Diploma">Diploma</option>
-               <option value="Certificate">Certificate</option>
-               <option value="NCC Level 4">NCC Level 4</option>
-               <option value="NCC Level 5">NCC Level 5</option>
-               <option value="International Qualification">International Qualification</option>
-               <option value="GED Courses">GED Courses</option>
-               <option value="ABE courses">ABE courses</option>
-            </select>
+            <input 
+              value={cCategory} 
+              onChange={(e) => setCCategory(e.target.value)} 
+              list="category-list"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="Select or type a category (e.g. NCC, Diploma)"
+            />
+            <datalist id="category-list">
+               <option value="Diploma" />
+               <option value="Certificate" />
+               <option value="NCC" />
+          
+               <option value="International Qualification" />
+               <option value="GED Courses" />
+               <option value="ABE courses" />
+            </datalist>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
             <button onClick={submitCreate} disabled={busy || !cName.trim() || cYearId === ""} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
@@ -464,18 +488,25 @@ export default function AdminCoursesPage() {
               placeholder="e.g. Uniform, Books (comma separated)"
             />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
-            <select value={eCategory} onChange={(e) => setECategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
-              <option value="">Select Category…</option>
-               <option value="Diploma">Diploma</option>
-               <option value="Certificate">Certificate</option>
-               <option value="NCC Level 4">NCC Level 4</option>
-               <option value="NCC Level 5">NCC Level 5</option>
-               <option value="International Qualification">International Qualification</option>
-               <option value="GED Courses">GED Courses</option>
-               <option value="ABE courses">ABE courses</option>
-            </select>
+            <input 
+              value={eCategory} 
+              onChange={(e) => setECategory(e.target.value)} 
+              list="category-edit-list"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="Select or type a category (e.g. NCC, Diploma)"
+            />
+            <datalist id="category-edit-list">
+               <option value="Diploma" />
+               <option value="Certificate" />
+               <option value="NCC" />
+               <option value="NCC Level 4" />
+               <option value="NCC Level 5" />
+               <option value="International Qualification" />
+               <option value="GED Courses" />
+               <option value="ABE courses" />
+            </datalist>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
             <button onClick={() => setEditOpen(false)} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">

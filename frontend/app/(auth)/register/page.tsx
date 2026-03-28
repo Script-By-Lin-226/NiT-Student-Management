@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService, PublicCourse } from "@/services/auth.service";
 import { Loader2, User, ChevronRight, ChevronLeft, Check, Camera, AlertCircle, X } from "lucide-react";
@@ -43,6 +43,17 @@ export default function RegisterPage() {
   const [howDidYouHear, setHowDidYouHear] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [otherHearAbout, setOtherHearAbout] = useState("");
+  
+  // Dynamically derive categories from courses
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    courses.forEach(c => {
+      if (c.category) {
+        cats.add(c.category);
+      }
+    });
+    return Array.from(cats).sort();
+  }, [courses]);
    const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -384,13 +395,9 @@ export default function RegisterPage() {
                                             className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all text-slate-700 font-medium appearance-none cursor-pointer"
                                         >
                                             <option value="">All Categories</option>
-                                            <option value="Diploma">Diploma</option>
-                                            <option value="Certificate">Certificate</option>
-                                            <option value="NCC Level 4">NCC Level 4</option>
-                                            <option value="NCC Level 5">NCC Level 5</option>
-                                            <option value="International Qualification">International Qualification</option>
-                                            <option value="GED Courses">GED Courses</option>
-                                            <option value="ABE courses">ABE courses</option>
+                                            {categories.map((cat: string) => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="space-y-1.5">

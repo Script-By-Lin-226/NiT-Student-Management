@@ -1,15 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AdminParent, AdminService } from "@/services/admin.service";
+import { AdminService } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
-import { Users, Link2, UserPlus, AlertCircle, X } from "lucide-react";
+import { Users, Link2, UserPlus, AlertCircle, X, Search } from "lucide-react";
+import { toast } from "sonner";
+import { useParents, useCreateParent, useLinkParentChild } from "@/hooks/useAdmin";
+import { Pagination } from "@/components/ui/Pagination";
 
 export default function AdminParentsPage() {
   const { isAdminOrSales } = useAuth();
-  const [parents, setParents] = useState<AdminParent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  
+  const { data: parentsResponse, isLoading: loading, refetch: refresh } = useParents(page, limit);
+  const rawParents = parentsResponse?.data || [];
+  const pagination = parentsResponse?.pagination;
+
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [working, setWorking] = useState(false);
+
+  const createParentMutation = useCreateParent();
+  const linkParentMutation = useLinkParentChild();
 
   const [createForm, setCreateForm] = useState({
     username: "",
@@ -25,6 +38,16 @@ export default function AdminParentsPage() {
     relationship_label: "parent",
   });
 
+  const displayedParents = useMemo(() => {
+    if (!q) return rawParents;
+    const s = q.toLowerCase();
+    return rawParents.filter(p => 
+      p.username.toLowerCase().includes(s) || 
+      p.user_code.toLowerCase().includes(s) ||
+      p.email.toLowerCase().includes(s)
+    );
+  }, [rawParents, q]);
+
   const canCreate = useMemo(() => {
     return createForm.username.trim() && createForm.email.trim() && createForm.password.trim() && createForm.date_of_birth.trim();
   }, [createForm]);
@@ -33,32 +56,17 @@ export default function AdminParentsPage() {
     return linkForm.parent_code.trim() && linkForm.student_code.trim();
   }, [linkForm]);
 
-  async function refresh() {
-    if (!isAdminOrSales) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await AdminService.listParents();
-      setParents(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load parents");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    refresh().catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+    if (isAdminOrSales) refresh();
+  }, [isAdminOrSales, page, refresh]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!canCreate) return;
-    setLoading(true);
+    setWorking(true);
     setError(null);
     try {
-      await AdminService.createParent({
+      await createParentMutation.mutateAsync({
         username: createForm.username.trim(),
         email: createForm.email.trim(),
         password: createForm.password,
@@ -66,30 +74,33 @@ export default function AdminParentsPage() {
         is_active: createForm.is_active,
       });
       setCreateForm({ username: "", email: "", password: "", date_of_birth: "", is_active: true });
-      await refresh();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to create parent");
+      toast.success("Parent created successfully");
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e.message || "Failed to create parent");
     } finally {
-      setLoading(false);
+      setWorking(false);
     }
   }
 
   async function onLink(e: React.FormEvent) {
     e.preventDefault();
     if (!canLink) return;
-    setLoading(true);
+    setWorking(true);
     setError(null);
     try {
-      await AdminService.linkParentChild(linkForm.parent_code.trim(), {
-        student_code: linkForm.student_code.trim(),
-        relationship_label: linkForm.relationship_label.trim() || "parent",
+      await linkParentMutation.mutateAsync({
+        parentCode: linkForm.parent_code.trim(),
+        payload: {
+          student_code: linkForm.student_code.trim(),
+          relationship_label: linkForm.relationship_label.trim() || "parent",
+        }
       });
       setLinkForm({ parent_code: "", student_code: "", relationship_label: "parent" });
-      await refresh();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to link parent to child");
+      toast.success("Parent linked successfully");
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e.message || "Failed to link parent to child");
     } finally {
-      setLoading(false);
+      setWorking(false);
     }
   }
 
@@ -174,10 +185,10 @@ export default function AdminParentsPage() {
 
           <button
             type="submit"
-            disabled={!canCreate || loading}
+            disabled={!canCreate || working}
             className="mt-5 w-full rounded-xl bg-brand-600 text-white font-bold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-brand-700 transition-all active:scale-95 text-sm"
           >
-            {loading ? "Working..." : "Create parent"}
+            {working ? "Working..." : "Create parent"}
           </button>
         </form>
 
@@ -219,26 +230,37 @@ export default function AdminParentsPage() {
 
           <button
             type="submit"
-            disabled={!canLink || loading}
+            disabled={!canLink || working}
             className="mt-5 w-full rounded-xl bg-slate-900 text-white font-bold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-800 transition-all active:scale-95 text-sm"
           >
-            {loading ? "Working..." : "Link parent → student"}
+            {working ? "Working..." : "Link parent → student"}
           </button>
         </form>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white flex-wrap gap-4">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-brand-600" />
             <h3 className="font-bold text-slate-900 text-lg">All parents</h3>
           </div>
-          <button
-            onClick={() => refresh().catch(console.error)}
-            className="inline-flex items-center justify-center px-4 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition-all active:scale-95 text-sm"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="Search..."
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:ring-2 focus:ring-brand-500/20 outline-none"
+              />
+            </div>
+            <button
+              onClick={() => refresh().catch(console.error)}
+              className="inline-flex items-center justify-center px-4 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition-all active:scale-95 text-sm"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
@@ -251,7 +273,7 @@ export default function AdminParentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {parents.map((p) => (
+              {displayedParents.map((p) => (
                 <tr key={p.user_code} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 font-semibold text-slate-800">{p.user_code}</td>
                   <td className="px-6 py-4">{p.username}</td>
@@ -263,7 +285,7 @@ export default function AdminParentsPage() {
                   </td>
                 </tr>
               ))}
-              {parents.length === 0 && (
+              {displayedParents.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
                     {loading ? "Loading..." : "No parents found."}
@@ -276,7 +298,7 @@ export default function AdminParentsPage() {
 
         {/* Mobile View */}
         <div className="block sm:hidden divide-y divide-slate-100">
-          {parents.map((p) => (
+          {displayedParents.map((p) => (
             <div key={p.user_code} className="p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -290,15 +312,25 @@ export default function AdminParentsPage() {
               </div>
             </div>
           ))}
-          {parents.length === 0 && (
+          {displayedParents.length === 0 && (
             <div className="p-10 text-center text-slate-400 font-medium text-sm">
               {loading ? "Loading..." : "No parents found."}
             </div>
           )}
         </div>
 
+        {/* Pagination */}
+        {pagination && (
+          <Pagination
+            currentPage={page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => { setLimit(l); setPage(1); }}
+          />
+        )}
       </div>
     </div>
   );
 }
-

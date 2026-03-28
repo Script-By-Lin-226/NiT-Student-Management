@@ -546,19 +546,30 @@ class AdminPanelService:
             }
         )
     
-    async def get_teachers_details(request: Request , session:AsyncSession):
+    async def get_teachers_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request, allow_sales=True):
-            return {"message": "You are not authorized to perform this action"}
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        query = select(User).where(User.role == "teacher")
+        offset = (page - 1) * limit
+        query = select(User).where(User.role == "teacher").order_by(User.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(query)
         teachers = result.scalars().all()
-        response = JSONResponse({
+
+        count_query = select(func.count(User.user_id)).where(User.role == "teacher")
+        count_result = await session.execute(count_query)
+        total_count = count_result.scalar() or 0
+
+        return JSONResponse({
             "status_code": 200,
             "message": "Teachers details fetched successfully",
-            "data": [_serialize_user(t) for t in teachers]
+            "data": [_serialize_user(t) for t in teachers],
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": (total_count + limit - 1) // limit if limit > 0 else 0,
+                "current_page": page,
+                "limit": limit
+            }
         })
-        return response
     
     async def get_specific_teacher(user_code: str ,request: Request , session:AsyncSession):
         if not await validating_admin_role(request, allow_sales=True):
@@ -574,19 +585,30 @@ class AdminPanelService:
         })
         return response
     
-    async def get_parents_details(request: Request , session:AsyncSession):
+    async def get_parents_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request, allow_sales=True):
-            return {"message": "You are not authorized to perform this action"}
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        query = select(User).where(User.role == "parent")
+        offset = (page - 1) * limit
+        query = select(User).where(User.role == "parent").order_by(User.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(query)
         parents = result.scalars().all()
-        response = JSONResponse({
+
+        count_query = select(func.count(User.user_id)).where(User.role == "parent")
+        count_result = await session.execute(count_query)
+        total_count = count_result.scalar() or 0
+
+        return JSONResponse({
             "status_code": 200,
             "message": "Parents details fetched successfully",
-            "data": [_serialize_user(p) for p in parents]
+            "data": [_serialize_user(p) for p in parents],
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": (total_count + limit - 1) // limit if limit > 0 else 0,
+                "current_page": page,
+                "limit": limit
+            }
         })
-        return response
     
     async def get_specific_parent(user_code: str ,request: Request , session:AsyncSession):
         if not await validating_admin_role(request, allow_sales=True):
@@ -1034,14 +1056,30 @@ class AdminPanelService:
 
     # CRUD - Courses
 
-    async def list_courses(request: Request, session: AsyncSession):
+    async def list_courses(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        # Optimized: order by created_at desc
-        r = await session.execute(select(Course).order_by(Course.created_at.desc()))
-        courses = r.scalars().all()
-        return JSONResponse({"status_code": 200, "message": "Courses fetched successfully", "data": [_serialize_course(c) for c in courses]})
+        offset = (page - 1) * limit
+        query = select(Course).order_by(Course.created_at.desc()).offset(offset).limit(limit)
+        result = await session.execute(query)
+        courses = result.scalars().all()
+
+        count_query = select(func.count(Course.course_id))
+        count_result = await session.execute(count_query)
+        total_count = count_result.scalar() or 0
+
+        return JSONResponse({
+            "status_code": 200, 
+            "message": "Courses fetched successfully", 
+            "data": [_serialize_course(c) for c in courses],
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": (total_count + limit - 1) // limit if limit > 0 else 0,
+                "current_page": page,
+                "limit": limit
+            }
+        })
 
     async def get_dashboard_summary(request: Request, session: AsyncSession):
         """Fetch multiple KPI counts efficiently for the dashboard."""
@@ -1337,19 +1375,55 @@ class AdminPanelService:
 
     # --- CRUD - Enrollments ---
 
-    async def list_enrollments(request: Request, session: AsyncSession, status: bool = None):
+    async def list_enrollments(request: Request, session: AsyncSession, status: bool = None, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        q = select(Enrollment, User, Course).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).options(
+        offset = (page - 1) * limit
+        base_q = select(Enrollment, User, Course).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).options(
             defer(User.address), defer(User.password_hash)
         ).order_by(Enrollment.enrollment_date.desc(), Enrollment.enrollment_id.desc())
 
         if status is not None:
-            q = q.where(Enrollment.status == status)
+            base_q = base_q.where(Enrollment.status == status)
+
+        # Count
+        count_q = select(func.count(Enrollment.enrollment_id))
+        if status is not None:
+            count_q = count_q.where(Enrollment.status == status)
+        
+        res_count = await session.execute(count_q)
+        total_count = res_count.scalar() or 0
             
-        r = await session.execute(q)
+        paginated_q = base_q.offset(offset).limit(limit)
+        r = await session.execute(paginated_q)
         rows = r.all()
+        # For each enrollment, we need total paid amount to calculate balance
+        # We can fetch payments for these enrollments in bulk
+        enroll_ids = [row[0].enrollment_id for row in rows]
+        
+        pay_sums = {}
+        pay_discounts = {}
+        exam_paid_gbp = {}
+        pay_counts = {}
+        
+        if enroll_ids:
+            # Simple sum query
+            sum_q = select(
+                Payment.enrollment_id, 
+                func.sum(Payment.amount + func.coalesce(Payment.amount_2, 0)).label("total"),
+                func.sum(func.coalesce(Payment.discount_amount, 0)).label("discount"),
+                func.sum(func.coalesce(Payment.exam_fee_paid_gbp, 0)).label("exam_gbp"),
+                func.count(Payment.payment_id).label("p_count")
+            ).where(Payment.enrollment_id.in_(enroll_ids)).group_by(Payment.enrollment_id)
+            
+            p_res = await session.execute(sum_q)
+            for eid, total, disc, e_gbp, pcount in p_res:
+                pay_sums[eid] = float(total or 0)
+                pay_discounts[eid] = float(disc or 0)
+                exam_paid_gbp[eid] = float(e_gbp or 0)
+                pay_counts[eid] = int(pcount or 0)
+
         data = []
         for e, u, c in rows:
             d = _serialize_enrollment(e)
@@ -1358,12 +1432,37 @@ class AdminPanelService:
             d["course_code"] = c.course_code
             d["course_name"] = c.course_name
             d["room"] = getattr(c, "room", None)
-            base_fee = (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0)) or 0
-            d["course_cost"] = max(0, base_fee)
+            
+            plan = getattr(e, "payment_plan", None)
+            base_fee = (c.fee_full_payment if plan == "full" else (c.fee_installment if plan == "installment" else 0)) or 0
+            course_cost = float(max(0, base_fee))
+            
+            total_paid = pay_sums.get(e.enrollment_id, 0.0)
+            total_discount = pay_discounts.get(e.enrollment_id, 0.0)
+            paid_gbp = exam_paid_gbp.get(e.enrollment_id, 0.0)
+            
+            d["course_cost"] = course_cost
+            d["total_paid"] = total_paid
+            d["balance_due"] = max(0.0, course_cost - (total_paid + total_discount))
+            d["exam_fee_paid_gbp"] = paid_gbp
+            d["exam_fee_total_gbp"] = float(c.exam_fee_gbp or 0)
+            d["exam_fee_pending_gbp"] = max(0.0, float(c.exam_fee_gbp or 0) - paid_gbp)
+            d["payment_count"] = pay_counts.get(e.enrollment_id, 0)
+            
             d["foc_items"] = getattr(c, "foc_items", None)
             d["profile_picture"] = u.profile_picture
             data.append(d)
-        return JSONResponse({"status_code": 200, "message": "Enrollments fetched successfully", "data": data})
+        return JSONResponse({
+            "status_code": 200, 
+            "message": "Enrollments fetched successfully", 
+            "data": data,
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": (total_count + limit - 1) // limit if limit > 0 else 0,
+                "current_page": page,
+                "limit": limit
+            }
+        })
 
     async def create_enrollment(request: Request, session: AsyncSession, payload: AdminEnrollmentCreate):
         if not await validating_admin_role(request, allow_sales=True):
@@ -2018,36 +2117,45 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Timetable deleted successfully"})
 
     # --- Payments CRUD ---
-    async def list_payments(request: Request, session: AsyncSession):
+    async def list_payments(request: Request, session: AsyncSession, page: int = 1, limit: int = 50, enrollment_id: Optional[int] = None):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
-
-        query = (
-            select(Payment, Enrollment, User, Course)
-            .join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)
-            .join(User, Enrollment.student_id == User.user_id)
+        
+        offset = (page - 1) * limit
+        base_q = select(Payment, Enrollment, User, Course)\
+            .join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)\
+            .join(User, Enrollment.student_id == User.user_id)\
             .join(Course, Enrollment.course_id == Course.course_id)
-            .options(defer(User.profile_picture), defer(User.address), defer(User.password_hash))
-            .order_by(Payment.payment_date.desc(), Payment.payment_id.desc())
-        )
-        r = await session.execute(query)
+            
+        if enrollment_id:
+            base_q = base_q.where(Payment.enrollment_id == enrollment_id)
+            
+        base_q = base_q.order_by(Payment.payment_date.desc(), Payment.payment_id.desc())
+            
+        count_q = select(func.count(Payment.payment_id))
+        if enrollment_id:
+            count_q = count_q.where(Payment.enrollment_id == enrollment_id)
+            
+        res_count = await session.execute(count_q)
+        total_count = res_count.scalar() or 0
+
+        paginated_q = base_q.offset(offset).limit(limit)
+        r = await session.execute(paginated_q)
         rows = r.all()
         
         data = []
         for p, e, u, c in rows:
             data.append({
                 "payment_id": p.payment_id,
-                "enrollment_id": e.enrollment_id,
-                "enrollment_code": e.enrollment_code,
+                "enrollment_id": p.enrollment_id,
+                "student_code": u.user_code,
+                "student_name": u.username,
+                "course_name": c.course_name,
+                "course_code": c.course_code,
                 "amount": p.amount,
                 "payment_date": f"{p.payment_date.isoformat()}Z" if p.payment_date else None,
                 "month": p.month,
                 "status": p.status,
-                "student_code": u.user_code,
-                "student_name": u.username,
-                "course_code": c.course_code,
-                "course_name": c.course_name,
-                "payment_plan": e.payment_plan,
                 "payment_method": getattr(p, "payment_method", None),
                 "amount_2": getattr(p, "amount_2", 0.0) or 0.0,
                 "payment_method_2": getattr(p, "payment_method_2", None),
@@ -2065,7 +2173,17 @@ class AdminPanelService:
                 "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK")
             })
             
-        return JSONResponse({"status_code": 200, "message": "Payments fetched successfully", "data": data})
+        return JSONResponse({
+            "status_code": 200, 
+            "message": "Payments fetched successfully", 
+            "data": data,
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": (total_count + limit - 1) // limit if limit > 0 else 0,
+                "current_page": page,
+                "limit": limit
+            }
+        })
 
     async def create_payment(request: Request, session: AsyncSession, payload: PaymentCreate):
         if not await validating_admin_role(request, allow_sales=True):

@@ -11,6 +11,7 @@ import { exportToExcel } from "@/utils/excelExport";
 import { useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment, useCourses, useEnrollments, useBatches } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 import { formatAmount } from "@/utils/format";
+import { Pagination } from "@/components/ui/Pagination";
 
 
 function Modal({
@@ -47,10 +48,18 @@ export default function AdminEnrollmentsPage() {
   const router = useRouter();
   const { isAdminOrSales, isAdmin, loading } = useAuth();
 
-  const { data: courses = [], isLoading: coursesLoading } = useCourses();
-  const { data: rows = [], isLoading: enrollmentsLoading, refetch: reload } = useEnrollments();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+
+  const { data: coursesResponse, isLoading: coursesLoading } = useCourses(1, 1000);
+  const courses = coursesResponse?.data || [];
+  
+  const { data: enrollmentsResponse, isLoading: enrollmentsLoading, refetch: reload } = useEnrollments(undefined, page, limit);
+  const rows = enrollmentsResponse?.data || [];
+  const pagination = enrollmentsResponse?.pagination;
 
   const [q, setQ] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
@@ -216,25 +225,31 @@ export default function AdminEnrollmentsPage() {
             <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
-            onClick={() => {
-              const dataToExport = filtered.map(e => ({
-                "Enrollment Code": e.enrollment_code,
-                "Student Name": (e as any).student_name || "-",
-                "Student Code": (e as any).student_code || "-",
-                "Course Name": (e as any).course_name || "-",
-                "Course Code": (e as any).course_code || "-",
-                "Course Cost (MMK)": (e as any).course_cost || 0,
-                "Batch": e.batch_no || "-",
-                "Payment Plan": e.payment_plan || "-",
-                "Deposit (MMK)": e.downpayment || 0,
-                "Monthly Installment (MMK)": e.installment_amount || 0,
-                "FOC Items": (e as any).foc_items || "-",
-                "Status": e.status ? "Active" : "Inactive",
-                "Date": e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"
-              }));
-              exportToExcel(dataToExport, "Enrollments_List", "Enrollments");
+            onClick={async () => {
+              setExporting(true);
+              try {
+                const res = await AdminService.listEnrollments(undefined, 1, -1);
+                const dataToExport = (res.data || []).map(e => ({
+                  "Enrollment Code": e.enrollment_code,
+                  "Student Name": (e as any).student_name || "-",
+                  "Student Code": (e as any).student_code || "-",
+                  "Course Name": (e as any).course_name || "-",
+                  "Course Code": (e as any).course_code || "-",
+                  "Course Cost (MMK)": (e as any).course_cost || 0,
+                  "Batch": e.batch_no || "-",
+                  "Payment Plan": e.payment_plan || "-",
+                  "Deposit (MMK)": e.downpayment || 0,
+                  "Monthly Installment (MMK)": e.installment_amount || 0,
+                  "FOC Items": (e as any).foc_items || "-",
+                  "Status": e.status ? "Active" : "Inactive",
+                  "Date": e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"
+                }));
+                exportToExcel(dataToExport, "Enrollments_List", "Enrollments");
+              } finally {
+                setExporting(false);
+              }
             }}
-            disabled={busy || filtered.length === 0}
+            disabled={busy || exporting || filtered.length === 0}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap"
           >
             <Download className="w-4 h-4" />
@@ -403,6 +418,17 @@ export default function AdminEnrollmentsPage() {
           )}
         </div>
 
+        {/* Pagination Controls */}
+        {pagination && (
+          <Pagination
+            currentPage={page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => { setLimit(l); setPage(1); }}
+          />
+        )}
       </div>
 
       <Modal title="Create Enrollment" open={createOpen} onClose={() => setCreateOpen(false)}>
