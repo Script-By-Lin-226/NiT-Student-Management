@@ -55,47 +55,11 @@ export default function AdminStudentsPage() {
   const [page, setPage] = useState(1);
   const limit = 50;
 
-  const { data: studentResponse, isLoading: studentsLoading, refetch: refetchStudents } = useStudents(page, limit);
-  const { data: courses = [], isLoading: coursesLoading } = useCourses();
-
-  // Selected course IDs for batch filtering
-  const cSelectedCourseId = courses.find(c => c.course_code === cCourseCode)?.course_id;
-  const { data: cBatchesResponse, isLoading: cBatchesLoading } = useBatches(cSelectedCourseId);
-  const cBatches = cBatchesResponse?.data || [];
-
-  const fSelectedCourseId = courses.find(c => c.course_code === fCourseCode)?.course_id;
-  const { data: fBatchesResponse, isLoading: fBatchesLoading } = useBatches(fSelectedCourseId);
-  const fBatches = fBatchesResponse?.data || [];
-
-  const [busy, setBusy] = useState(false); // Used for generic busy state when not in mutation
+  // Form states moved up to avoid ReferenceError
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (error && errorRef.current) {
-      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [error]);
-
-  const [studentToDelete, setStudentToDelete] = useState<AdminStudent | null>(null);
-  const [clearAllOpen, setClearAllOpen] = useState(false);
-
-  const createMutation = useCreateStudent();
-  const deleteMutation = useDeleteUser();
-  const updateMutation = useUpdateUser();
-  const approveMutation = useApproveStudent();
-  const fastEnrollMutation = useCreateEnrollment();
-
-  const rows = studentResponse?.data || [];
-  const pagination = studentResponse?.pagination;
-  const [q, setQ] = useState("");
-
-  const handleError = (e: any, fallback: string) => {
-    const d = e?.response?.data?.detail;
-    if (Array.isArray(d)) setError(d.map((x: any) => x.msg).join(", "));
-    else if (typeof d === "string") setError(d);
-    else setError(e?.response?.data?.message || e.message || fallback);
-  };
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -126,16 +90,6 @@ export default function AdminStudentsPage() {
   const [cParentPhone, setCParentPhone] = useState("");
   const [cAddress, setCAddress] = useState("");
   const [cProfilePicture, setCProfilePicture] = useState("");
-
-  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setCProfilePicture(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Enrollment form integration
   const [cCourseCode, setCCourseCode] = useState("");
@@ -169,6 +123,54 @@ export default function AdminStudentsPage() {
   const [eDown, setEDown] = useState("");
   const [eInst, setEInst] = useState("");
 
+  const [studentToDelete, setStudentToDelete] = useState<AdminStudent | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
+
+  // Queries and Mutations
+  const { data: studentResponse, isLoading: studentsLoading, refetch: refetchStudents } = useStudents(page, limit);
+  const { data: courses = [], isLoading: coursesLoading } = useCourses();
+
+  // Selected course IDs for batch filtering
+  const cSelectedCourseId = courses.find(c => c.course_code === cCourseCode)?.course_id;
+  const { data: cBatchesResponse, isLoading: cBatchesLoading } = useBatches(cSelectedCourseId);
+  const cBatches = cBatchesResponse?.data || [];
+
+  const fSelectedCourseId = courses.find(c => c.course_code === fCourseCode)?.course_id;
+  const { data: fBatchesResponse, isLoading: fBatchesLoading } = useBatches(fSelectedCourseId);
+  const fBatches = fBatchesResponse?.data || [];
+
+  const createMutation = useCreateStudent();
+  const deleteMutation = useDeleteUser();
+  const updateMutation = useUpdateUser();
+  const approveMutation = useApproveStudent();
+  const fastEnrollMutation = useCreateEnrollment();
+
+  const rows = studentResponse?.data || [];
+  const pagination = studentResponse?.pagination;
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
+
+  const handleError = (e: any, fallback: string) => {
+    const d = e?.response?.data?.detail;
+    if (Array.isArray(d)) setError(d.map((x: any) => x.msg).join(", "));
+    else if (typeof d === "string") setError(d);
+    else setError(e?.response?.data?.message || e.message || fallback);
+  };
+
+  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCProfilePicture(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   useEffect(() => {
     if (!authLoading && !isAdminOrSales) router.replace("/dashboard");
   }, [authLoading, isAdminOrSales, router]);
@@ -178,9 +180,9 @@ export default function AdminStudentsPage() {
     if (!term) return rows;
     return rows.filter((s: AdminStudent) => {
       return (
-        s.user_code.toLowerCase().includes(term) ||
-        s.username.toLowerCase().includes(term) ||
-        s.email.toLowerCase().includes(term)
+        (s.user_code || "").toLowerCase().includes(term) ||
+        (s.username || "").toLowerCase().includes(term) ||
+        (s.email || "").toLowerCase().includes(term)
       );
     });
   }, [q, rows]);
