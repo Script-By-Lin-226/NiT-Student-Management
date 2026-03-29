@@ -1,4 +1,5 @@
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import Request
 from jose import jwt, JWTError
 from datetime import datetime, timezone
 
