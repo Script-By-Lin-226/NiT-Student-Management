@@ -28,6 +28,7 @@ class TokenRepository:
         token_obj = result.scalar_one_or_none()
         if token_obj:
             token_obj.is_revoked = True
+            token_obj.revoked_at = datetime.utcnow()
             await session.commit()
 
     @staticmethod

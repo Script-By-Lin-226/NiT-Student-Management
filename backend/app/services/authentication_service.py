@@ -147,6 +147,17 @@ class AuthenticationService:
             token_record = await TokenRepository.get_token(session, refresh_token_str)
             
             if not token_record or token_record.is_revoked:
+                # REUSE LEATHWAY: If token was revoked within the last 10 SECONDS, 
+                # do not trigger the "revoke all" security measure to avoid race conditions.
+                leeway = 10
+                if token_record and token_record.revoked_at:
+                    elapsed = (datetime.utcnow() - token_record.revoked_at).total_seconds()
+                    if elapsed < leeway:
+                        # Log warning but allow request (will still likely fail 401 later since we can't easily retrieve the "new" tokens from this request)
+                        # Actually, we should just raise a softer 401 or wait.
+                        # For now, let's just avoid the global revocation.
+                        raise HTTPException(status_code=401, detail="Token recently rotated. Please try again.")
+                
                 if token_record:
                     await TokenRepository.revoke_all_user_tokens(session, token_record.user_id)
                 raise HTTPException(status_code=401, detail="Token has been revoked or reused")

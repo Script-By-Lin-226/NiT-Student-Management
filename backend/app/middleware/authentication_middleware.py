@@ -1,11 +1,6 @@
-from app.security.jwt_tok import decode_token, create_access_token
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from jose import jwt, JWTError
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 EXCLUDE_PATH = ["/auth/login" , "/auth/register" , "/auth/courses", "/docs" , "/openapi.json" , "/redoc" , "/favicon.ico", "/register" , "/health"]
@@ -15,6 +10,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         from app.services.authentication_service import AuthenticationService
         from app.core.config import settings
+        from app.security.jwt_tok import decode_token, create_access_token
+        from fastapi.responses import JSONResponse
 
         # Skip public routes
         if request.method == "OPTIONS":
@@ -37,34 +34,44 @@ class AuthMiddleware(BaseHTTPMiddleware):
             try:
                 payload = await decode_token(token)
                 
-                # Verify active status via cache (Fast Transaction)
-                from app.core.cache import cache_manager
-                user_code = payload.get("user_code")
-                if user_code:
-                    cache_key = f"user:{str(user_code).lower()}"
-                    cached_user = await cache_manager.get(cache_key)
-                    
-                    if cached_user:
-                        if not cached_user.get("is_active"):
-                            return JSONResponse(status_code=403, content={"detail": "Account deactivated"})
-                    else:
-                        # Cache miss: Verify in DB once and re-cache
-                        from app.core.database_initialization import AsyncSessionLocal
-                        from sqlalchemy.future import select
-                        from app.models.model import User
-                        async with AsyncSessionLocal() as session:
-                            res = await session.execute(select(User).where(User.user_code == user_code))
-                            db_user = res.scalar_one_or_none()
-                            if db_user:
-                                if not db_user.is_active:
-                                    return JSONResponse(status_code=403, content={"detail": "Account deactivated"})
-                                # Re-populate cache
-                                await cache_manager.set(cache_key, {
-                                    "is_active": db_user.is_active,
-                                    "role": db_user.role
-                                }, expire=3600)
+                # Proactive rotation: If token expires in less than 5 minutes, mark for rotation
+                exp = payload.get("exp")
+                if exp:
+                    exp_time = datetime.fromtimestamp(exp, tz=timezone.utc)
+                    now = datetime.now(tz=timezone.utc)
+                    if (exp_time - now).total_seconds() < 300:
+                        # Mark for rotation even if still valid
+                        payload = None # Trigger rotation logic below
                 
-                request.state.user = payload
+                if payload:
+                    # Verify active status via cache (Fast Transaction)
+                    from app.core.cache import cache_manager
+                    user_code = payload.get("user_code")
+                    if user_code:
+                        cache_key = f"user:{str(user_code).lower()}"
+                        cached_user = await cache_manager.get(cache_key)
+                        
+                        if cached_user:
+                            if not cached_user.get("is_active"):
+                                return JSONResponse(status_code=403, content={"detail": "Account deactivated"})
+                        else:
+                            # Cache miss: Verify in DB once and re-cache
+                            from app.core.database_initialization import AsyncSessionLocal
+                            from sqlalchemy.future import select
+                            from app.models.model import User
+                            async with AsyncSessionLocal() as session:
+                                res = await session.execute(select(User).where(User.user_code == user_code))
+                                db_user = res.scalar_one_or_none()
+                                if db_user:
+                                    if not db_user.is_active:
+                                        return JSONResponse(status_code=403, content={"detail": "Account deactivated"})
+                                    # Re-populate cache
+                                    await cache_manager.set(cache_key, {
+                                        "is_active": db_user.is_active,
+                                        "role": db_user.role
+                                    }, expire=3600)
+                    
+                    request.state.user = payload
             except JWTError:
                 # Token expired or invalid, try rotation
                 payload = None

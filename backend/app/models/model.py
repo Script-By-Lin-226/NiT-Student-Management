@@ -448,6 +448,7 @@ class RefreshToken(Base):
     token = Column(String, unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     is_revoked = Column(Boolean, default=False)
+    revoked_at = Column(DateTime, nullable=True)
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
