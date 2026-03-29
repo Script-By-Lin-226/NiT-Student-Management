@@ -737,13 +737,18 @@ class AdminPanelService:
             return JSONResponse({"message": "User not found"}, status_code=404)
             
         update_data = user_update.dict(exclude_unset=True)
-        # Schema uses date_of_birth; model uses data_of_birth
+        
+        # Schema uses date_of_birth (date); model uses data_of_birth (DateTime)
         if "date_of_birth" in update_data:
-            user.data_of_birth = update_data.pop("date_of_birth")
-        # phone isn't in the model; ignore it safely
-        update_data.pop("phone", None)
+            val = update_data.pop("date_of_birth")
+            if val:
+                user.data_of_birth = datetime.combine(val, time.min)
+            else:
+                user.data_of_birth = None
+            
         for key, value in update_data.items():
-            setattr(user, key, value)
+            if hasattr(user, key):
+                setattr(user, key, value)
             
         await session.commit()
         await _log_activity(request, session, "Update User", f"User {user_code} updated")

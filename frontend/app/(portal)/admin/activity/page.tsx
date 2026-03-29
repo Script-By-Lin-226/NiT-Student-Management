@@ -198,13 +198,13 @@ export default function ActivityLogsPage() {
                       })}
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-semibold text-slate-900">{log.username}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-900 text-nowrap">{log.username}</td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-xs font-bold text-slate-600 uppercase tracking-wider">
                       {log.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-semibold text-brand-600">{log.action}</td>
+                  <td className="px-6 py-4 font-semibold text-brand-600 text-nowrap">{log.action}</td>
                   <td className="px-6 py-4 text-slate-700">{log.details}</td>
                   <td className="px-6 py-4 text-right">
                     <button 

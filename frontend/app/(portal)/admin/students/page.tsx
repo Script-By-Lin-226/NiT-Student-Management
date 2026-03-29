@@ -13,6 +13,7 @@ import { formatAmount } from "@/utils/format";
 import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "sonner";
 import { Pagination } from "@/components/ui/Pagination";
+import { TableBodySkeleton, CardSkeleton } from "@/components/ui/Skeleton";
 
 function Modal({
   title,
@@ -117,6 +118,15 @@ export default function AdminStudentsPage() {
   const [eEmail, setEEmail] = useState("");
   const [eDob, setEDob] = useState<string>("");
   const [eActive, setEActive] = useState(true);
+  const [ePhone, setEPhone] = useState("");
+  const [eNrc, setENrc] = useState("");
+  const [eGender, setEGender] = useState("");
+  const [eAddress, setEAddress] = useState("");
+  const [eParentName, setEParentName] = useState("");
+  const [eParentPhone, setEParentPhone] = useState("");
+  const [eHowDidYouHear, setEHowDidYouHear] = useState("");
+  const [eStudentType, setEStudentType] = useState("");
+  const [eIntendedCourse, setEIntendedCourse] = useState("");
 
   // Enrollment edit state
   const [enrollToEdit, setEnrollToEdit] = useState<any | null>(null);
@@ -290,10 +300,19 @@ export default function AdminStudentsPage() {
 
   const openEdit = (s: AdminStudent) => {
     setSelected(s);
-    setEUsername(s.username);
-    setEEmail(s.email);
+    setEUsername(s.username || "");
+    setEEmail(s.email || "");
     setEDob(s.data_of_birth ? s.data_of_birth.slice(0, 10) : "");
     setEActive(!!s.is_active);
+    setEPhone(s.phone || "");
+    setENrc(s.nrc || "");
+    setEGender(s.gender || "");
+    setEAddress(s.address || "");
+    setEParentName(s.parent_name || "");
+    setEParentPhone(s.parent_phone || "");
+    setEHowDidYouHear(s.how_did_you_hear || "");
+    setEStudentType(s.student_type || "");
+    setEIntendedCourse(s.intended_course_code || "");
     setRelations(null);
     setRelationsLoading(true);
     setEditOpen(true);
@@ -320,6 +339,15 @@ export default function AdminStudentsPage() {
           email: eEmail.trim(),
           date_of_birth: eDob ? eDob : null,
           is_active: eActive,
+          phone: ePhone.trim() || null,
+          nrc: eNrc.trim() || null,
+          gender: eGender || null,
+          address: eAddress.trim() || null,
+          parent_name: eParentName.trim() || null,
+          parent_phone: eParentPhone.trim() || null,
+          how_did_you_hear: eHowDidYouHear || null,
+          student_type: eStudentType || null,
+          intended_course_code: eIntendedCourse || null,
         }
       });
       setEditOpen(false);
@@ -477,7 +505,11 @@ export default function AdminStudentsPage() {
       "Phone": selected.phone || "",
       "Address": selected.address || "",
       "Parent Name": selected.parent_name || "",
-      "Parent Phone": selected.parent_phone || ""
+      "Parent Phone": selected.parent_phone || "",
+      "Student Type": selected.student_type || "-",
+      "How Did You Hear": selected.how_did_you_hear || "-",
+      "Intended Course": selected.intended_course_code || "-",
+      "Created At": selected.created_at ? selected.created_at.slice(0, 10) : "-"
     }];
 
     // Sheet 2: Enrollment Info with course cost and left amount
@@ -610,7 +642,11 @@ export default function AdminStudentsPage() {
         "Phone": s.phone || "-",
         "Address": s.address || "-",
         "Parent": s.parent_name || "-",
-        "Parent Phone": s.parent_phone || "-"
+        "Parent Phone": s.parent_phone || "-",
+        "Student Type": s.student_type || "-",
+        "How Did You Hear": s.how_did_you_hear || "-",
+        "Intended Course Code": s.intended_course_code || "-",
+        "Created At": s.created_at ? s.created_at.slice(0, 10) : "-"
       })) : [{"Info": "No students recorded"}]);
       XLSX.utils.book_append_sheet(wb, wsStudents, "All Students");
 
@@ -739,14 +775,6 @@ export default function AdminStudentsPage() {
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
-          <button
-            onClick={exportAllData}
-            disabled={busy}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm text-sm transition-all active:scale-95"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden xs:inline">Export</span>
-          </button>
           {isAdmin && (
             <button
               onClick={() => setClearAllOpen(true)}
@@ -805,81 +833,87 @@ export default function AdminStudentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filtered.map((s: AdminStudent) => (
-                <tr key={s.user_code} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-800">{s.user_code}</td>
-                  <td className="px-6 py-4">
-                    {s.profile_picture ? (
-                      <div className="relative group w-8 h-8">
-                        <img src={s.profile_picture} alt="Profile" className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 shadow-sm" />
-                        <a href={s.profile_picture} download={`pic_${s.user_code}`} className="absolute inset-0 bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Download Image" onClick={e => e.stopPropagation()}>
-                          <Download className="w-3 h-3" />
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
-                        {s.username?.[0] || "?"}
-                      </div>
-                    )}
-                  </td>
-                  <td 
-                    className="px-6 py-4 font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer" 
-                    onClick={() => openView(s)}
-                  >
-                    {s.username}
-                  </td>
-                  <td className="px-6 py-4">{s.email}</td>
-                  <td className="px-6 py-4">{s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={[
-                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border",
-                        s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
-                      ].join(" ")}
-                    >
-                      {s.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
-                      {!s.is_active && (
-                        <button
-                          onClick={() => handleApprove(s)}
-                          disabled={busy}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
+              {studentsLoading ? (
+                <TableBodySkeleton columns={7} />
+              ) : (
+                <>
+                  {filtered.map((s: AdminStudent) => (
+                    <tr key={s.user_code} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800">{s.user_code}</td>
+                      <td className="px-6 py-4">
+                        {s.profile_picture ? (
+                          <div className="relative group w-8 h-8">
+                            <img src={s.profile_picture} alt="Profile" className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 shadow-sm" />
+                            <a href={s.profile_picture} download={`pic_${s.user_code}`} className="absolute inset-0 bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Download Image" onClick={e => e.stopPropagation()}>
+                              <Download className="w-3 h-3" />
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                            {s.username?.[0] || "?"}
+                          </div>
+                        )}
+                      </td>
+                      <td 
+                        className="px-6 py-4 font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer" 
+                        onClick={() => openView(s)}
+                      >
+                        {s.username}
+                      </td>
+                      <td className="px-6 py-4">{s.email}</td>
+                      <td className="px-6 py-4">{s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={[
+                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border",
+                            s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
+                          ].join(" ")}
                         >
-                          <Check className="w-3.5 h-3.5" />
-                          Approve
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => openEdit(s)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95 text-xs"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          Edit
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => doDelete(s)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all active:scale-95 text-xs"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400 font-medium">
-                    {busy ? "Loading…" : "No students found."}
-                  </td>
-                </tr>
+                          {s.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2">
+                          {!s.is_active && (
+                            <button
+                              onClick={() => handleApprove(s)}
+                              disabled={busy}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Approve
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => openEdit(s)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95 text-xs"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => doDelete(s)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all active:scale-95 text-xs"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-10 text-center text-slate-400 font-medium">
+                        No students found.
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>
@@ -887,85 +921,95 @@ export default function AdminStudentsPage() {
 
         {/* Mobile/Tablet Card View */}
         <div className="block lg:hidden divide-y divide-slate-100">
-          {filtered.map((s: AdminStudent) => (
-            <div key={s.user_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {s.profile_picture ? (
-                    <img src={s.profile_picture} alt="Profile" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-400 uppercase">
-                      {s.username?.[0] || "?"}
+          {studentsLoading ? (
+            <>
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+            </>
+          ) : (
+            <>
+              {filtered.map((s: AdminStudent) => (
+                <div key={s.user_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      {s.profile_picture ? (
+                        <img src={s.profile_picture} alt="Profile" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-400 uppercase">
+                          {s.username?.[0] || "?"}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{s.user_code}</div>
+                        <div className="text-base font-bold text-brand-600 cursor-pointer hover:underline" onClick={() => openView(s)}>{s.username}</div>
+                        <div className="text-xs text-slate-500 truncate max-w-[150px]">{s.email}</div>
+                      </div>
                     </div>
-                  )}
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{s.user_code}</div>
-                    <div className="text-base font-bold text-brand-600 cursor-pointer hover:underline" onClick={() => openView(s)}>{s.username}</div>
-                    <div className="text-xs text-slate-500 truncate max-w-[150px]">{s.email}</div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                   <span
-                      className={[
-                        "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
-                        s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
-                      ].join(" ")}
-                    >
-                      {s.is_active ? "Active" : "Inactive"}
-                    </span>
-                    <div className="flex gap-2">
-                      {!s.is_active && (
-                        <button
-                          onClick={() => handleApprove(s)}
-                          disabled={busy}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
-                          title="Approve"
+                    <div className="flex flex-col items-end gap-2">
+                       <span
+                          className={[
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                            s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
+                          ].join(" ")}
                         >
-                          <Check className="w-5 h-5" />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => openEdit(s)}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
-                          title="Edit"
-                        >
-                          <Pencil className="w-5 h-5" />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => doDelete(s)}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
+                          {s.is_active ? "Active" : "Inactive"}
+                        </span>
+                        <div className="flex gap-2">
+                          {!s.is_active && (
+                            <button
+                              onClick={() => handleApprove(s)}
+                              disabled={busy}
+                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
+                              title="Approve"
+                            >
+                              <Check className="w-5 h-5" />
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => openEdit(s)}
+                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
+                              title="Edit"
+                            >
+                              <Pencil className="w-5 h-5" />
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => doDelete(s)}
+                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
                     </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 text-sm pt-1">
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">DOB</div>
-                  <div className="font-semibold text-slate-700">
-                    {s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-sm pt-1">
+                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">DOB</div>
+                      <div className="font-semibold text-slate-700">
+                        {s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Phone</div>
+                      <div className="font-semibold text-slate-700 truncate">
+                        {s.phone || "-"}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Phone</div>
-                  <div className="font-semibold text-slate-700 truncate">
-                    {s.phone || "-"}
-                  </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="p-10 text-center text-slate-400 font-medium text-sm">
+                  No students found.
                 </div>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="p-10 text-center text-slate-400 font-medium text-sm">
-              {busy ? "Loading…" : "No students found."}
-            </div>
+              )}
+            </>
           )}
         </div>
 
@@ -1321,16 +1365,18 @@ export default function AdminStudentsPage() {
             <input
               value={eUsername}
               onChange={(e) => setEUsername(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="Full name"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-medium"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label>
             <input
               value={eEmail}
               onChange={(e) => setEEmail(e.target.value)}
               type="email"
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              placeholder="email@example.com"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-medium"
             />
           </div>
           <div>
@@ -1339,19 +1385,106 @@ export default function AdminStudentsPage() {
               value={eDob}
               onChange={(e) => setEDob(e.target.value)}
               type="date"
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-medium"
             />
           </div>
-          <div className="flex items-end">
-            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 pb-1">
-              <input
-                type="checkbox"
-                checked={eActive}
-                onChange={(e) => setEActive(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              Active
-            </label>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Student Status</label>
+            <div className="flex items-center gap-4 h-[46px]">
+              <label className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={eActive}
+                  onChange={(e) => setEActive(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                Active Student
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number</label>
+            <input
+              value={ePhone}
+              onChange={(e) => setEPhone(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">NRC</label>
+            <input
+              value={eNrc}
+              onChange={(e) => setENrc(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Gender</label>
+            <select
+              value={eGender}
+              onChange={(e) => setEGender(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            >
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Student Type</label>
+            <select
+              value={eStudentType}
+              onChange={(e) => setEStudentType(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            >
+              <option value="New Student">New Student</option>
+              <option value="Online Student">Online Student</option>
+              <option value="Self Study">Self Study</option>
+              <option value="Returning">Returning</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Address</label>
+            <textarea
+              value={eAddress}
+              onChange={(e) => setEAddress(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 min-h-[80px]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Parent Name</label>
+            <input
+              value={eParentName}
+              onChange={(e) => setEParentName(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Parent Phone</label>
+            <input
+              value={eParentPhone}
+              onChange={(e) => setEParentPhone(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">How Did You Hear About Us?</label>
+            <input
+              value={eHowDidYouHear}
+              onChange={(e) => setEHowDidYouHear(e.target.value)}
+              placeholder="e.g. Facebook, Friend"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Intended Course Code</label>
+            <input
+              value={eIntendedCourse}
+              onChange={(e) => setEIntendedCourse(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            />
           </div>
 
           <div className="sm:col-span-2">

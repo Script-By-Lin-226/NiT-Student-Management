@@ -51,3 +51,36 @@ export function ChartSkeleton() {
     </div>
   );
 }
+
+export function TableBodySkeleton({ columns = 5, rows = 5 }: { columns?: number, rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i} className="hover:bg-slate-50 transition-colors">
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className="px-6 py-4">
+              <Skeleton className="h-4 w-full max-w-[200px]" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export function CardSkeleton() {
+  return (
+    <div className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3 w-full">
+          <Skeleton className="w-12 h-12 rounded-full shrink-0" />
+          <div className="space-y-2 flex-1 max-w-[200px]">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

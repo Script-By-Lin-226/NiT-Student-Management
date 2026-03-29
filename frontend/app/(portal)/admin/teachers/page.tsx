@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTeachers, useDeleteUser } from "@/hooks/useAdmin";
 import { Pagination } from "@/components/ui/Pagination";
 import ConfirmModal from "@/components/ConfirmModal";
+import { TableBodySkeleton } from "@/components/ui/Skeleton";
 
 export default function AdminTeachersPage() {
   const { isAdmin } = useAuth();
@@ -106,34 +107,40 @@ export default function AdminTeachersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayedTeachers.map((t) => (
-                <tr key={t.user_code} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-800">{t.user_code}</td>
-                  <td className="px-6 py-4 font-medium">{t.username}</td>
-                  <td className="px-6 py-4">{t.email}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${t.is_active ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
-                      {t.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => handleDelete(t)}
-                      disabled={deleteMutation.isPending}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
-                      title="Delete Teacher"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {displayedTeachers.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
-                    {loading ? "Loading..." : "No teachers found."}
-                  </td>
-                </tr>
+              {loading ? (
+                <TableBodySkeleton columns={5} />
+              ) : (
+                <>
+                  {displayedTeachers.map((t) => (
+                    <tr key={t.user_code} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800">{t.user_code}</td>
+                      <td className="px-6 py-4 font-medium">{t.username}</td>
+                      <td className="px-6 py-4">{t.email}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${t.is_active ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
+                          {t.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <button
+                          onClick={() => handleDelete(t)}
+                          disabled={deleteMutation.isPending}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                          title="Delete Teacher"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {displayedTeachers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                        No teachers found.
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>

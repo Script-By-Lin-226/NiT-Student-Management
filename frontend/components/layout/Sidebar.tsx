@@ -35,7 +35,7 @@ const adminNav = [
   { name: "Students", href: "/admin/students", icon: Users },
   { name: "Parents", href: "/admin/parents", icon: Users },
   { name: "Staff", href: "/admin/users", icon: Shield },
-  { name: "Academic Yrs", href: "/admin/academic-years", icon: CalendarDays },
+  { name: "Academic Year", href: "/admin/academic-years", icon: CalendarDays },
   { name: "Courses", href: "/admin/courses", icon: BookOpen },
   { name: "Enrollments", href: "/admin/enrollments", icon: Award },
   { name: "Rooms", href: "/admin/rooms", icon: DoorOpen },

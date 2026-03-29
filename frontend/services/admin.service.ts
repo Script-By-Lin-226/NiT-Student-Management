@@ -41,6 +41,7 @@ export interface AdminStudent {
   is_active: boolean;
   data_of_birth: string | null;
   nrc?: string | null;
+  gender?: string | null;
   phone?: string | null;
   parent_name?: string | null;
   parent_phone?: string | null;
@@ -82,8 +83,15 @@ export interface AdminStudentUpdate {
   date_of_birth?: string | null;
   is_active?: boolean;
   profile_picture?: string | null;
+  phone?: string | null;
+  nrc?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  parent_name?: string | null;
+  parent_phone?: string | null;
   how_did_you_hear?: string | null;
   student_type?: string | null;
+  intended_course_code?: string | null;
 }
 
 export interface AdminAcademicYear {

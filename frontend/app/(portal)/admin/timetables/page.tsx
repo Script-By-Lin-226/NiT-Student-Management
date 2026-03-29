@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AdminCourse, AdminRoom, AdminService, AdminTimeTableRow, AdminUser, TeachingHoursReport } from "@/services/admin.service";
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, GraduationCap, AlertCircle } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
+import { TableBodySkeleton } from "@/components/ui/Skeleton";
 
 function Modal({
   title,
@@ -351,51 +352,57 @@ export default function AdminTimetablesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filtered.map((r) => (
-                <tr key={r.timetable_id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-800">{r.course_name}</div>
-                    <div className="text-xs text-brand-600 font-bold uppercase tracking-tight">{r.course_code}</div>
-                    {r.subject_name && (
-                      <div className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
-                        {r.subject_name}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-bold text-slate-700">{r.batch_no || "-"}</span>
-                  </td>
-                  <td className="px-6 py-4">{r.day_of_week}</td>
-                  <td className="px-6 py-4 font-semibold">{r.start_time} - {r.end_time}</td>
-                  <td className="px-6 py-4">{r.room_name || "-"}</td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-slate-700">{r.teacher_name || "-"}</div>
-                    <div className="text-[10px] text-slate-400">{r.teacher_code || ""}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
-                      {isAdmin && (
-<button onClick={() => openEdit(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                      </button>
-)}
-                      {isAdmin && (
-                      <button onClick={() => doDelete(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
-                    {busy ? "Loading…" : "No timetable slots found."}
-                  </td>
-                </tr>
+              {busy ? (
+                <TableBodySkeleton columns={7} />
+              ) : (
+                <>
+                  {filtered.map((r) => (
+                    <tr key={r.timetable_id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-800">{r.course_name}</div>
+                        <div className="text-xs text-brand-600 font-bold uppercase tracking-tight">{r.course_code}</div>
+                        {r.subject_name && (
+                          <div className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                            {r.subject_name}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-slate-700">{r.batch_no || "-"}</span>
+                      </td>
+                      <td className="px-6 py-4">{r.day_of_week}</td>
+                      <td className="px-6 py-4 font-semibold">{r.start_time} - {r.end_time}</td>
+                      <td className="px-6 py-4">{r.room_name || "-"}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-slate-700">{r.teacher_name || "-"}</div>
+                        <div className="text-[10px] text-slate-400">{r.teacher_code || ""}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2">
+                          {isAdmin && (
+    <button onClick={() => openEdit(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
+                            <Pencil className="w-4 h-4" />
+                            Edit
+                          </button>
+    )}
+                          {isAdmin && (
+                          <button onClick={() => doDelete(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-10 text-center text-slate-400 font-medium">
+                        No timetable slots found.
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>

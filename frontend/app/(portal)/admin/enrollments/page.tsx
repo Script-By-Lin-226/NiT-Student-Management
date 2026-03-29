@@ -12,6 +12,7 @@ import { useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment, useCours
 import { toast } from "sonner";
 import { formatAmount } from "@/utils/format";
 import { Pagination } from "@/components/ui/Pagination";
+import { TableBodySkeleton, CardSkeleton } from "@/components/ui/Skeleton";
 
 
 function Modal({
@@ -224,37 +225,6 @@ export default function AdminEnrollmentsPage() {
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
-          <button
-            onClick={async () => {
-              setExporting(true);
-              try {
-                const res = await AdminService.listEnrollments(undefined, 1, -1);
-                const dataToExport = (res.data || []).map(e => ({
-                  "Enrollment Code": e.enrollment_code,
-                  "Student Name": (e as any).student_name || "-",
-                  "Student Code": (e as any).student_code || "-",
-                  "Course Name": (e as any).course_name || "-",
-                  "Course Code": (e as any).course_code || "-",
-                  "Course Cost (MMK)": (e as any).course_cost || 0,
-                  "Batch": e.batch_no || "-",
-                  "Payment Plan": e.payment_plan || "-",
-                  "Deposit (MMK)": e.downpayment || 0,
-                  "Monthly Installment (MMK)": e.installment_amount || 0,
-                  "FOC Items": (e as any).foc_items || "-",
-                  "Status": e.status ? "Active" : "Inactive",
-                  "Date": e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"
-                }));
-                exportToExcel(dataToExport, "Enrollments_List", "Enrollments");
-              } finally {
-                setExporting(false);
-              }
-            }}
-            disabled={busy || exporting || filtered.length === 0}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden xs:inline">Export</span>
-          </button>
           <button onClick={openCreate} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap">
             <Plus className="w-4 h-4" />
             <span>New Enrollment</span>
@@ -286,65 +256,70 @@ export default function AdminEnrollmentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filtered.map((e) => (
-                <tr key={e.enrollment_code} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4 font-bold text-brand-600">{e.enrollment_code}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      {e.profile_picture ? (
-                        <img src={e.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
-                          {e.student_name?.[0] || "?"}
+              {enrollmentsLoading ? (
+                <TableBodySkeleton columns={8} />
+              ) : (
+                <>
+                  {filtered.map((e) => (
+                    <tr key={e.enrollment_code} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-bold text-brand-600">{e.enrollment_code}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {e.profile_picture ? (
+                            <img src={e.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                              {e.student_name?.[0] || "?"}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{e.student_name || "-"}</div>
+                            <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{e.student_code || `ID ${e.student_id}`}</div>
+                          </div>
                         </div>
-                      )}
-                      <div>
-                        <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{e.student_name || "-"}</div>
-                        <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{e.student_code || `ID ${e.student_id}`}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{(e as any).course_name || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-700">{e.batch_no || "-"}</div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Room: {(e as any).room || "-"}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-900 uppercase tracking-tighter text-xs">{e.payment_plan || "-"}</div>
-                    {e.payment_plan === "installment" && (
-                      <div className="text-[10px] text-slate-400 font-bold">Res: {formatAmount(e.installment_amount)} MMK</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 font-medium text-slate-600">{e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={["inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"].join(" ")}>
-                      {e.status ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 text-xs">
-                      {isAdmin && (
-                        <button onClick={() => openEdit(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button onClick={() => doDelete(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all active:scale-90 shadow-sm">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-slate-400 font-medium">
-                    {busy ? "Loading…" : "No enrollments found."}
-                  </td>
-                </tr>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{(e as any).course_name || "-"}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-700 text-nowrap">{e.batch_no || "-"}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-900 uppercase tracking-tighter text-xs">{e.payment_plan || "-"}</div>
+                        {e.payment_plan === "installment" && (
+                          <div className="text-[10px] text-slate-400 font-bold">{formatAmount(e.installment_amount)} MMK</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-600 text-nowrap">{e.enrollment_date ? new Date(e.enrollment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={["inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"].join(" ")}>
+                          {e.status ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2 text-xs">
+                          {isAdmin && (
+                            <button onClick={() => openEdit(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button onClick={() => doDelete(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all active:scale-90 shadow-sm">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-10 text-center text-slate-400 font-medium">
+                        No enrollments found.
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>
@@ -352,69 +327,79 @@ export default function AdminEnrollmentsPage() {
 
         {/* Mobile/Tablet Card View */}
         <div className="block lg:hidden divide-y divide-slate-100">
-          {filtered.map((e) => (
-            <div key={e.enrollment_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {e.profile_picture ? (
-                    <img src={e.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
-                      {e.student_name?.[0] || "?"}
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{e.enrollment_code}</div>
-                    <div className="text-base font-bold text-slate-900 leading-tight">{e.student_name || "Unknown Student"}</div>
-                    <div className="text-xs text-slate-500 font-medium">{e.student_code || `ID ${e.student_id}`}</div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className={["inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"].join(" ")}>
-                    {e.status ? "Active" : "Inactive"}
-                  </span>
-                    <div className="flex gap-2">
-                      {isAdmin && (
-                        <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
-                          <Pencil className="w-5 h-5" />
-                        </button>
+          {enrollmentsLoading ? (
+            <>
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+            </>
+          ) : (
+            <>
+              {filtered.map((e) => (
+                <div key={e.enrollment_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      {e.profile_picture ? (
+                        <img src={e.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                          {e.student_name?.[0] || "?"}
+                        </div>
                       )}
-                      {isAdmin && (
-                        <button onClick={() => doDelete(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90" title="Delete">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{e.enrollment_code}</div>
+                        <div className="text-base font-bold text-slate-900 leading-tight">{e.student_name || "Unknown Student"}</div>
+                        <div className="text-xs text-slate-500 font-medium">{e.student_code || `ID ${e.student_id}`}</div>
+                      </div>
                     </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100/50">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Enrolled Course</div>
-                  <div className="font-bold text-slate-800">{(e as any).course_name || "-"}</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Date</div>
-                    <div className="font-semibold text-slate-700">
-                      {e.enrollment_date ? e.enrollment_date.split(" ")[0] : "-"}
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Batch</div>
-                    <div className="font-semibold text-slate-700 truncate">
-                      {e.batch_no || "-"}
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={["inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"].join(" ")}>
+                        {e.status ? "Active" : "Inactive"}
+                      </span>
+                        <div className="flex gap-2">
+                          {isAdmin && (
+                            <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
+                              <Pencil className="w-5 h-5" />
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button onClick={() => doDelete(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90" title="Delete">
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
                     </div>
                   </div>
+    
+                  <div className="space-y-3">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100/50">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Enrolled Course</div>
+                      <div className="font-bold text-slate-800">{(e as any).course_name || "-"}</div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                        <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Date</div>
+                        <div className="font-semibold text-slate-700 text-nowrap">
+                          {e.enrollment_date ? new Date(e.enrollment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                        <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Batch</div>
+                        <div className="font-semibold text-slate-700 truncate">
+                          {e.batch_no || "-"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="p-10 text-center text-slate-400 font-medium text-sm">
-              {busy ? "Loading…" : "No enrollments found."}
-            </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="p-10 text-center text-slate-400 font-medium text-sm">
+                  No enrollments found.
+                </div>
+              )}
+            </>
           )}
         </div>
 

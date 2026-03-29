@@ -33,10 +33,18 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    nrc: Optional[str] = None
+    gender: Optional[str] = None
+    address: Optional[str] = None
     date_of_birth: Optional[date] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None
     profile_picture: Optional[str] = None
+    parent_name: Optional[str] = None
+    parent_phone: Optional[str] = None
+    how_did_you_hear: Optional[str] = None
+    student_type: Optional[str] = None
+    intended_course_code: Optional[str] = None
 
 
 class AdminStudentCreate(BaseModel):

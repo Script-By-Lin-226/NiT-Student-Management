@@ -196,27 +196,6 @@ export default function AdminCoursesPage() {
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
-          <button
-            onClick={() => {
-              const dataToExport = filtered.map(c => ({
-                "Course Code": c.course_code,
-                "Course Name": c.course_name,
-                "Category": c.category || "-",
-                "Full Fee (MMK)": c.fee_full_payment || 0,
-                "Installment Fee (MMK)": c.fee_installment || 0,
-                "Exam Fee (GBP)": c.exam_fee_gbp || 0,
-                "Academic Year": yearNameById.get(c.academic_year_id) || "-",
-                "Instructor ID": c.instructor_id || "-",
-                "FOC Items": c.foc_items || "-",
-              }));
-              exportToExcel(dataToExport, "Courses_List", "Courses");
-            }}
-            disabled={busy || filtered.length === 0}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden xs:inline">Export</span>
-          </button>
           <button onClick={openCreate} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm transition-all active:scale-95 text-sm whitespace-nowrap">
             <Plus className="w-4 h-4" />
             <span>New Course</span>
