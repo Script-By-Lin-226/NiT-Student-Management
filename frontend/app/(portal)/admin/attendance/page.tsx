@@ -364,8 +364,8 @@ export default function AdminAttendancePage() {
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
                 <div className="flex items-center text-sm font-semibold text-slate-600">
                   <Users className="w-4 h-4 mr-2 text-slate-400" />
-                  {g.students.length} <span className="hidden sm:inline">Student{g.students.length !== 1 ? "s" : ""}</span>
-                  <span className="sm:hidden">{g.students.length} S</span>
+                  {g.students.length} <span className=" ps-1">Student{g.students.length !== 1 ? "s" : ""}</span>
+                  {/* <span className="sm:hidden ps-1">S</span> */}
                 </div>
                 <button
                   onClick={() => openGroup(g)}

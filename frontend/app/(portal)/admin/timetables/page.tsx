@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCourse, AdminRoom, AdminService, AdminTimeTableRow, AdminUser, TeachingHoursReport } from "@/services/admin.service";
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, GraduationCap, AlertCircle } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Clock, GraduationCap, AlertCircle, Calendar } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
 
@@ -39,7 +39,50 @@ function Modal({
   );
 }
 
+function SortIcon({ active, order }: { active: boolean; order: "asc" | "desc" }) {
+  if (!active) return (
+    <div className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="translate-y-0.5"><path d="m7 15 5 5 5-5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="-translate-y-0.5"><path d="m7 9 5-5 5 5"/></svg>
+    </div>
+  );
+  return (
+    <div className="w-3 h-3 text-brand-600 transition-transform flex items-center justify-center">
+      {order === "asc" ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      )}
+    </div>
+  );
+}
+
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+
+function getDayDate(dayName: string) {
+  const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const now = new Date();
+  const todayIndex = now.getDay(); // 0 is Sun, 1 is Mon...
+
+  // Target index (0-6)
+  const targetIndex = weekday.indexOf(dayName);
+  if (targetIndex === -1) return null;
+
+  // We want to get the date of this week
+  // If today is Monday (1) and we want Monday (1), diff is 0
+  // If today is Monday (1) and we want Tuesday (2), diff is 1
+  let diff = targetIndex - todayIndex;
+  
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + diff);
+  
+  return targetDate;
+}
+
+const formatDate = (date: Date | null) => {
+  if (!date) return "";
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }); // e.g. 30 Mar
+};
 
 export default function AdminTimetablesPage() {
   const router = useRouter();
@@ -62,6 +105,8 @@ export default function AdminTimetablesPage() {
   const [newSubCode, setNewSubCode] = useState("");
   const [newSubName, setNewSubName] = useState("");
   const [ttToDelete, setTtToDelete] = useState<AdminTimeTableRow | null>(null);
+  const [sortKey, setSortKey] = useState<keyof AdminTimeTableRow | "time">("day_of_week");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
@@ -92,18 +137,50 @@ export default function AdminTimetablesPage() {
   }, [loading, isAdminOrSales, router]);
 
   const filtered = useMemo(() => {
+    let result = rows;
     const term = q.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter((r) => {
-      return (
-        r.course_code.toLowerCase().includes(term) ||
-        r.course_name.toLowerCase().includes(term) ||
-        (r.batch_no || "").toLowerCase().includes(term) ||
-        r.day_of_week.toLowerCase().includes(term) ||
-        (r.room_name || "").toLowerCase().includes(term)
-      );
+    if (term) {
+      result = result.filter((r) => {
+        return (
+          r.course_code.toLowerCase().includes(term) ||
+          r.course_name.toLowerCase().includes(term) ||
+          (r.batch_no || "").toLowerCase().includes(term) ||
+          r.day_of_week.toLowerCase().includes(term) ||
+          (r.room_name || "").toLowerCase().includes(term)
+        );
+      });
+    }
+
+    return [...result].sort((a, b) => {
+      let valA: any = sortKey === "time" ? a.start_time : a[sortKey as keyof AdminTimeTableRow];
+      let valB: any = sortKey === "time" ? b.start_time : b[sortKey as keyof AdminTimeTableRow];
+
+      if (sortKey === "day_of_week") {
+        valA = DAYS.indexOf(a.day_of_week as any);
+        valB = DAYS.indexOf(b.day_of_week as any);
+      }
+
+      // Special case for day_of_week to sort numerically
+      if (sortKey === "day_of_week") {
+        if (valA !== valB) return sortOrder === "asc" ? valA - valB : valB - valA;
+        // Tie breaker: sort by time
+        return a.start_time.localeCompare(b.start_time);
+      }
+
+      // For others, use localeCompare for strings
+      const strA = (valA ?? "").toString();
+      const strB = (valB ?? "").toString();
+      
+      const cmp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+      if (cmp !== 0) return sortOrder === "asc" ? cmp : -cmp;
+
+      // Tie breaker by day then time
+      const dayA = DAYS.indexOf(a.day_of_week as any);
+      const dayB = DAYS.indexOf(b.day_of_week as any);
+      if (dayA !== dayB) return dayA - dayB;
+      return a.start_time.localeCompare(b.start_time);
     });
-  }, [q, rows]);
+  }, [q, rows, sortKey, sortOrder]);
 
   const load = async () => {
     setBusy(true);
@@ -366,12 +443,78 @@ export default function AdminTimetablesPage() {
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4">Course</th>
-                <th className="px-6 py-4">Batch</th>
-                <th className="px-6 py-4">Day</th>
-                <th className="px-6 py-4">Time</th>
-                <th className="px-6 py-4">Room</th>
-                <th className="px-6 py-4">Teacher</th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                  onClick={() => {
+                    if (sortKey === "course_name") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    else { setSortKey("course_name"); setSortOrder("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    Course
+                    <SortIcon active={sortKey === "course_name"} order={sortOrder} />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                  onClick={() => {
+                    if (sortKey === "batch_no") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    else { setSortKey("batch_no"); setSortOrder("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    Batch
+                    <SortIcon active={sortKey === "batch_no"} order={sortOrder} />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                  onClick={() => {
+                    if (sortKey === "day_of_week") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    else { setSortKey("day_of_week"); setSortOrder("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    Day
+                    <SortIcon active={sortKey === "day_of_week"} order={sortOrder} />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                  onClick={() => {
+                    if (sortKey === "time") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    else { setSortKey("time"); setSortOrder("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    Time
+                    <SortIcon active={sortKey === "time"} order={sortOrder} />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                  onClick={() => {
+                    if (sortKey === "room_name") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    else { setSortKey("room_name"); setSortOrder("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    Room
+                    <SortIcon active={sortKey === "room_name"} order={sortOrder} />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                  onClick={() => {
+                    if (sortKey === "teacher_name") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    else { setSortKey("teacher_name"); setSortOrder("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    Teacher
+                    <SortIcon active={sortKey === "teacher_name"} order={sortOrder} />
+                  </div>
+                </th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -394,7 +537,15 @@ export default function AdminTimetablesPage() {
                       <td className="px-6 py-4">
                         <span className="font-bold text-slate-700">{r.batch_no || "-"}</span>
                       </td>
-                      <td className="px-6 py-4">{r.day_of_week}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-slate-900">{r.day_of_week}</span>
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] font-black text-slate-500 w-fit">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            {formatDate(getDayDate(r.day_of_week))}
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 font-semibold">{format24h(r.start_time)} - {format24h(r.end_time)}</td>
                       <td className="px-6 py-4">{r.room_name || "-"}</td>
                       <td className="px-6 py-4">
