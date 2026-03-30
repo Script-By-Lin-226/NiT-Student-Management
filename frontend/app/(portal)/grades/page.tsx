@@ -31,23 +31,23 @@ export default function GradesPage() {
             </thead>
             <tbody className="divide-y divide-slate-50 bg-white">
               {grades.map((g, i) => (
-                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={i} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                   <td className="px-6 py-4 font-semibold text-slate-800 flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
-                        <BookOpen className="w-4 h-4" />
-                     </div>
-                     <div>
-                       <p>{g.course.course_name}</p>
-                       <p className="text-xs text-slate-400 font-medium">{g.course.course_code}</p>
-                     </div>
+                    <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p>{g.course.course_name}</p>
+                      <p className="text-xs text-slate-400 font-medium">{g.course.course_code}</p>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-sm font-bold bg-slate-100 text-slate-700">
-                       {g.grade}
+                      {g.grade}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-bold text-slate-700">
-                     {g.grade_point.toFixed(1)}
+                    {g.grade_point.toFixed(1)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">

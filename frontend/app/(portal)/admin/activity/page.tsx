@@ -25,17 +25,17 @@ interface LogEntry {
 export default function ActivityLogsPage() {
   const router = useRouter();
   const { isAdmin, loading: authLoading } = useAuth();
-  
+
   const [page, setPage] = useState(1);
   const limit = 50;
-  
+
   const { data: logResponse, isLoading: logsLoading, error: queryError, refetch } = useActivityLogs(page, limit);
   const logs = logResponse?.data || [];
   const pagination = logResponse?.pagination;
-  
+
   const deleteMutation = useDeleteActivityLog();
   const clearMutation = useClearActivityLogs();
-  
+
   const [q, setQ] = useState("");
   const [dateQ, setDateQ] = useState("");
   const [logToDelete, setLogToDelete] = useState<number | null>(null);
@@ -82,9 +82,9 @@ export default function ActivityLogsPage() {
   const filteredLogs = (logs as LogEntry[]).filter((log: LogEntry) => {
     const term = q.toLowerCase();
     const dateTerm = dateQ; // YYYY-MM-DD
-    
+
     // Search user and action
-    const matchesSearch = 
+    const matchesSearch =
       log.username.toLowerCase().includes(term) ||
       log.action.toLowerCase().includes(term) ||
       log.details?.toLowerCase().includes(term) ||
@@ -151,15 +151,15 @@ export default function ActivityLogsPage() {
         <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              value={q} 
-              onChange={(e) => setQ(e.target.value)} 
-              placeholder="Search user, action or details..." 
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" 
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search user, action or details..."
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base"
             />
           </div>
           <div className="w-full sm:w-48">
-            <input 
+            <input
               type="date"
               value={dateQ}
               onChange={(e) => setDateQ(e.target.value)}
@@ -188,7 +188,7 @@ export default function ActivityLogsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredLogs.map((log: LogEntry) => (
-                <tr key={log.log_id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={log.log_id} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-slate-500">
                       <Clock className="w-4 h-4 mr-2" />
@@ -207,7 +207,7 @@ export default function ActivityLogsPage() {
                   <td className="px-6 py-4 font-semibold text-brand-600 text-nowrap">{log.action}</td>
                   <td className="px-6 py-4 text-slate-700">{log.details}</td>
                   <td className="px-6 py-4 text-right">
-                    <button 
+                    <button
                       onClick={() => handleDelete(log.log_id)}
                       disabled={busy}
                       className="inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all active:scale-90 disabled:opacity-50"
@@ -232,7 +232,7 @@ export default function ActivityLogsPage() {
         {/* Mobile/Tablet Card View */}
         <div className="block lg:hidden divide-y divide-slate-100">
           {filteredLogs.map((log: LogEntry) => (
-            <div key={log.log_id} className="p-4 bg-white hover:bg-slate-50/50 transition-colors">
+            <div key={log.log_id} className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -246,7 +246,7 @@ export default function ActivityLogsPage() {
                     {new Date(log.timestamp).toLocaleString()}
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => handleDelete(log.log_id)}
                   disabled={busy}
                   className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 transition-all active:scale-90 disabled:opacity-50"
@@ -299,7 +299,7 @@ export default function ActivityLogsPage() {
         )}
       </div>
 
-      <ConfirmModal 
+      <ConfirmModal
         open={!!logToDelete}
         onClose={() => setLogToDelete(null)}
         onConfirm={executeDelete}
@@ -310,7 +310,7 @@ export default function ActivityLogsPage() {
         isLoading={deleteMutation.isPending}
       />
 
-      <ConfirmModal 
+      <ConfirmModal
         open={clearConfirmOpen}
         onClose={() => setClearConfirmOpen(false)}
         onConfirm={executeClearAll}

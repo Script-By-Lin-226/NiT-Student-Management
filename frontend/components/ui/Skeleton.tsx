@@ -41,10 +41,10 @@ export function ChartSkeleton() {
       </div>
       <div className="flex-1 flex items-end gap-2 pb-5">
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <Skeleton 
-            key={i} 
-            className="flex-1" 
-            style={{ height: `${Math.floor(Math.random() * 60) + 20}%` }} 
+          <Skeleton
+            key={i}
+            className="flex-1"
+            style={{ height: `${Math.floor(Math.random() * 60) + 20}%` }}
           />
         ))}
       </div>
@@ -70,7 +70,7 @@ export function TableBodySkeleton({ columns = 5, rows = 5 }: { columns?: number,
 
 export function CardSkeleton() {
   return (
-    <div className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+    <div className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors space-y-4">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3 w-full">
           <Skeleton className="w-12 h-12 rounded-full shrink-0" />

@@ -148,11 +148,15 @@ class Batch(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
+    __table_args__ = (
+        UniqueConstraint('course_id', 'batch_no', name='uq_course_batch_no'),
+    )
+
     # Relationships
     course = relationship("Course", back_populates="batches")
     instructor = relationship("User")
-    enrollments = relationship("Enrollment", back_populates="batch", cascade="all, delete-orphan")
-    attendance = relationship("Attendance", back_populates="batch", cascade="all, delete-orphan")
+    enrollments = relationship("Enrollment", back_populates="batch")
+    attendance = relationship("Attendance", back_populates="batch")
     timetables = relationship("TimeTable", back_populates="batch", cascade="all, delete-orphan")
 
 

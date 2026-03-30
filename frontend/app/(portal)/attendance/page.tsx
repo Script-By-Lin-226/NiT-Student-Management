@@ -45,17 +45,17 @@ export default function AttendancePage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {attendance?.records.map((r, i) => (
-                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={i} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                   <td className="px-6 py-4 font-semibold text-slate-700 flex items-center gap-3">
                     <Clock className="w-4 h-4 text-slate-400" />
                     {r.date}
                   </td>
                   <td className="px-6 py-4">
-                    <span 
+                    <span
                       className={clsx(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
-                        r.status === "Present" 
-                          ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                        r.status === "Present"
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                           : "bg-red-50 text-red-600 border-red-100"
                       )}
                     >

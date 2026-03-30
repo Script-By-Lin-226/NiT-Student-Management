@@ -54,7 +54,7 @@ export default function AdminEnrollmentsPage() {
 
   const { data: coursesResponse, isLoading: coursesLoading } = useCourses(1, 1000);
   const courses = coursesResponse?.data || [];
-  
+
   const { data: enrollmentsResponse, isLoading: enrollmentsLoading, refetch: reload } = useEnrollments(undefined, page, limit);
   const rows = enrollmentsResponse?.data || [];
   const pagination = enrollmentsResponse?.pagination;
@@ -261,7 +261,7 @@ export default function AdminEnrollmentsPage() {
               ) : (
                 <>
                   {filtered.map((e) => (
-                    <tr key={e.enrollment_code} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr key={e.enrollment_code} className="hover:bg-blue-50 hover:shadow-md transition-colors group">
                       <td className="px-6 py-4 font-bold text-brand-600">{e.enrollment_code}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export default function AdminEnrollmentsPage() {
           ) : (
             <>
               {filtered.map((e) => (
-                <div key={e.enrollment_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+                <div key={e.enrollment_code} className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       {e.profile_picture ? (
@@ -356,27 +356,27 @@ export default function AdminEnrollmentsPage() {
                       <span className={["inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", e.status ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200"].join(" ")}>
                         {e.status ? "Active" : "Inactive"}
                       </span>
-                        <div className="flex gap-2">
-                          {isAdmin && (
-                            <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
-                              <Pencil className="w-5 h-5" />
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button onClick={() => doDelete(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90" title="Delete">
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
+                      <div className="flex gap-2">
+                        {isAdmin && (
+                          <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
+                            <Pencil className="w-5 h-5" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button onClick={() => doDelete(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90" title="Delete">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-    
+
                   <div className="space-y-3">
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100/50">
                       <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Enrolled Course</div>
                       <div className="font-bold text-slate-800">{(e as any).course_name || "-"}</div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                         <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Date</div>
@@ -424,27 +424,27 @@ export default function AdminEnrollmentsPage() {
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Course</label>
-            <select 
-              value={cCourseCode} 
-              onChange={(e) => setCCourseCode(e.target.value)} 
+            <select
+              value={cCourseCode}
+              onChange={(e) => setCCourseCode(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
             >
-               <option value="">Select Course...</option>
-               {courses.map((c) => (
-                 <option key={c.course_id} value={c.course_code}>{c.course_name}</option>
-               ))}
+              <option value="">Select Course...</option>
+              {courses.map((c) => (
+                <option key={c.course_id} value={c.course_code}>{c.course_name}</option>
+              ))}
             </select>
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Batch (Populated from Course)</label>
-            <select 
-              value={cBatchId} 
+            <select
+              value={cBatchId}
               onChange={(e) => {
                 const val = e.target.value;
                 setCBatchId(val ? Number(val) : "");
                 const b = cBatches.find(x => x.batch_id === Number(val));
                 setCBatchNo(b?.batch_no || "");
-              }} 
+              }}
               disabled={!cCourseCode}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:opacity-50"
             >
@@ -464,7 +464,7 @@ export default function AdminEnrollmentsPage() {
               <option value="installment">Installment</option>
             </select>
           </div>
-          
+
           {cPaymentPlan === "installment" && (
             <>
               <div>
@@ -494,8 +494,8 @@ export default function AdminEnrollmentsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch</label>
-            <select 
-              value={eBatchId} 
+            <select
+              value={eBatchId}
               onChange={(e) => {
                 const val = e.target.value;
                 setEBatchId(val ? Number(val) : "");
@@ -520,7 +520,7 @@ export default function AdminEnrollmentsPage() {
               <option value="installment">Installment</option>
             </select>
           </div>
-          
+
           {ePaymentPlan === "installment" && (
             <>
               <div>
@@ -552,7 +552,7 @@ export default function AdminEnrollmentsPage() {
       </Modal>
 
       {/* Confirm Modal */}
-      <ConfirmModal 
+      <ConfirmModal
         open={!!enrollToDelete}
         onClose={() => setEnrollToDelete(null)}
         onConfirm={executeDelete}

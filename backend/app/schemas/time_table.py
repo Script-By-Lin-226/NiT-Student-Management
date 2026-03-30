@@ -16,6 +16,7 @@ class TimeTableBase(BaseModel):
 class AdminTimeTableCreate(BaseModel):
     course_code: str
     batch_no: Optional[str] = None
+    batch_id: Optional[int] = None
     subject_code: Optional[str] = None
     teacher_code: Optional[str] = None
     day_of_week: str
@@ -30,4 +31,6 @@ class AdminTimeTableUpdate(BaseModel):
     end_time: Optional[str] = None
     room_name: Optional[str] = None
     batch_no: Optional[str] = None
+    batch_id: Optional[int] = None
     teacher_code: Optional[str] = None
+    subject_code: Optional[str] = None

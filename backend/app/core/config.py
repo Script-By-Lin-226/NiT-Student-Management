@@ -12,7 +12,7 @@ from pydantic import field_validator
 class Settings(BaseSettings):
     SECRET_KEY: str = "NiTstu26.com"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     DATABASE_URL: str = "postgresql://nit_db_yca1_user:qoECkymDXjpIC4QAXcuyTur0zNkwk4Xc@dpg-d6vavjfkijhs73coa82g-a.singapore-postgres.render.com/nit_db_yca1"
     FRONTEND_URL: str = "http://localhost:3000"

@@ -67,9 +67,11 @@ class AdminStudentCreate(BaseModel):
     # Optional enrollment
     course_code: Optional[str] = None
     batch_no: Optional[str] = None
+    batch_id: Optional[int] = None
     payment_plan: Optional[str] = None
     downpayment: Optional[float] = None
     installment_amount: Optional[float] = None
+
     
     # Division
     department: Optional[str] = "College"

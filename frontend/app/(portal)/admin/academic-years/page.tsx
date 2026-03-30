@@ -203,23 +203,23 @@ export default function AdminAcademicYearsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.map((y) => (
-                <tr key={y.academic_year_id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={y.academic_year_id} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                   <td className="px-6 py-4 font-semibold text-slate-800">{y.academic_year_name}</td>
                   <td className="px-6 py-4">{y.start_date ? y.start_date.slice(0, 10) : "-"}</td>
                   <td className="px-6 py-4">{y.end_date ? y.end_date.slice(0, 10) : "-"}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
                       {isAdmin && (
-<button onClick={() => openEdit(y)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                      </button>
-)}
+                        <button onClick={() => openEdit(y)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </button>
+                      )}
                       {isAdmin && (
-                      <button onClick={() => doDelete(y)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+                        <button onClick={() => doDelete(y)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                       )}
                     </div>
                   </td>

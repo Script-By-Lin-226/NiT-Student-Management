@@ -14,7 +14,7 @@ function Modal({ title, open, onClose, children }: { title: string; open: boolea
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-slate-900">{title}</h3>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-50 text-slate-500"><X size={18}/></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-50 text-slate-500"><X size={18} /></button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -341,7 +341,7 @@ export default function AdminParentsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {displayedParents.map((p) => (
-                <tr key={p.user_code} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={p.user_code} className="hover:bg-blue-50 hover:shadow-md transition-colors group">
                   <td className="px-6 py-4 font-semibold text-slate-800">{p.user_code}</td>
                   <td className="px-6 py-4 font-medium">{p.username}</td>
                   <td className="px-6 py-4 text-slate-500">{p.email}</td>
@@ -352,8 +352,8 @@ export default function AdminParentsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEdit(p)} className="p-2 rounded-xl text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Pencil size={16}/></button>
-                      <button onClick={() => openDelete(p)} className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={16}/></button>
+                      <button onClick={() => openEdit(p)} className="p-2 rounded-xl text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Pencil size={16} /></button>
+                      <button onClick={() => openDelete(p)} className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -380,8 +380,8 @@ export default function AdminParentsPage() {
                   <div className="text-xs text-slate-500 font-medium mt-0.5">{p.email}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-slate-50 text-slate-500"><Pencil size={14}/></button>
-                  <button onClick={() => openDelete(p)} className="p-2 rounded-lg bg-slate-50 text-red-500"><Trash2 size={14}/></button>
+                  <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-slate-50 text-slate-500"><Pencil size={14} /></button>
+                  <button onClick={() => openDelete(p)} className="p-2 rounded-lg bg-slate-50 text-red-500"><Trash2 size={14} /></button>
                 </div>
               </div>
             </div>
@@ -411,10 +411,10 @@ export default function AdminParentsPage() {
           <div className="space-y-3">
             <label className="block text-sm font-bold text-slate-700">Username</label>
             <input required value={editForm.username} onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20" />
-            
+
             <label className="block text-sm font-bold text-slate-700">Email</label>
             <input required type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20" />
-            
+
             <label className="flex items-center gap-3 py-2 cursor-pointer group">
               <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(p => ({ ...p, is_active: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20" />
               <span className="text-sm font-bold text-slate-700 group-hover:text-brand-600 transition-colors">Active account</span>

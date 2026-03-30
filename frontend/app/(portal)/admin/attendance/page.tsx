@@ -66,7 +66,7 @@ export default function AdminAttendancePage() {
 
   const markMutation = useMarkAttendance();
   const updateMutation = useUpdateAttendance();
-  
+
   const enrollments = enrollmentsData?.data || [];
   const attendance = attendanceData;
   const timetables = timetablesData;
@@ -92,14 +92,14 @@ export default function AdminAttendancePage() {
   const [selectedStudentCode, setSelectedStudentCode] = useState("");
 
   const reportRecords = useMemo(() => {
-     if (!selectedStudentCode || !selectedGroup) return [];
-     const c = courses.find(x => x.course_code === selectedGroup.course_code);
-     return attendance.filter(a => {
-        if (a.user_code !== selectedStudentCode) return false;
-        if (c && c.start_date && a.attendance_date < c.start_date) return false;
-        if (c && c.end_date && a.attendance_date > c.end_date) return false;
-        return true;
-     }).sort((a,b) => b.attendance_date.localeCompare(a.attendance_date));
+    if (!selectedStudentCode || !selectedGroup) return [];
+    const c = courses.find(x => x.course_code === selectedGroup.course_code);
+    return attendance.filter(a => {
+      if (a.user_code !== selectedStudentCode) return false;
+      if (c && c.start_date && a.attendance_date < c.start_date) return false;
+      if (c && c.end_date && a.attendance_date > c.end_date) return false;
+      return true;
+    }).sort((a, b) => b.attendance_date.localeCompare(a.attendance_date));
   }, [selectedStudentCode, selectedGroup, attendance, courses]);
 
   useEffect(() => {
@@ -154,16 +154,16 @@ export default function AdminAttendancePage() {
       let endedArr = arr.filter(g => {
         const c = courseMap.get(g.course_code);
         if (c && c.end_date) {
-           return c.end_date < todayStr;
+          return c.end_date < todayStr;
         }
         return false;
       });
 
       const term = q.trim().toLowerCase();
       if (term) {
-        return endedArr.filter(g => 
-          g.course_name.toLowerCase().includes(term) || 
-          g.course_code.toLowerCase().includes(term) || 
+        return endedArr.filter(g =>
+          g.course_name.toLowerCase().includes(term) ||
+          g.course_code.toLowerCase().includes(term) ||
           g.batch_no.toLowerCase().includes(term)
         );
       }
@@ -176,18 +176,18 @@ export default function AdminAttendancePage() {
         return targetDate >= c.start_date && targetDate <= c.end_date;
       }
       if (c && c.start_date) {
-         return targetDate >= c.start_date;
+        return targetDate >= c.start_date;
       }
       if (c && c.end_date) {
-         return targetDate <= c.end_date;
+        return targetDate <= c.end_date;
       }
       return true;
     });
 
     const scheduledCoursesToday = timetables.filter((t: any) => t.day_of_week === currentDayName);
-    
+
     // STRICTLY RELY ON TIMETABLE: Only show batches if their course is scheduled today
-    const scheduledArr = arr.filter(g => 
+    const scheduledArr = arr.filter(g =>
       scheduledCoursesToday.some((t: any) => t.course_code === g.course_code)
     );
 
@@ -197,9 +197,9 @@ export default function AdminAttendancePage() {
       if (c && c.start_date && c.end_date) {
         isActive = targetDate >= c.start_date && targetDate <= c.end_date;
       } else if (c && c.start_date) {
-         isActive = targetDate >= c.start_date;
+        isActive = targetDate >= c.start_date;
       } else if (c && c.end_date) {
-         isActive = targetDate <= c.end_date;
+        isActive = targetDate <= c.end_date;
       }
 
       if (!isActive) return;
@@ -219,16 +219,16 @@ export default function AdminAttendancePage() {
     });
 
     const term = q.trim().toLowerCase();
-    
+
     // BYPASS SCHEDULE if user is directly searching
     if (term) {
-      return arr.filter(g => 
-        g.course_name.toLowerCase().includes(term) || 
-        g.course_code.toLowerCase().includes(term) || 
+      return arr.filter(g =>
+        g.course_name.toLowerCase().includes(term) ||
+        g.course_code.toLowerCase().includes(term) ||
         g.batch_no.toLowerCase().includes(term)
       );
     }
-    
+
     return scheduledArr;
   }, [enrollments, q, timetables, currentDayName, courses, targetDate, filterMode]);
 
@@ -241,7 +241,7 @@ export default function AdminAttendancePage() {
         text: `${t.start_time} - ${t.end_time}`,
         teacher_name: t.teacher_name,
         subject_name: t.subject_name
-      })).sort((a,b) => a.text.localeCompare(b.text));
+      })).sort((a, b) => a.text.localeCompare(b.text));
     }
     // Fallback if they search class not scheduled today
     const allTimeTables = timetables.filter(t => t.course_code === selectedGroup.course_code);
@@ -250,19 +250,19 @@ export default function AdminAttendancePage() {
       // For now, let's keep all distinct slots
       const seen = new Set();
       const distinct = [];
-      for(const t of allTimeTables) {
-         const key = `${t.start_time} - ${t.end_time}`;
-         if(!seen.has(key)) {
-            seen.add(key);
-            distinct.push({ id: t.timetable_id, text: key, teacher_name: t.teacher_name, subject_name: t.subject_name });
-         }
+      for (const t of allTimeTables) {
+        const key = `${t.start_time} - ${t.end_time}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          distinct.push({ id: t.timetable_id, text: key, teacher_name: t.teacher_name, subject_name: t.subject_name });
+        }
       }
-      return distinct.sort((a,b) => a.text.localeCompare(b.text));
+      return distinct.sort((a, b) => a.text.localeCompare(b.text));
     }
     return [
-       { id: null, text: "Morning", teacher_name: null, subject_name: null },
-       { id: null, text: "Afternoon", teacher_name: null, subject_name: null },
-       { id: null, text: "Evening", teacher_name: null, subject_name: null }
+      { id: null, text: "Morning", teacher_name: null, subject_name: null },
+      { id: null, text: "Afternoon", teacher_name: null, subject_name: null },
+      { id: null, text: "Evening", teacher_name: null, subject_name: null }
     ];
   }, [selectedGroup, timetables, currentDayName]);
 
@@ -272,10 +272,10 @@ export default function AdminAttendancePage() {
   const openGroup = (g: BatchGroup) => {
     setSelectedGroup(g);
     if (filterMode === "ended") {
-       const c = courses.find(x => x.course_code === g.course_code);
-       if (c && c.end_date) {
-         setTargetDate(c.end_date);
-       }
+      const c = courses.find(x => x.course_code === g.course_code);
+      if (c && c.end_date) {
+        setTargetDate(c.end_date);
+      }
     }
     setGroupModalOpen(true);
   };
@@ -288,7 +288,7 @@ export default function AdminAttendancePage() {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to mark attendance");
     }
   };
-  
+
   const doUpdateAttendance = async (attendance_id: number, check_today: boolean) => {
     setError("");
     try {
@@ -305,20 +305,20 @@ export default function AdminAttendancePage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Attendance</h1>
           <p className="text-slate-500 font-medium text-sm mt-1">
-            {filterMode === "scheduled" ? 
-              `Select a course batch scheduled for ${targetDate === getTodayDateString() ? "today" : targetDate} (${currentDayName}) to manage student attendance.` : 
+            {filterMode === "scheduled" ?
+              `Select a course batch scheduled for ${targetDate === getTodayDateString() ? "today" : targetDate} (${currentDayName}) to manage student attendance.` :
               `View and manage historical attendance for courses that have already ended.`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
-            <button 
+            <button
               onClick={() => setFilterMode("scheduled")}
               className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-lg transition-all active:scale-95 ${filterMode === "scheduled" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               Active
             </button>
-            <button 
+            <button
               onClick={() => setFilterMode("ended")}
               className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-lg transition-all active:scale-95 ${filterMode === "ended" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
@@ -326,7 +326,7 @@ export default function AdminAttendancePage() {
             </button>
           </div>
           {filterMode === "scheduled" && (
-            <input 
+            <input
               type="date"
               value={targetDate}
               onChange={e => setTargetDate(e.target.value)}
@@ -360,7 +360,7 @@ export default function AdminAttendancePage() {
                   {g.batch_no || "No Batch"}
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
                 <div className="flex items-center text-sm font-semibold text-slate-600">
                   <Users className="w-4 h-4 mr-2 text-slate-400" />
@@ -376,7 +376,7 @@ export default function AdminAttendancePage() {
               </div>
             </div>
           ))}
-          
+
           {groups.length === 0 && (
             <div className="col-span-full py-12 text-center">
               <div className="text-slate-400 font-medium text-sm sm:text-base">{busy ? "Loading batches..." : q ? "No batches matched your search." : filterMode === "ended" ? "No ended courses found." : `No active batches found on schedule for ${currentDayName}.`}</div>
@@ -393,7 +393,7 @@ export default function AdminAttendancePage() {
                 <RefreshCw className="w-6 h-6 animate-spin text-brand-600" />
               </div>
             )}
-            
+
             <div className="flex justify-between items-center bg-brand-50 border border-brand-100 rounded-2xl p-4 mb-2">
               <div>
                 <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest leading-none mb-1">Attendance Date</p>
@@ -411,9 +411,9 @@ export default function AdminAttendancePage() {
                     {currentSlots.map(slot => (
                       <th key={slot.text + (slot.id || '')} className="px-5 py-3 text-center border-l border-slate-200">
                         <div className="flex flex-col">
-                           <span className="text-brand-900">{slot.text}</span>
-                           {slot.subject_name && <span className="text-[10px] text-blue-600 font-bold">{slot.subject_name}</span>}
-                           {slot.teacher_name && <span className="text-[9px] text-slate-500 font-normal">{slot.teacher_name}</span>}
+                          <span className="text-brand-900">{slot.text}</span>
+                          {slot.subject_name && <span className="text-[10px] text-blue-600 font-bold">{slot.subject_name}</span>}
+                          {slot.teacher_name && <span className="text-[9px] text-slate-500 font-normal">{slot.teacher_name}</span>}
                         </div>
                       </th>
                     ))}
@@ -422,7 +422,7 @@ export default function AdminAttendancePage() {
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {selectedGroup.students.map((stu) => {
                     return (
-                      <tr key={stu.student_code} className="hover:bg-slate-50/50">
+                      <tr key={stu.student_code} className="hover:bg-blue-50 hover:shadow-md">
                         <td className="px-5 py-4 font-bold text-slate-800 sticky left-0 bg-white/95 z-10 min-w-[200px]">
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate">{stu.student_name}</span>
@@ -441,10 +441,10 @@ export default function AdminAttendancePage() {
                         </td>
                         <td className="px-5 py-4 font-medium text-slate-500">{stu.student_code}</td>
                         {currentSlots.map(slot => {
-                          const record = attendance.find(a => 
-                             a.user_code === stu.student_code && 
-                             a.attendance_date.startsWith(targetDate) && 
-                             (a.timetable_id === slot.id || (a.slot === slot.text && !a.timetable_id))
+                          const record = attendance.find(a =>
+                            a.user_code === stu.student_code &&
+                            a.attendance_date.startsWith(targetDate) &&
+                            (a.timetable_id === slot.id || (a.slot === slot.text && !a.timetable_id))
                           );
                           return (
                             <td key={slot.text} className="px-5 py-4 border-l border-slate-100 text-center">
@@ -459,7 +459,7 @@ export default function AdminAttendancePage() {
                                       <XCircle className="w-3.5 h-3.5 mr-1" /> Absent
                                     </span>
                                   )}
-                                  <button 
+                                  <button
                                     onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
                                     className="text-[10px] text-slate-400 font-semibold hover:text-brand-600 underline"
                                   >
@@ -502,35 +502,35 @@ export default function AdminAttendancePage() {
               {selectedGroup.students.map((stu) => (
                 <div key={stu.student_code} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
                   <div className="flex items-center justify-between">
-                     <div className="flex flex-col">
-                        <div className="text-sm font-bold text-slate-800">{stu.student_name}</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stu.student_code}</div>
-                     </div>
-                     <button
-                        onClick={() => {
-                          setSelectedStudentName(stu.student_name);
-                          setSelectedStudentCode(stu.student_code);
-                          setStudentReportOpen(true);
-                        }}
-                        className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </button>
+                    <div className="flex flex-col">
+                      <div className="text-sm font-bold text-slate-800">{stu.student_name}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stu.student_code}</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedStudentName(stu.student_name);
+                        setSelectedStudentCode(stu.student_code);
+                        setStudentReportOpen(true);
+                      }}
+                      className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </button>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 gap-2">
                     {currentSlots.map(slot => {
-                      const record = attendance.find(a => 
-                        a.user_code === stu.student_code && 
-                        a.attendance_date.startsWith(targetDate) && 
+                      const record = attendance.find(a =>
+                        a.user_code === stu.student_code &&
+                        a.attendance_date.startsWith(targetDate) &&
                         (a.timetable_id === slot.id || a.slot === slot.text)
                       );
                       return (
                         <div key={slot.text} className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200/60">
                           <div className="flex flex-col">
-                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{slot.text}</span>
-                             {slot.subject_name && <span className="text-[10px] text-blue-600 font-bold">{slot.subject_name}</span>}
-                             {slot.teacher_name && <span className="text-[8px] text-slate-500">Tr. {slot.teacher_name}</span>}
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{slot.text}</span>
+                            {slot.subject_name && <span className="text-[10px] text-blue-600 font-bold">{slot.subject_name}</span>}
+                            {slot.teacher_name && <span className="text-[8px] text-slate-500">Tr. {slot.teacher_name}</span>}
                           </div>
                           <div className="flex items-center gap-2">
                             {record ? (
@@ -538,7 +538,7 @@ export default function AdminAttendancePage() {
                                 <span className={`px-2 py-0.5 rounded-lg font-bold text-[10px] border ${record.check_today ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-red-700 bg-red-50 border-red-100'}`}>
                                   {record.check_today ? "Present" : "Absent"}
                                 </span>
-                                <button 
+                                <button
                                   onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
                                   className="text-[10px] text-brand-600 font-bold underline"
                                 >
@@ -609,68 +609,68 @@ export default function AdminAttendancePage() {
 
 
       <Modal title={`Attendance Detail: ${selectedStudentName}`} open={studentReportOpen} onClose={() => setStudentReportOpen(false)}>
-         <div className="space-y-4 pt-2">
-            <div className="flex justify-between items-center text-sm p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
-              <div className="font-semibold text-slate-700">Course: <span className="text-slate-900">{selectedGroup?.course_name}</span></div>
-              <div className="font-semibold text-slate-700">
-                Total Present: <span className="text-brand-600">{reportRecords.filter(r => r.check_today).length}</span> / {reportRecords.length}
-              </div>
+        <div className="space-y-4 pt-2">
+          <div className="flex justify-between items-center text-sm p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+            <div className="font-semibold text-slate-700">Course: <span className="text-slate-900">{selectedGroup?.course_name}</span></div>
+            <div className="font-semibold text-slate-700">
+              Total Present: <span className="text-brand-600">{reportRecords.filter(r => r.check_today).length}</span> / {reportRecords.length}
             </div>
-            
-            <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[50vh] custom-scrollbar">
-              <table className="w-full text-left text-sm text-slate-600 border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Slot / Range</th>
-                    <th className="px-5 py-3">Teacher</th>
-                    <th className="px-5 py-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {reportRecords.map(r => (
-                    <tr key={r.attendance_id} className="hover:bg-slate-50/50">
-                      <td className="px-5 py-3.5 font-bold text-slate-700 whitespace-nowrap">{r.attendance_date}</td>
-                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">
-                         <div className="flex flex-col">
-                            <span>{r.slot}</span>
-                            {r.time_range && <span className="text-[10px] text-brand-600 lowercase font-bold">{r.time_range}</span>}
-                         </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">
-                         {r.teacher_name || "-"}
-                      </td>
-                      <td className="px-5 py-3.5 text-center">
-                         {r.check_today ? (
-                            <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md font-bold text-xs border border-emerald-200">
-                              <CheckCircle className="w-3.5 h-3.5 mr-1" /> Present
-                            </span>
-                         ) : (
-                            <span className="inline-flex items-center text-red-700 bg-red-50 px-2 py-1 rounded-md font-bold text-xs border border-red-200">
-                              <XCircle className="w-3.5 h-3.5 mr-1" /> Absent
-                            </span>
-                         )}
-                      </td>
-                    </tr>
-                  ))}
-                  {reportRecords.length === 0 && (
-                     <tr>
-                       <td colSpan={3} className="px-5 py-8 text-center text-slate-400 font-medium">No attendance records found for this student during the course timeframe.</td>
-                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          </div>
 
-            <div className="flex justify-end pt-4">
-              <button
-                onClick={() => setStudentReportOpen(false)}
-                className="px-5 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-colors shadow-sm"
-              >
-                Close Report
-              </button>
-            </div>
-         </div>
+          <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[50vh] custom-scrollbar">
+            <table className="w-full text-left text-sm text-slate-600 border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 sticky top-0 z-10">
+                <tr>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Slot / Range</th>
+                  <th className="px-5 py-3">Teacher</th>
+                  <th className="px-5 py-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {reportRecords.map(r => (
+                  <tr key={r.attendance_id} className="hover:bg-blue-50 hover:shadow-md">
+                    <td className="px-5 py-3.5 font-bold text-slate-700 whitespace-nowrap">{r.attendance_date}</td>
+                    <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span>{r.slot}</span>
+                        {r.time_range && <span className="text-[10px] text-brand-600 lowercase font-bold">{r.time_range}</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                      {r.teacher_name || "-"}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      {r.check_today ? (
+                        <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md font-bold text-xs border border-emerald-200">
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Present
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-red-700 bg-red-50 px-2 py-1 rounded-md font-bold text-xs border border-red-200">
+                          <XCircle className="w-3.5 h-3.5 mr-1" /> Absent
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {reportRecords.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-5 py-8 text-center text-slate-400 font-medium">No attendance records found for this student during the course timeframe.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={() => setStudentReportOpen(false)}
+              className="px-5 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-colors shadow-sm"
+            >
+              Close Report
+            </button>
+          </div>
+        </div>
       </Modal>
 
     </div>

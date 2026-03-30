@@ -171,7 +171,7 @@ export default function DashboardPage() {
 
         {dashboardLoading && (typeof admin.isLoading === 'boolean' || admin.isLoading.overall) && (
           <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-0 pointer-events-none absolute">
-             {/* Skeletons are now handled per-card below for better UX */}
+            {/* Skeletons are now handled per-card below for better UX */}
           </div>
         )}
 
@@ -184,7 +184,7 @@ export default function DashboardPage() {
           ].map((s, i) => {
             const isIndividualLoading = typeof admin.isLoading !== 'boolean' && admin.isLoading[s.loadingKey as keyof typeof admin.isLoading];
             if (isIndividualLoading) return <StatisticSkeleton key={i} />;
-            
+
             return (
               <div
                 key={i}
@@ -457,7 +457,7 @@ export default function DashboardPage() {
                 <BookOpen className="w-5 h-5" />
               </div>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
               {(!(childAttendance as any)?.records || (childAttendance as any).records.length === 0) ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3 py-10">
@@ -469,16 +469,15 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-4">
                   {(childAttendance as any).records?.map((record: any, index: number) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="group flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:shadow-md hover:border-brand-100 transition-all duration-300"
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
-                          record.status === 'Present' 
-                            ? 'bg-emerald-50 text-emerald-600' 
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${record.status === 'Present'
+                            ? 'bg-emerald-50 text-emerald-600'
                             : 'bg-rose-50 text-rose-600'
-                        }`}>
+                          }`}>
                           {record.status === 'Present' ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-2 h-2 rounded-full bg-rose-500" />}
                         </div>
                         <div>
@@ -490,20 +489,19 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                      
-                      <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${
-                        record.status === 'Present' 
-                          ? 'bg-emerald-500/10 text-emerald-600' 
+
+                      <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${record.status === 'Present'
+                          ? 'bg-emerald-500/10 text-emerald-600'
                           : 'bg-rose-500/10 text-rose-600'
-                      }`}>
+                        }`}>
                         {record.status}
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Pagination Controls */}
                   <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
-                    <button 
+                    <button
                       onClick={() => setChildPage(p => Math.max(1, p - 1))}
                       disabled={childPage === 1}
                       className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -514,7 +512,7 @@ export default function DashboardPage() {
                     <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
                       Page {childPage} of {(childAttendance as any).pagination?.total_pages || 1}
                     </div>
-                    <button 
+                    <button
                       onClick={() => setChildPage(p => p + 1)}
                       disabled={childPage >= ((childAttendance as any).pagination?.total_pages || 1)}
                       className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -533,7 +531,7 @@ export default function DashboardPage() {
               <h3 className="font-black text-slate-900 text-xl tracking-tight">Summary</h3>
               <p className="text-sm text-slate-500 font-medium mt-1">Overall distribution</p>
             </div>
-            
+
             <div className="flex-1 w-full relative min-h-[250px] flex items-center justify-center">
               {summary.total === 0 ? (
                 <p className="text-slate-400 font-bold">No records</p>
@@ -553,9 +551,9 @@ export default function DashboardPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                       itemStyle={{ fontWeight: 800 }}
+                    <Tooltip
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      itemStyle={{ fontWeight: 800 }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -586,7 +584,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      
+
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -624,7 +622,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Main Chart */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 lg:col-span-2 flex flex-col min-h-[350px]">
           <div className="flex justify-between items-center mb-6">
@@ -637,17 +635,17 @@ export default function DashboardPage() {
           <div className="flex-1 w-full relative min-h-0">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={studentChartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={15} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
-                  cursor={{stroke: '#e2e8f0', strokeWidth: 1}}
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={15} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="pv" 
-                  stroke="#4f46e5" 
-                  strokeWidth={3} 
-                  dot={{r: 4, fill: '#fff', strokeWidth: 2, stroke: '#4f46e5'}} 
+                <Line
+                  type="monotone"
+                  dataKey="pv"
+                  stroke="#4f46e5"
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: '#fff', strokeWidth: 2, stroke: '#4f46e5' }}
                   activeDot={{ r: 6, fill: "#4f46e5", stroke: "#4f46e5", strokeWidth: 2 }}
                 />
               </LineChart>
@@ -677,7 +675,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-        
+
       </div>
 
       {/* Recent Enrollments Section */}
@@ -698,7 +696,7 @@ export default function DashboardPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {courses.map((c, i) => (
-                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={i} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                   <td className="px-6 py-4 font-semibold text-slate-800 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold">
                       {c.course.course_name[0]}

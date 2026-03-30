@@ -20,7 +20,7 @@ function Modal({
   open,
   onClose,
   children,
-  
+
 }: {
   title: string;
   open: boolean;
@@ -97,7 +97,7 @@ export default function AdminStudentsPage() {
   const [cCategory, setCCategory] = useState("");
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
-  const [cPaymentPlan, setCPaymentPlan] = useState(""); 
+  const [cPaymentPlan, setCPaymentPlan] = useState("");
   const [cDownpayment, setCDownpayment] = useState<number | "">(0);
   const [cInstallment, setCInstallment] = useState<number | "">(0);
   const [cBatchId, setCBatchId] = useState<number | "" | "manual">("");
@@ -385,19 +385,19 @@ export default function AdminStudentsPage() {
     setBusy(true);
     setError("");
     try {
-        await approveMutation.mutateAsync({
-            id: selected.user_id,
-            payload: {
-                user_code: approvePrefix === "" ? approveManualCode : undefined,
-                auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
-            }
-        });
-        setApproveOpen(false);
-        await load();
+      await approveMutation.mutateAsync({
+        id: selected.user_id,
+        payload: {
+          user_code: approvePrefix === "" ? approveManualCode : undefined,
+          auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
+        }
+      });
+      setApproveOpen(false);
+      await load();
     } catch (e: any) {
-        handleError(e, "Failed to approve student");
+      handleError(e, "Failed to approve student");
     } finally {
-        setBusy(false);
+      setBusy(false);
     }
   };
 
@@ -436,7 +436,7 @@ export default function AdminStudentsPage() {
   const handleFastEnroll = (uCode: string, cCode: string) => {
     setFUserCode(uCode);
     setFCourseCode(cCode);
-    
+
     // Auto-select category if course is found
     if (cCode) {
       const course = courses.find(c => c.course_code === cCode);
@@ -472,13 +472,13 @@ export default function AdminStudentsPage() {
         downpayment: fDown !== "" ? Number(fDown) : undefined,
         installment_amount: fInst !== "" ? Number(fInst) : undefined,
       });
-      
+
       // Refresh relations
       if (selected && selected.user_code === fUserCode) {
         const updated = await AdminService.getStudentRelations(fUserCode);
         setRelations(updated);
       }
-      
+
       setFormalizeOpen(false);
       toast.success("Enrollment formalized!");
     } catch (e: any) {
@@ -493,7 +493,7 @@ export default function AdminStudentsPage() {
 
   const exportSelectedStudent = () => {
     if (!selected || !relations) return;
-    
+
     // Sheet 1: Student Information
     const infoData = [{
       "Code": selected.user_code,
@@ -597,20 +597,20 @@ export default function AdminStudentsPage() {
     }));
 
     const wb = XLSX.utils.book_new();
-    
+
     const wsInfo = XLSX.utils.json_to_sheet(infoData);
     XLSX.utils.book_append_sheet(wb, wsInfo, "Student Info");
 
-    const wsEnroll = XLSX.utils.json_to_sheet(enrollmentData.length ? enrollmentData : [{"Info": "No enrollments found"}]);
+    const wsEnroll = XLSX.utils.json_to_sheet(enrollmentData.length ? enrollmentData : [{ "Info": "No enrollments found" }]);
     XLSX.utils.book_append_sheet(wb, wsEnroll, "Enrollments");
 
-    const wsPayment = XLSX.utils.json_to_sheet(paymentData.length ? paymentData : [{"Info": "No payments recorded"}]);
+    const wsPayment = XLSX.utils.json_to_sheet(paymentData.length ? paymentData : [{ "Info": "No payments recorded" }]);
     XLSX.utils.book_append_sheet(wb, wsPayment, "Payment Receipts");
 
-    const wsMonthlySummary = XLSX.utils.json_to_sheet(monthlySummary.length ? monthlySummary : [{"Info": "No monthly data"}]);
+    const wsMonthlySummary = XLSX.utils.json_to_sheet(monthlySummary.length ? monthlySummary : [{ "Info": "No monthly data" }]);
     XLSX.utils.book_append_sheet(wb, wsMonthlySummary, "Monthly Summary");
 
-    const wsAttendance = XLSX.utils.json_to_sheet(attendanceData.length ? attendanceData : [{"Info": "No attendance records"}]);
+    const wsAttendance = XLSX.utils.json_to_sheet(attendanceData.length ? attendanceData : [{ "Info": "No attendance records" }]);
     XLSX.utils.book_append_sheet(wb, wsAttendance, "Attendance Details");
 
     XLSX.writeFile(wb, `Student_${selected.user_code}_Details.xlsx`);
@@ -647,7 +647,7 @@ export default function AdminStudentsPage() {
         "How Did You Hear": s.how_did_you_hear || "-",
         "Intended Course Code": s.intended_course_code || "-",
         "Created At": s.created_at ? s.created_at.slice(0, 10) : "-"
-      })) : [{"Info": "No students recorded"}]);
+      })) : [{ "Info": "No students recorded" }]);
       XLSX.utils.book_append_sheet(wb, wsStudents, "All Students");
 
       // Compute total paid per enrollment for left amount
@@ -682,7 +682,7 @@ export default function AdminStudentsPage() {
           "Left Amount (MMK)": Math.max(0, courseCost - totalPaidForEnroll - (discountPerEnrollment[p.enrollment_id] || 0)),
           "Status": p.status
         };
-      }) : [{"Info": "No payments recorded"}]);
+      }) : [{ "Info": "No payments recorded" }]);
       XLSX.utils.book_append_sheet(wb, wsPayments, "All Payments");
 
       // Monthly Summary across the entire system
@@ -698,7 +698,7 @@ export default function AdminStudentsPage() {
         "Total Paid (MMK)": v.totalPaid,
         "No. of Payments": v.count
       }));
-      const wsMonthlySummary = XLSX.utils.json_to_sheet(monthlySummary.length ? monthlySummary : [{"Info": "No monthly data"}]);
+      const wsMonthlySummary = XLSX.utils.json_to_sheet(monthlySummary.length ? monthlySummary : [{ "Info": "No monthly data" }]);
       XLSX.utils.book_append_sheet(wb, wsMonthlySummary, "Monthly Summary");
 
       const wsEnrollments = XLSX.utils.json_to_sheet(enrollments.length ? enrollments.map((e: any) => {
@@ -722,7 +722,7 @@ export default function AdminStudentsPage() {
           "FOC Items": e.foc_items || "-",
           "Status": e.status ? "Active" : "Inactive"
         };
-      }) : [{"Info": "No enrollments found"}]);
+      }) : [{ "Info": "No enrollments found" }]);
       XLSX.utils.book_append_sheet(wb, wsEnrollments, "All Enrollments");
 
       const wsAttendance = XLSX.utils.json_to_sheet(attendance.length ? attendance.map((a: any) => ({
@@ -730,12 +730,12 @@ export default function AdminStudentsPage() {
         "Student Name": a.username,
         "Slot": a.slot,
         "Status": a.check_today ? "Present" : "Absent"
-      })) : [{"Info": "No attendance records"}]);
+      })) : [{ "Info": "No attendance records" }]);
       XLSX.utils.book_append_sheet(wb, wsAttendance, "All Attendance");
 
-      XLSX.writeFile(wb, `System_Backup_Data_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.writeFile(wb, `System_Backup_Data_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (error) {
-       toast.error("Failed to export backup. Please try again.");
+      toast.error("Failed to export backup. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -807,7 +807,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           {error && (
-            <div 
+            <div
               ref={errorRef}
               className="px-4 py-3 bg-red-50 border border-red-100 text-red-700 text-sm font-bold rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm"
             >
@@ -838,7 +838,7 @@ export default function AdminStudentsPage() {
               ) : (
                 <>
                   {filtered.map((s: AdminStudent) => (
-                    <tr key={s.user_code} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={s.user_code} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-800">{s.user_code}</td>
                       <td className="px-6 py-4">
                         {s.profile_picture ? (
@@ -854,8 +854,8 @@ export default function AdminStudentsPage() {
                           </div>
                         )}
                       </td>
-                      <td 
-                        className="px-6 py-4 font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer" 
+                      <td
+                        className="px-6 py-4 font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer"
                         onClick={() => openView(s)}
                       >
                         {s.username}
@@ -930,7 +930,7 @@ export default function AdminStudentsPage() {
           ) : (
             <>
               {filtered.map((s: AdminStudent) => (
-                <div key={s.user_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+                <div key={s.user_code} className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       {s.profile_picture ? (
@@ -947,51 +947,51 @@ export default function AdminStudentsPage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                       <span
-                          className={[
-                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
-                            s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
-                          ].join(" ")}
-                        >
-                          {s.is_active ? "Active" : "Inactive"}
-                        </span>
-                        <div className="flex gap-2">
-                          {!s.is_active && (
-                            <button
-                              onClick={() => handleApprove(s)}
-                              disabled={busy}
-                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
-                              title="Approve"
-                            >
-                              <Check className="w-5 h-5" />
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              onClick={() => openEdit(s)}
-                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
-                              title="Edit"
-                            >
-                              <Pencil className="w-5 h-5" />
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              onClick={() => doDelete(s)}
-                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
+                      <span
+                        className={[
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                          s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
+                        ].join(" ")}
+                      >
+                        {s.is_active ? "Active" : "Inactive"}
+                      </span>
+                      <div className="flex gap-2">
+                        {!s.is_active && (
+                          <button
+                            onClick={() => handleApprove(s)}
+                            disabled={busy}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
+                            title="Approve"
+                          >
+                            <Check className="w-5 h-5" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => openEdit(s)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
+                            title="Edit"
+                          >
+                            <Pencil className="w-5 h-5" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => doDelete(s)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3 text-sm pt-1">
                     <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                       <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">DOB</div>
-                      <div className="font-semibold text-slate-700">
+                      <div className="font-semibold text-slate-700 text-nowrap">
                         {s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}
                       </div>
                     </div>
@@ -1305,7 +1305,7 @@ export default function AdminStudentsPage() {
                       <option value="installment">Installment</option>
                     </select>
                   </div>
-                  
+
                   {cPaymentPlan === "installment" && (
                     <>
                       <div>
@@ -1656,9 +1656,9 @@ export default function AdminStudentsPage() {
                         </div>
                       </div>
                       {(!relations || relations.enrollments.length === 0) && (
-                        <button 
+                        <button
                           onClick={() => handleFastEnroll(selected.user_code, selected.intended_course_code!)}
-                          className="w-full sm:w-auto bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-amber-700 shadow-lg shadow-amber-200/50 flex items-center justify-center gap-2 transition-all active:scale-95"
+                          className="w-full sm:w-auto bg-amber-600 text-wrap text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-amber-700 shadow-lg shadow-amber-200/50 flex items-center justify-center gap-2 transition-all active:scale-95"
                         >
                           <Plus className="w-4 h-4" strokeWidth={3} />
                           Formalize Enrollment
@@ -1731,6 +1731,8 @@ export default function AdminStudentsPage() {
                       </div>
                       <div className="mt-2 text-sm grid grid-cols-2 gap-2 text-slate-600">
                         <div><span className="font-semibold text-slate-500">Batch:</span> {enr.batch_no || "-"}</div>
+                        <div><span className="font-semibold text-slate-500">Schedule:</span> {enr.batch_start_date ? `${enr.batch_start_date} to ${enr.batch_end_date || '?'}` : 'TBA'}</div>
+                        <div><span className="font-semibold text-slate-500">Room:</span> {enr.room || "-"}</div>
                         <div><span className="font-semibold text-slate-500">Plan:</span> {enr.payment_plan === "full" ? "Cash Down" : enr.payment_plan === "installment" ? "Installment" : "-"}</div>
                         {enr.payment_plan === "installment" && (
                           <>
@@ -1778,7 +1780,7 @@ export default function AdminStudentsPage() {
                 <div className="text-sm font-medium text-slate-500">No payment receipts found for this student.</div>
               ) : null}
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-2">
               {!selected.is_active && (
                 <button
@@ -1810,237 +1812,237 @@ export default function AdminStudentsPage() {
       </Modal>
 
       {/* Approval Modal */}
-      <Modal 
-          title="Approve Student Account" 
-          open={approveOpen} 
-          onClose={() => setApproveOpen(false)}
+      <Modal
+        title="Approve Student Account"
+        open={approveOpen}
+        onClose={() => setApproveOpen(false)}
       >
-          <div className="space-y-6">
-              {error && (
-                <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
-                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Approval Error</p>
-                    {error}
-                  </div>
-                </div>
-              )}
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-sm text-amber-800">
-                  Review or change the student code before activating the account. 
-                  You can either set a manual code or auto-generate one with a prefix.
+        <div className="space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Approval Error</p>
+                {error}
               </div>
-
-              <div className="space-y-4">
-                  <label className="block text-sm font-bold text-slate-700">Code Assignment Method</label>
-                  <div className="grid grid-cols-3 gap-2">
-                      <button 
-                          onClick={() => setApprovePrefix("")}
-                          className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                      >
-                          Manual
-                      </button>
-                      <button 
-                          onClick={() => setApprovePrefix("CO")}
-                          className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "CO" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                      >
-                          Auto CO
-                      </button>
-                      <button 
-                          onClick={() => setApprovePrefix("IN")}
-                          className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "IN" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                      >
-                          Auto IN
-                      </button>
-                  </div>
-              </div>
-
-              {approvePrefix === "" && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                      <label className="block text-sm font-bold text-slate-700">Student Code (Manual)</label>
-                      <input 
-                          value={approveManualCode}
-                          onChange={(e) => setApproveManualCode(e.target.value)}
-                          className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all font-mono tracking-wider text-slate-900"
-                      />
-                  </div>
-              )}
-
-              {approvePrefix !== "" && (
-                  <div className="p-5 bg-[#0d4d4d]/5 rounded-3xl border border-[#0d4d4d]/10 flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
-                      <div className="w-12 h-12 bg-[#0d4d4d] text-white rounded-2xl flex items-center justify-center font-bold text-xl">
-                          {approvePrefix}
-                      </div>
-                      <div className="text-sm text-[#0d4d4d]">
-                          <p className="font-bold">System Managed</p>
-                          <p className="opacity-70">A new sequence number will be generated for prefix <span className="font-mono">{approvePrefix}</span></p>
-                      </div>
-                  </div>
-              )}
-
-              <div className="pt-4 border-t border-slate-100 flex gap-3">
-                  <button 
-                        onClick={() => setApproveOpen(false)}
-                        className="flex-1 py-4 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all border-2 border-transparent"
-                  >
-                      Cancel
-                  </button>
-                  <button 
-                        onClick={submitApprove}
-                        disabled={busy}
-                        className="flex-[2] py-4 bg-[#0d4d4d] text-white font-bold rounded-2xl hover:bg-[#0d4d4d]/90 active:scale-95 transition-all shadow-lg shadow-[#0d4d4d]/20 disabled:opacity-50"
-                  >
-                      Confirm Approval
-                  </button>
-              </div>
+            </div>
+          )}
+          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-sm text-amber-800">
+            Review or change the student code before activating the account.
+            You can either set a manual code or auto-generate one with a prefix.
           </div>
+
+          <div className="space-y-4">
+            <label className="block text-sm font-bold text-slate-700">Code Assignment Method</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setApprovePrefix("")}
+                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+              >
+                Manual
+              </button>
+              <button
+                onClick={() => setApprovePrefix("CO")}
+                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "CO" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+              >
+                Auto CO
+              </button>
+              <button
+                onClick={() => setApprovePrefix("IN")}
+                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "IN" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+              >
+                Auto IN
+              </button>
+            </div>
+          </div>
+
+          {approvePrefix === "" && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+              <label className="block text-sm font-bold text-slate-700">Student Code (Manual)</label>
+              <input
+                value={approveManualCode}
+                onChange={(e) => setApproveManualCode(e.target.value)}
+                className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all font-mono tracking-wider text-slate-900"
+              />
+            </div>
+          )}
+
+          {approvePrefix !== "" && (
+            <div className="p-5 bg-[#0d4d4d]/5 rounded-3xl border border-[#0d4d4d]/10 flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
+              <div className="w-12 h-12 bg-[#0d4d4d] text-white rounded-2xl flex items-center justify-center font-bold text-xl">
+                {approvePrefix}
+              </div>
+              <div className="text-sm text-[#0d4d4d]">
+                <p className="font-bold">System Managed</p>
+                <p className="opacity-70">A new sequence number will be generated for prefix <span className="font-mono">{approvePrefix}</span></p>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-slate-100 flex gap-3">
+            <button
+              onClick={() => setApproveOpen(false)}
+              className="flex-1 py-4 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all border-2 border-transparent"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitApprove}
+              disabled={busy}
+              className="flex-[2] py-4 bg-[#0d4d4d] text-white font-bold rounded-2xl hover:bg-[#0d4d4d]/90 active:scale-95 transition-all shadow-lg shadow-[#0d4d4d]/20 disabled:opacity-50"
+            >
+              Confirm Approval
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Formalize Enrollment Modal */}
-      <Modal 
-        title={`Formalize Enrollment — ${(courses.find(c => c.course_code === fCourseCode))?.course_name || fCourseCode}`} 
-        open={formalizeOpen} 
+      <Modal
+        title={`Formalize Enrollment — ${(courses.find(c => c.course_code === fCourseCode))?.course_name || fCourseCode}`}
+        open={formalizeOpen}
         onClose={() => setFormalizeOpen(false)}
       >
-          <div className="space-y-4">
-              {error && (
-                <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl animate-in fade-in duration-300">
-                  {error}
-                </div>
-              )}
-              <div className="p-4 bg-brand-50 rounded-2xl border border-brand-100 text-sm text-brand-800">
-                  Completing this will convert the student's interest into a formal course enrollment.
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Course Category</label>
-                       <select 
-                         value={fCategory}
-                         onChange={(e) => {
-                           setFCategory(e.target.value);
-                           setFCourseCode("");
-                         }}
-                         className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-brand-500 focus:outline-none transition-all"
-                       >
-                         <option value="">All Categories</option>
-                         {categories.map(cat => (
-                           <option key={cat} value={cat}>{cat}</option>
-                         ))}
-                       </select>
-                  </div>
-                  <div className="sm:col-span-2">
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Course</label>
-                      <select 
-                        value={fCourseCode}
-                        onChange={(e) => setFCourseCode(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-brand-500 focus:outline-none transition-all"
-                      >
-                        <option value="">Select Course...</option>
-                        {filteredCourses_F.map(c => (
-                          <option key={c.course_code} value={c.course_code}>{c.course_name}</option>
-                        ))}
-                      </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Batch</label>
-                    {fBatches.length > 0 ? (
-                      <select
-                        value={fBatchId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFBatchId(val ? (val === "manual" ? "manual" : Number(val)) : "");
-                          if (val !== "manual" && val !== "") {
-                            const b = fBatches.find(x => x.batch_id === Number(val));
-                            if (b) setFBatchNo(b.batch_no);
-                          } else if (val === "manual") {
-                            setFBatchNo("");
-                          }
-                        }}
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                      >
-                        <option value="">Select Existing Batch...</option>
-                        {fBatches.map(b => (
-                          <option key={b.batch_id} value={b.batch_id}>{b.batch_no}</option>
-                        ))}
-                        <option value="manual">Enter New Batch Name...</option>
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        value={fBatchNo}
-                        onChange={(e) => setFBatchNo(e.target.value)}
-                        placeholder="e.g. Batch 1"
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                      />
-                    )}
-                    {fBatchId === "manual" && (
-                      <input
-                        type="text"
-                        value={fBatchNo}
-                        onChange={(e) => setFBatchNo(e.target.value)}
-                        placeholder="Enter manual batch name..."
-                        className="mt-2 w-full px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Payment Plan</label>
-                    <select
-                      value={fPlan}
-                      onChange={(e) => setFPlan(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                    >
-                      <option value="">Select Plan...</option>
-                      <option value="full">Cash Down</option>
-                      <option value="installment">Installment</option>
-                    </select>
-                  </div>
-                  
-                  {fPlan === "installment" && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Deposit (MMK)</label>
-                        <input
-                          type="number"
-                          value={fDown}
-                          onChange={(e) => setFDown(e.target.value ? Number(e.target.value) : "")}
-                          placeholder="0"
-                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Monthly Paid (MMK)</label>
-                        <input
-                          type="number"
-                          value={fInst}
-                          onChange={(e) => setFInst(e.target.value ? Number(e.target.value) : "")}
-                          placeholder="0"
-                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                        />
-                      </div>
-                    </>
-                  )}
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex gap-3">
-                  <button 
-                        onClick={() => setFormalizeOpen(false)}
-                        className="flex-1 py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-50 transition-all"
-                  >
-                      Cancel
-                  </button>
-                  <button 
-                        onClick={submitFormalize}
-                        disabled={busy || !fPlan}
-                        className="flex-[2] py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-200/50 disabled:opacity-50"
-                  >
-                      Formalize Enrollment
-                  </button>
-              </div>
+        <div className="space-y-4">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl animate-in fade-in duration-300">
+              {error}
+            </div>
+          )}
+          <div className="p-4 bg-brand-50 rounded-2xl border border-brand-100 text-sm text-brand-800">
+            Completing this will convert the student's interest into a formal course enrollment.
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Course Category</label>
+              <select
+                value={fCategory}
+                onChange={(e) => {
+                  setFCategory(e.target.value);
+                  setFCourseCode("");
+                }}
+                className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-brand-500 focus:outline-none transition-all"
+              >
+                <option value="">All Categories</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Course</label>
+              <select
+                value={fCourseCode}
+                onChange={(e) => setFCourseCode(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-brand-500 focus:outline-none transition-all"
+              >
+                <option value="">Select Course...</option>
+                {filteredCourses_F.map(c => (
+                  <option key={c.course_code} value={c.course_code}>{c.course_name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Batch</label>
+              {fBatches.length > 0 ? (
+                <select
+                  value={fBatchId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFBatchId(val ? (val === "manual" ? "manual" : Number(val)) : "");
+                    if (val !== "manual" && val !== "") {
+                      const b = fBatches.find(x => x.batch_id === Number(val));
+                      if (b) setFBatchNo(b.batch_no);
+                    } else if (val === "manual") {
+                      setFBatchNo("");
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                >
+                  <option value="">Select Existing Batch...</option>
+                  {fBatches.map(b => (
+                    <option key={b.batch_id} value={b.batch_id}>{b.batch_no}</option>
+                  ))}
+                  <option value="manual">Enter New Batch Name...</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={fBatchNo}
+                  onChange={(e) => setFBatchNo(e.target.value)}
+                  placeholder="e.g. Batch 1"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                />
+              )}
+              {fBatchId === "manual" && (
+                <input
+                  type="text"
+                  value={fBatchNo}
+                  onChange={(e) => setFBatchNo(e.target.value)}
+                  placeholder="Enter manual batch name..."
+                  className="mt-2 w-full px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                />
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Payment Plan</label>
+              <select
+                value={fPlan}
+                onChange={(e) => setFPlan(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              >
+                <option value="">Select Plan...</option>
+                <option value="full">Cash Down</option>
+                <option value="installment">Installment</option>
+              </select>
+            </div>
+
+            {fPlan === "installment" && (
+              <>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Deposit (MMK)</label>
+                  <input
+                    type="number"
+                    value={fDown}
+                    onChange={(e) => setFDown(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Monthly Paid (MMK)</label>
+                  <input
+                    type="number"
+                    value={fInst}
+                    onChange={(e) => setFInst(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex gap-3">
+            <button
+              onClick={() => setFormalizeOpen(false)}
+              className="flex-1 py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitFormalize}
+              disabled={busy || !fPlan}
+              className="flex-[2] py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-200/50 disabled:opacity-50"
+            >
+              Formalize Enrollment
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Confirmation Modals */}
-      <ConfirmModal 
+      <ConfirmModal
         open={!!studentToDelete}
         onClose={() => setStudentToDelete(null)}
         onConfirm={executeDelete}
@@ -2053,7 +2055,7 @@ export default function AdminStudentsPage() {
 
 
 
-      <ConfirmModal 
+      <ConfirmModal
         open={clearAllOpen}
         onClose={() => setClearAllOpen(false)}
         onConfirm={async () => {

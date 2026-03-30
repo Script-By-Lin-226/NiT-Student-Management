@@ -119,7 +119,7 @@ class TokenRotationMiddleware(BaseHTTPMiddleware):
             httponly=True,
             secure=is_production,
             samesite="none" if is_production else "lax",
-            max_age=settings.ACCESS_TOKEN_EXPIRE_SECONDS
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
 
         # Refresh token
@@ -129,7 +129,7 @@ class TokenRotationMiddleware(BaseHTTPMiddleware):
             httponly=True,
             secure=is_production,
             samesite="none" if is_production else "lax",
-            max_age=settings.REFRESH_TOKEN_EXPIRE_SECONDS
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
 
         # Optional header for frontend

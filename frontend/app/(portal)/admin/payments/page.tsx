@@ -49,7 +49,7 @@ export default function AdminPaymentsPage() {
 
   const { data: coursesResponse } = useCourses(1, 1000);
   const courses = coursesResponse?.data || [];
-  
+
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
@@ -329,13 +329,13 @@ export default function AdminPaymentsPage() {
               {displayedEnrollments.map((enr) => {
                 const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
                 return (
-                  <tr key={enr.enrollment_id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={enr.enrollment_id} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-800">{enr.student_name}</div>
                       <div className="text-xs text-slate-500 mt-0.5">{enr.student_code}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-800 tracking-tight group-hover:text-brand-600 transition-colors">{enr.course_name}</div>
+                      <div className="font-semibold text-slate-800 tracking-tight group-hover:text-brand-600 transition-colors text-wrap">{enr.course_name}</div>
                     </td>
                     <td className="px-6 py-4">
                       {enr.payment_plan ? (
@@ -462,7 +462,7 @@ export default function AdminPaymentsPage() {
           {displayedEnrollments.map((enr) => {
             const enrPayments = payments.filter(p => p.enrollment_id === enr.enrollment_id);
             return (
-              <div key={enr.enrollment_id} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-4">
+              <div key={enr.enrollment_id} className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col">
                     <div className="text-base font-bold text-slate-900">{enr.student_name}</div>

@@ -4,10 +4,10 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { AdminAcademicYear, AdminCourse, AdminService } from "@/services/admin.service";
+import { AdminAcademicYear, AdminCourse, AdminService, AdminBatch } from "@/services/admin.service";
 import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Layers, BookOpen } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
-import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDeleteCourse, useBatches, useCreateBatch, useUpdateBatch, useDeleteBatch, useSubjects, useCreateSubject, useUpdateSubject, useDeleteSubject } from "@/hooks/useAdmin";
+import { useCourses, useAcademicYears, useCreateCourse, useUpdateCourse, useDeleteCourse, useBatches, useCreateBatch, useUpdateBatch, useDeleteBatch, useSubjects, useCreateSubject, useUpdateSubject, useDeleteSubject, useRooms } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 import { formatAmount } from "@/utils/format";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -52,10 +52,11 @@ export default function AdminCoursesPage() {
   const [limit, setLimit] = useState(20);
 
   const { data: years = [], isLoading: yearsLoading } = useAcademicYears();
+  const { data: rooms = [], isLoading: roomsLoading } = useRooms();
   const { data: coursesResponse, isLoading: coursesLoading, refetch: reload } = useCourses(page, limit);
   const rows = coursesResponse?.data || [];
   const pagination = coursesResponse?.pagination;
-  
+
   const createCourse = useCreateCourse();
   const updateCourse = useUpdateCourse();
   const deleteCourse = useDeleteCourse();
@@ -77,6 +78,7 @@ export default function AdminCoursesPage() {
   const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">(0);
   const [cFocItems, setCFocItems] = useState("");
   const [cCategory, setCCategory] = useState("");
+  const [cRoom, setCRoom] = useState("");
 
   const [eName, setEName] = useState("");
   const [eYearId, setEYearId] = useState<number | "">("");
@@ -86,6 +88,7 @@ export default function AdminCoursesPage() {
   const [eExamFeeGbp, setEExamFeeGbp] = useState<number | "">("");
   const [eFocItems, setEFocItems] = useState("");
   const [eCategory, setECategory] = useState("");
+  const [eRoom, setERoom] = useState("");
 
   const busy = yearsLoading || coursesLoading || createCourse.isPending || updateCourse.isPending || deleteCourse.isPending;
 
@@ -112,6 +115,7 @@ export default function AdminCoursesPage() {
     setCName(""); setCInstructor(""); setCFeeFull(0); setCFeeInst(0); setCExamFeeGbp(0);
     setCFocItems("");
     setCCategory("");
+    setCRoom("");
     setCYearId(years[0]?.academic_year_id ?? "");
     setCreateOpen(true);
   };
@@ -128,6 +132,7 @@ export default function AdminCoursesPage() {
         exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : undefined,
         foc_items: cFocItems.trim() || undefined,
         category: cCategory.trim() || undefined,
+        room: cRoom || undefined,
       });
       setCreateOpen(false);
       toast.success("Course created successfully");
@@ -139,9 +144,10 @@ export default function AdminCoursesPage() {
   const openEdit = (c: AdminCourse) => {
     setSelected(c);
     setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? "");
-      setEExamFeeGbp(c.exam_fee_gbp || "");
-      setEFocItems(c.foc_items || "");
-      setECategory(c.category || "");
+    setEExamFeeGbp(c.exam_fee_gbp || "");
+    setEFocItems(c.foc_items || "");
+    setECategory(c.category || "");
+    setERoom(c.room || "");
     setEditOpen(true);
   };
 
@@ -159,6 +165,7 @@ export default function AdminCoursesPage() {
           exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : undefined,
           foc_items: eFocItems.trim() || undefined,
           category: eCategory.trim() || undefined,
+          room: eRoom || undefined,
         }
       });
       setEditOpen(false);
@@ -219,14 +226,13 @@ export default function AdminCoursesPage() {
                 <th className="px-6 py-4">Course</th>
                 <th className="px-6 py-4">Fees (MMK)</th>
                 <th className="px-6 py-4">Academic Year</th>
-                <th className="px-6 py-4">Instructor</th>
                 <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.map((c) => (
-                <tr key={c.course_code} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={c.course_code} className="hover:bg-blue-50 hover:shadow-md transition-colors group">
                   <td className="px-6 py-4 cursor-pointer" onClick={() => { setSelected(c); setSubjectOpen(true); }}>
                     <div className="font-bold text-brand-600 group-hover:underline underline-offset-4 decoration-brand-200 transition-all">{c.course_code}</div>
                     <div className="font-bold text-slate-900 text-base">{c.course_name}</div>
@@ -244,7 +250,6 @@ export default function AdminCoursesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 font-bold text-slate-600">{yearNameById.get(c.academic_year_id) || `#${c.academic_year_id}`}</td>
-                  <td className="px-6 py-4 font-bold text-slate-700">{c.instructor_id ?? "-"}</td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black bg-brand-50 text-brand-700 border border-brand-100 uppercase tracking-widest shadow-sm">
                       {c.category || "General"}
@@ -286,7 +291,7 @@ export default function AdminCoursesPage() {
         {/* Mobile/Tablet Card View */}
         <div className="block lg:hidden divide-y divide-slate-100">
           {filtered.map((c) => (
-            <div key={c.course_code} className="p-4 bg-white hover:bg-slate-50/50 transition-colors space-y-3">
+            <div key={c.course_code} className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{c.course_code}</div>
@@ -311,7 +316,7 @@ export default function AdminCoursesPage() {
                   )}
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                   <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Fees (Full/Inst)</div>
@@ -325,12 +330,12 @@ export default function AdminCoursesPage() {
                     {yearNameById.get(c.academic_year_id) || `#${c.academic_year_id}`}
                   </div>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
+                {/* <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                   <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Instructor</div>
                   <div className="font-semibold text-slate-700 truncate">
                     {c.instructor_id || "-"}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           ))}
@@ -371,10 +376,10 @@ export default function AdminCoursesPage() {
               ))}
             </select>
           </div>
-          <div>
+          {/* <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Instructor code (optional)</label>
             <input value={cInstructor} onChange={(e) => setCInstructor(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" placeholder="TEA0001" />
-          </div>
+          </div> */}
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fee (Full Payment)</label>
@@ -399,22 +404,32 @@ export default function AdminCoursesPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
-            <input 
-              value={cCategory} 
-              onChange={(e) => setCCategory(e.target.value)} 
+            <input
+              value={cCategory}
+              onChange={(e) => setCCategory(e.target.value)}
               list="category-list"
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
               placeholder="Select or type a category (e.g. NCC, Diploma)"
             />
             <datalist id="category-list">
-               <option value="Diploma" />
-               <option value="Certificate" />
-               <option value="NCC" />
-          
-               <option value="International Qualification" />
-               <option value="GED Courses" />
-               <option value="ABE courses" />
+              <option value="Diploma" />
+              <option value="Certificate" />
+              <option value="NCC" />
+              <option value="International Qualification" />
+              <option value="GED Courses" />
+              <option value="ABE courses" />
             </datalist>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Default Room (Optional)</label>
+            <select value={cRoom} onChange={(e) => setCRoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+              <option value="">Select Room…</option>
+              {rooms.map((r) => (
+                <option key={r.room_id} value={r.room_name} disabled={r.is_full}>
+                  {r.room_name} ({r.current_load ?? 0}/{r.capacity} capacity) {r.is_full ? "[FULL]" : ""}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
             <button onClick={submitCreate} disabled={busy || !cName.trim() || cYearId === ""} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
@@ -469,23 +484,32 @@ export default function AdminCoursesPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
-            <input 
-              value={eCategory} 
-              onChange={(e) => setECategory(e.target.value)} 
+            <input
+              value={eCategory}
+              onChange={(e) => setECategory(e.target.value)}
               list="category-edit-list"
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
               placeholder="Select or type a category (e.g. NCC, Diploma)"
             />
             <datalist id="category-edit-list">
-               <option value="Diploma" />
-               <option value="Certificate" />
-               <option value="NCC" />
-               <option value="NCC Level 4" />
-               <option value="NCC Level 5" />
-               <option value="International Qualification" />
-               <option value="GED Courses" />
-               <option value="ABE courses" />
+              <option value="Diploma" />
+              <option value="Certificate" />
+              <option value="NCC" />
+              <option value="International Qualification" />
+              <option value="GED Courses" />
+              <option value="ABE courses" />
             </datalist>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Course Room</label>
+            <select value={eRoom} onChange={(e) => setERoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+              <option value="">Select Room…</option>
+              {rooms.map((r) => (
+                <option key={r.room_id} value={r.room_name} disabled={r.is_full}>
+                  {r.room_name} ({r.current_load ?? 0}/{r.capacity} capacity) {r.is_full ? "[FULL]" : ""}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
             <button onClick={() => setEditOpen(false)} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">
@@ -504,7 +528,7 @@ export default function AdminCoursesPage() {
         {selected && <SubjectManagement courseId={selected.course_id} courseCode={selected.course_code} courseName={selected.course_name} />}
       </Modal>
 
-      <ConfirmModal 
+      <ConfirmModal
         open={!!courseToDelete}
         onClose={() => setCourseToDelete(null)}
         onConfirm={executeDelete}
@@ -520,6 +544,7 @@ export default function AdminCoursesPage() {
 
 function BatchManagement({ courseId }: { courseId: number }) {
   const { data: batchRes, isLoading } = useBatches(courseId);
+  const { data: rooms = [] } = useRooms();
   const batches = batchRes?.data || [];
   const createBatch = useCreateBatch();
   const updateBatch = useUpdateBatch();
@@ -530,6 +555,8 @@ function BatchManagement({ courseId }: { courseId: number }) {
   const [newEnd, setNewEnd] = useState("");
   const [newRoom, setNewRoom] = useState("");
   const [batchToDelete, setBatchToDelete] = useState<number | null>(null);
+  const [viewBatch, setViewBatch] = useState<AdminBatch | null>(null);
+  const router = useRouter();
 
   const handleCreate = async () => {
     if (!newNo.trim()) return;
@@ -585,7 +612,14 @@ function BatchManagement({ courseId }: { courseId: number }) {
           </div>
           <div className="col-span-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Room</label>
-            <input value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" placeholder="Room 101" />
+            <select value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm">
+              <option value="">Select Room…</option>
+              {rooms.map(r => (
+                <option key={r.room_id} value={r.room_name} disabled={r.is_full}>
+                  {r.room_name} ({r.current_load ?? 0}/{r.capacity}) {r.is_full ? "[FULL]" : ""}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <button onClick={handleCreate} disabled={createBatch.isPending || !newNo} className="w-full py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-50 transition-all active:scale-95">
@@ -607,14 +641,75 @@ function BatchManagement({ courseId }: { courseId: number }) {
                     {b.start_date || "?"} to {b.end_date || "?"} • {b.room || "No room"}
                   </div>
                 </div>
-                <button onClick={() => handleDelete(b.batch_id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setViewBatch(b)} className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-all border border-slate-200">
+                    View
+                  </button>
+                  <button onClick={() => handleDelete(b.batch_id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={`Batch Details: ${viewBatch?.batch_no}`}>
+        {viewBatch && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Start Date</div>
+                <div className="font-bold text-slate-900">{viewBatch.start_date || "-"}</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">End Date</div>
+                <div className="font-bold text-slate-900">{viewBatch.end_date || "-"}</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Room</div>
+                <div className="font-bold text-slate-900">{viewBatch.room || "No room assigned"}</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Status</div>
+                <div className={[
+                  "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                  viewBatch.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
+                ].join(" ")}>
+                  {viewBatch.is_active ? "Active" : "Inactive"}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => { setViewBatch(null); router.push('/admin/timetables'); }}
+                className="flex-1 py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-200/50"
+              >
+                View Timetable
+              </button>
+              <button
+                onClick={() => setViewBatch(null)}
+                className="flex-1 py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-50 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmModal
+        open={!!batchToDelete}
+        onClose={() => setBatchToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Batch"
+        message="Are you sure you want to delete this batch? Timetable entries for this batch will be lost. Enrollments will be detached but kept."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteBatch.isPending}
+      />
     </div>
   );
 }
@@ -634,7 +729,7 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
       if (subjects.length > 0) {
         let maxNum = 0;
         const prefix = `${courseCode}-`;
-        
+
         subjects.forEach(s => {
           if (s.subject_code.startsWith(prefix)) {
             const numPart = s.subject_code.slice(prefix.length);
@@ -692,13 +787,13 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
     <div className="space-y-6">
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
         <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>
-            <div className="text-[10px] font-bold text-slate-400 uppercase bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm">
-                Course ID: {courseId}
-            </div>
+          <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>
+          <div className="text-[10px] font-bold text-slate-400 uppercase bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+            Course ID: {courseId}
+          </div>
         </div>
         <div className="text-xs font-semibold text-slate-500 px-3">
-            Adding subject for <span className="text-blue-600">{courseName}</span>
+          Adding subject for <span className="text-blue-600">{courseName}</span>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

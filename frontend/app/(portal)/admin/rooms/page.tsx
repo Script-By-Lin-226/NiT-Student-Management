@@ -269,7 +269,7 @@ export default function AdminRoomsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.map((r) => (
-                <tr key={r.room_id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={r.room_id} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                   <td className="px-6 py-4 font-bold text-slate-800">{r.room_name}</td>
                   <td className="px-6 py-4">{r.capacity}</td>
                   <td className="px-6 py-4">{r.current_load ?? 0}</td>
@@ -426,7 +426,7 @@ export default function AdminRoomsPage() {
         </div>
       </Modal>
 
-      <ConfirmModal 
+      <ConfirmModal
         open={!!roomToDelete}
         onClose={() => setRoomToDelete(null)}
         onConfirm={executeDelete}

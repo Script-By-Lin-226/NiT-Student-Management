@@ -125,6 +125,7 @@ export interface AdminCourse {
   foc_items?: string | null;
   discount?: number | null;
   category?: string | null;
+  room?: string | null;
   start_date?: string | null;
   end_date?: string | null;
 }
@@ -138,6 +139,7 @@ export interface AdminCourseCreate {
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
   category?: string | null;
+  room?: string | null;
 }
 
 export interface AdminCourseUpdate {
@@ -149,6 +151,7 @@ export interface AdminCourseUpdate {
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
   category?: string | null;
+  room?: string | null;
 }
 
 export interface AdminBatch {
@@ -231,6 +234,8 @@ export interface AdminEnrollment {
   payment_count?: number;
   foc_items?: string | null;
   profile_picture?: string | null;
+  batch_start_date?: string | null;
+  batch_end_date?: string | null;
 }
 
 export interface AdminEnrollmentCreate {
@@ -332,6 +337,7 @@ export interface AdminTimeTableRow {
 export interface AdminTimeTableCreate {
   course_code: string;
   batch_no?: string | null;
+  batch_id?: number | null;
   teacher_code?: string | null;
   subject_code?: string | null;
   day_of_week: string;
@@ -346,9 +352,11 @@ export interface AdminTimeTableUpdate {
   end_time?: string;
   room_name?: string | null;
   batch_no?: string | null;
+  batch_id?: number | null;
   teacher_code?: string | null;
   subject_code?: string | null;
 }
+
 
 export interface AdminStudentRelations {
   student: AdminStudent;

@@ -65,7 +65,9 @@ export default function AdminTimetablesPage() {
 
   const [cCourseCode, setCCourseCode] = useState("");
   const [cBatchNo, setCBatchNo] = useState("");
+  const [cBatchId, setCBatchId] = useState<number | "">("");
   const [cTeacherCode, setCTeacherCode] = useState("");
+
   const [batches, setBatches] = useState<any[]>([]);
   const [cDay, setCDay] = useState<(typeof DAYS)[number]>("Monday");
   const [cSlots, setCSlots] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "10:00" }]);
@@ -76,7 +78,9 @@ export default function AdminTimetablesPage() {
   const [eEnd, setEEnd] = useState("10:00");
   const [eRoom, setERoom] = useState<string>("");
   const [eBatchNo, setEBatchNo] = useState("");
+  const [eBatchId, setEBatchId] = useState<number | "">("");
   const [eTeacherCode, setETeacherCode] = useState("");
+
   const [eBatches, setEBatches] = useState<any[]>([]);
   const [cSubjectCode, setCSubjectCode] = useState("");
   const [eSubjectCode, setESubjectCode] = useState("");
@@ -106,8 +110,8 @@ export default function AdminTimetablesPage() {
     setError("");
     try {
       const [tt, cs, rs, ts] = await Promise.all([
-        AdminService.listTimetables(), 
-        AdminService.listCourses(1, 1000), 
+        AdminService.listTimetables(),
+        AdminService.listCourses(1, 1000),
         AdminService.listRooms(),
         AdminService.listTeachers(1, 1000)
       ]);
@@ -142,7 +146,11 @@ export default function AdminTimetablesPage() {
         setBatches([]);
         setSubjects([]);
       }
+      setCBatchNo("");
+      setCBatchId("");
+      setCSubjectCode("");
     }
+
   }, [cCourseCode, courses]);
 
   useEffect(() => {
@@ -158,9 +166,9 @@ export default function AdminTimetablesPage() {
           }
         });
         if (maxNum > 0) {
-            setNewSubCode(`${cCourseCode}-${maxNum + 1}`);
+          setNewSubCode(`${cCourseCode}-${maxNum + 1}`);
         } else {
-            setNewSubCode(`${cCourseCode}-101`);
+          setNewSubCode(`${cCourseCode}-101`);
         }
       } else {
         setNewSubCode(`${cCourseCode}-101`);
@@ -175,24 +183,26 @@ export default function AdminTimetablesPage() {
     const firstCourse = courses[0];
     setCCourseCode(firstCourse?.course_code ?? "");
     setCBatchNo("");
+    setCBatchId("");
     setCSubjectCode("");
     setCTeacherCode("");
     setCDay("Monday");
     setCSlots([{ start: "09:00", end: "10:00" }]);
     setCRoom(rooms[0]?.room_name ?? "");
     setCreateOpen(true);
+
   };
 
   const openReport = async () => {
     setBusy(true);
     try {
-        const data = await AdminService.getTeachingHoursReport();
-        setTeachingHours(data);
-        setReportOpen(true);
+      const data = await AdminService.getTeachingHoursReport();
+      setTeachingHours(data);
+      setReportOpen(true);
     } catch (e: any) {
-        setError("Failed to load teaching hours report");
+      setError("Failed to load teaching hours report");
     } finally {
-        setBusy(false);
+      setBusy(false);
     }
   };
 
@@ -202,21 +212,21 @@ export default function AdminTimetablesPage() {
     if (!c) return;
     setBusy(true);
     try {
-        await AdminService.createSubject({
-            subject_code: newSubCode,
-            subject_name: newSubName,
-            course_id: c.course_id
-        });
-        const updatedSubs = await AdminService.listSubjects(c.course_id);
-        setSubjects(updatedSubs.data);
-        setCSubjectCode(newSubCode);
-        setQuickSubjectOpen(false);
-        setNewSubCode("");
-        setNewSubName("");
+      await AdminService.createSubject({
+        subject_code: newSubCode,
+        subject_name: newSubName,
+        course_id: c.course_id
+      });
+      const updatedSubs = await AdminService.listSubjects(c.course_id);
+      setSubjects(updatedSubs.data);
+      setCSubjectCode(newSubCode);
+      setQuickSubjectOpen(false);
+      setNewSubCode("");
+      setNewSubName("");
     } catch (e: any) {
-        setError("Failed to add subject");
+      setError("Failed to add subject");
     } finally {
-        setBusy(false);
+      setBusy(false);
     }
   };
 
@@ -228,9 +238,11 @@ export default function AdminTimetablesPage() {
         cSlots.map(slot =>
           AdminService.createTimetable({
             course_code: cCourseCode,
+            batch_id: cBatchId !== "" ? Number(cBatchId) : null,
             batch_no: cBatchNo || null,
             subject_code: cSubjectCode || null,
             teacher_code: cTeacherCode || null,
+
             day_of_week: cDay,
             start_time: slot.start,
             end_time: slot.end,
@@ -253,6 +265,7 @@ export default function AdminTimetablesPage() {
     setEStart(r.start_time);
     setEEnd(r.end_time);
     setERoom(r.room_name || "");
+    setEBatchId(r.batch_id || "");
     setEBatchNo(r.batch_no || "");
     setESubjectCode(r.subject_code || "");
     setETeacherCode(r.teacher_code || "");
@@ -261,6 +274,7 @@ export default function AdminTimetablesPage() {
     AdminService.listSubjects(r.course_id).then((res) => setESubjects(res.data));
 
     setEditOpen(true);
+
   };
 
   const submitEdit = async () => {
@@ -273,9 +287,11 @@ export default function AdminTimetablesPage() {
         start_time: eStart,
         end_time: eEnd,
         room_name: eRoom || null,
+        batch_id: eBatchId !== "" ? Number(eBatchId) : null,
         batch_no: eBatchNo || null,
         subject_code: eSubjectCode || null,
         teacher_code: eTeacherCode || null,
+
       });
       setEditOpen(false);
       setSelected(null);
@@ -326,10 +342,10 @@ export default function AdminTimetablesPage() {
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
           </button>
-          <button onClick={openReport} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
+          {/* <button onClick={openReport} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
             <Clock className="w-4 h-4" />
             Hours Report
-          </button>
+          </button> */}
           <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
             <Plus className="w-4 h-4" />
             New Slot
@@ -365,7 +381,7 @@ export default function AdminTimetablesPage() {
               ) : (
                 <>
                   {filtered.map((r) => (
-                    <tr key={r.timetable_id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={r.timetable_id} className="hover:bg-blue-50 hover:shadow-md transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-slate-800">{r.course_name}</div>
                         <div className="text-xs text-brand-600 font-bold uppercase tracking-tight">{r.course_code}</div>
@@ -431,30 +447,40 @@ export default function AdminTimetablesPage() {
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch (Optional)</label>
-            <select value={cBatchNo} onChange={(e) => setCBatchNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+            <select 
+              value={cBatchId} 
+              onChange={(e) => {
+                const val = e.target.value;
+                setCBatchId(val ? Number(val) : "");
+                const b = batches.find(x => x.batch_id === Number(val));
+                setCBatchNo(b?.batch_no || "");
+              }} 
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            >
               <option value="">(no batch)</option>
               {batches.map((b) => (
-                <option key={b.batch_id} value={b.batch_no}>
+                <option key={b.batch_id} value={b.batch_id}>
                   {b.batch_no}
                 </option>
               ))}
             </select>
           </div>
+
           <div className="sm:col-span-2 flex items-end gap-2">
             <div className="flex-1">
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject (Optional)</label>
               <select value={cSubjectCode} onChange={(e) => setCSubjectCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                 <option value="">(no subject)</option>
-                 {subjects.map((s) => (
-                   <option key={s.subject_id} value={s.subject_code}>
-                     {s.subject_name} ({s.subject_code})
-                   </option>
-                 ))}
+                <option value="">(no subject)</option>
+                {subjects.map((s) => (
+                  <option key={s.subject_id} value={s.subject_code}>
+                    {s.subject_name} ({s.subject_code})
+                  </option>
+                ))}
               </select>
             </div>
             {cCourseCode && (
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setQuickSubjectOpen(true)}
                 className="p-2.5 mb-0.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-all font-bold text-xs flex items-center gap-1"
                 title="Quick Add Subject"
@@ -500,28 +526,28 @@ export default function AdminTimetablesPage() {
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Time Slots</label>
             {cSlots.map((slot, i) => (
               <div key={i} className="flex items-center gap-3">
-                <input 
-                  value={slot.start} 
-                  onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, start: e.target.value } : s))} 
-                  type="time" 
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" 
+                <input
+                  value={slot.start}
+                  onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, start: e.target.value } : s))}
+                  type="time"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                 />
                 <span className="text-slate-400 font-bold">to</span>
-                <input 
-                  value={slot.end} 
-                  onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, end: e.target.value } : s))} 
-                  type="time" 
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" 
+                <input
+                  value={slot.end}
+                  onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, end: e.target.value } : s))}
+                  type="time"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                 />
                 {cSlots.length > 1 && (
                   <button type="button" onClick={() => setCSlots(cSlots.filter((_, idx) => idx !== i))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                     <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
             ))}
             <button type="button" onClick={() => setCSlots([...cSlots, { start: "09:00", end: "10:00" }])} className="text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
-               + Add another time slot
+              + Add another time slot
             </button>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
@@ -558,12 +584,21 @@ export default function AdminTimetablesPage() {
               ))}
             </select>
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Batch (Optional)</label>
-            <select value={eBatchNo} onChange={(e) => setEBatchNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+            <select 
+              value={eBatchId} 
+              onChange={(e) => {
+                const val = e.target.value;
+                setEBatchId(val ? Number(val) : "");
+                const b = eBatches.find(x => x.batch_id === Number(val));
+                setEBatchNo(b?.batch_no || "");
+              }} 
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+            >
               <option value="">(no batch)</option>
               {eBatches.map((b) => (
-                <option key={b.batch_id} value={b.batch_no}>
+                <option key={b.batch_id} value={b.batch_id}>
                   {b.batch_no}
                 </option>
               ))}
@@ -572,12 +607,12 @@ export default function AdminTimetablesPage() {
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject (Optional)</label>
             <select value={eSubjectCode} onChange={(e) => setESubjectCode(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
-               <option value="">(no subject)</option>
-               {eSubjects.map((s) => (
-                 <option key={s.subject_id} value={s.subject_code}>
-                   {s.subject_name} ({s.subject_code})
-                 </option>
-               ))}
+              <option value="">(no subject)</option>
+              {eSubjects.map((s) => (
+                <option key={s.subject_id} value={s.subject_code}>
+                  {s.subject_name} ({s.subject_code})
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -612,84 +647,84 @@ export default function AdminTimetablesPage() {
 
       <Modal title="Teaching Hours Report" open={reportOpen} onClose={() => setReportOpen(false)}>
         <div className="space-y-4">
-            <p className="text-sm text-slate-500 mb-4">Total teaching hours calculated from current timetable assignments.</p>
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
-                        <tr>
-                            <th className="px-4 py-3">Teacher</th>
-                            <th className="px-4 py-3">Assigned Courses</th>
-                            <th className="px-4 py-3 text-right">Total Hours</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {teachingHours.map((h) => (
-                            <tr key={h.teacher_code} className="hover:bg-slate-50/50">
-                                <td className="px-4 py-3">
-                                    <div className="font-semibold text-slate-800">{h.teacher_name}</div>
-                                    <div className="text-xs text-slate-500">{h.teacher_code}</div>
-                                </td>
-                                <td className="px-4 py-3 text-xs text-slate-600">
-                                    {h.courses.join(", ") || "-"}
-                                </td>
-                                <td className="px-4 py-3 text-right font-bold text-brand-600">
-                                    {h.total_hours} hrs
-                                </td>
-                            </tr>
-                        ))}
-                        {teachingHours.length === 0 && (
-                            <tr>
-                                <td colSpan={3} className="px-4 py-10 text-center text-slate-400">No data available.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            <div className="flex justify-end pt-2">
-                <button onClick={() => setReportOpen(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
-                    Close
-                </button>
-            </div>
+          <p className="text-sm text-slate-500 mb-4">Total teaching hours calculated from current timetable assignments.</p>
+          <div className="overflow-x-auto border border-slate-100 rounded-xl">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                <tr>
+                  <th className="px-4 py-3">Teacher</th>
+                  <th className="px-4 py-3">Assigned Courses</th>
+                  <th className="px-4 py-3 text-right">Total Hours</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {teachingHours.map((h) => (
+                  <tr key={h.teacher_code} className="hover:bg-blue-50 hover:shadow-md">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-slate-800">{h.teacher_name}</div>
+                      <div className="text-xs text-slate-500">{h.teacher_code}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600">
+                      {h.courses.join(", ") || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-brand-600">
+                      {h.total_hours} hrs
+                    </td>
+                  </tr>
+                ))}
+                {teachingHours.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-10 text-center text-slate-400">No data available.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end pt-2">
+            <button onClick={() => setReportOpen(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">
+              Close
+            </button>
+          </div>
         </div>
       </Modal>
 
       <Modal title="Quick Add Subject" open={quickSubjectOpen} onClose={() => setQuickSubjectOpen(false)}>
         <div className="space-y-4">
           <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-             <div className="text-[10px] font-bold text-blue-600 uppercase mb-1">Target Course</div>
-             <div className="text-sm font-bold text-slate-900">{courses.find(x => x.course_code === cCourseCode)?.course_name} ({cCourseCode})</div>
-             <div className="text-[10px] text-slate-500">ID: {courses.find(x => x.course_code === cCourseCode)?.course_id}</div>
+            <div className="text-[10px] font-bold text-blue-600 uppercase mb-1">Target Course</div>
+            <div className="text-sm font-bold text-slate-900">{courses.find(x => x.course_code === cCourseCode)?.course_name} ({cCourseCode})</div>
+            <div className="text-[10px] text-slate-500">ID: {courses.find(x => x.course_code === cCourseCode)?.course_id}</div>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject Code</label>
-            <input 
-              value={newSubCode} 
-              onChange={(e) => setNewSubCode(e.target.value)} 
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" 
-              placeholder="e.g. NET-101" 
+            <input
+              value={newSubCode}
+              onChange={(e) => setNewSubCode(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+              placeholder="e.g. NET-101"
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Subject Name</label>
-            <input 
-              value={newSubName} 
-              onChange={(e) => setNewSubName(e.target.value)} 
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" 
-              placeholder="e.g. Networking Fundamentals" 
+            <input
+              value={newSubName}
+              onChange={(e) => setNewSubName(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
+              placeholder="e.g. Networking Fundamentals"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setQuickSubjectOpen(false)} className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">
-                Cancel
+              Cancel
             </button>
             <button onClick={submitQuickSubject} disabled={busy || !newSubCode || !newSubName} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
-                Add Subject
+              Add Subject
             </button>
           </div>
         </div>
       </Modal>
 
-      <ConfirmModal 
+      <ConfirmModal
         open={!!ttToDelete}
         onClose={() => setTtToDelete(null)}
         onConfirm={executeDelete}

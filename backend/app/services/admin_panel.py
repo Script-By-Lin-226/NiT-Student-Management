@@ -403,17 +403,33 @@ class AdminPanelService:
             course_obj = c_r.scalars().first()
             if course_obj:
                 e_code = await _next_enrollment_code(session)
+                batch_id = payload.batch_id if payload.batch_id and payload.batch_id != 0 else None
+                if not batch_id and payload.batch_no:
+                    b_r = await session.execute(
+                        select(Batch).where(
+                            and_(
+                                Batch.course_id == course_obj.course_id, 
+                                func.lower(func.trim(Batch.batch_no)) == func.lower(payload.batch_no.strip())
+                            )
+                        )
+                    )
+                    batch_o = b_r.scalars().first()
+                    if batch_o:
+                        batch_id = batch_o.batch_id
+                
                 enroll = Enrollment(
                     enrollment_code=e_code,
                     student_id=new_user.user_id,
                     course_id=course_obj.course_id,
                     status=True,
+                    batch_id=batch_id,
                     batch_no=payload.batch_no,
                     payment_plan=payload.payment_plan,
                     downpayment=payload.downpayment,
                     installment_amount=payload.installment_amount
                 )
                 session.add(enroll)
+
 
         await session.commit()
         await session.refresh(new_user)
@@ -453,12 +469,13 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Student not found"}, status_code=404)
 
         enroll_r = await session.execute(
-            select(Enrollment, Course)
+            select(Enrollment, Course, Batch)
             .join(Course, Enrollment.course_id == Course.course_id)
+            .outerjoin(Batch, Enrollment.batch_id == Batch.batch_id)
             .where(Enrollment.student_id == student.user_id)
         )
         enrollment_rows = enroll_r.all()
-        enrollments = [e for e, c in enrollment_rows]
+        enrollments = [e for e, c, b in enrollment_rows]
 
         att_r = await session.execute(select(Attendance).where(Attendance.user_id == student.user_id))
         attendance = att_r.scalars().all()
@@ -520,9 +537,12 @@ class AdminPanelService:
                             "course_code": c.course_code,
                             "course_name": c.course_name,
                             "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
-                            "foc_items": getattr(c, "foc_items", None)
+                            "foc_items": getattr(c, "foc_items", None),
+                            "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
+                            "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
+                            "room": b.room if b and b.room else getattr(e, "room", None)
                         }
-                        for e, c in enrollment_rows
+                        for e, c, b in enrollment_rows
                     ],
                     "attendance": [
                         {
@@ -1234,6 +1254,11 @@ class AdminPanelService:
         course = c_r.scalars().first()
         if not course:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
+        
+        # Check for duplicate
+        dup_r = await session.execute(select(Batch).where(and_(Batch.course_id == payload.course_id, Batch.batch_no == payload.batch_no)))
+        if dup_r.scalars().first():
+            return JSONResponse({"status_code": 409, "message": f"A batch with number '{payload.batch_no}' already exists for this course"}, status_code=409)
             
         # Optional instructor
         inst_id = None
@@ -1266,7 +1291,13 @@ class AdminPanelService:
         if not batch:
             return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
             
-        if payload.batch_no is not None: batch.batch_no = payload.batch_no
+        if payload.batch_no is not None:
+             if payload.batch_no != batch.batch_no:
+                 # Check for duplicate
+                 dup_r = await session.execute(select(Batch).where(and_(Batch.course_id == batch.course_id, Batch.batch_no == payload.batch_no)))
+                 if dup_r.scalars().first():
+                     return JSONResponse({"status_code": 409, "message": f"A batch with number '{payload.batch_no}' already exists for this course"}, status_code=409)
+             batch.batch_no = payload.batch_no
         if payload.start_date is not None: batch.start_date = datetime.strptime(payload.start_date, "%Y-%m-%d").date()
         if payload.end_date is not None: batch.end_date = datetime.strptime(payload.end_date, "%Y-%m-%d").date()
         if payload.room is not None: batch.room = payload.room
@@ -1490,16 +1521,18 @@ class AdminPanelService:
 
         # Find matching Batch if possible
         batch_id = payload.batch_id if payload.batch_id and payload.batch_id != 0 else None
-        batch_no = payload.batch_no if payload.batch_no else None
-
-        if not batch_id and batch_no:
-            b_res = await session.execute(select(Batch).where(and_(Batch.course_id == course.course_id, Batch.batch_no == batch_no)))
-            batch = b_res.scalars().first()
+        if not batch_id and payload.batch_no:
+            b_r = await session.execute(
+                select(Batch).where(
+                    and_(
+                        Batch.course_id == course.course_id, 
+                        func.lower(func.trim(Batch.batch_no)) == func.lower(payload.batch_no.strip())
+                    )
+                )
+            )
+            batch = b_r.scalars().first()
             if batch:
                 batch_id = batch.batch_id
-            else:
-                # If batch_no is provided but no matching batch found, clear batch_no to avoid inconsistency
-                batch_no = None
         elif batch_id and not batch_no:
             b_res = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
             batch = b_res.scalars().first()
@@ -1537,8 +1570,32 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Enrollment not found"}, status_code=404)
         if payload.status is not None:
             e.status = payload.status
-        if getattr(payload, "batch_no", None) is not None:
-            e.batch_no = payload.batch_no
+        if getattr(payload, "batch_id", None) is not None or getattr(payload, "batch_no", None) is not None:
+            batch_id = getattr(payload, "batch_id", None)
+            batch_no = getattr(payload, "batch_no", None)
+            
+            if batch_id and batch_id != 0:
+                e.batch_id = batch_id
+                # optionally update batch_no too if you want it in sync
+            elif batch_no:
+                b_r = await session.execute(
+                    select(Batch).where(
+                        and_(
+                            Batch.course_id == e.course_id, 
+                            func.lower(func.trim(Batch.batch_no)) == func.lower(batch_no.strip())
+                        )
+                    )
+                )
+                batch = b_r.scalars().first()
+                if batch:
+                    e.batch_id = batch.batch_id
+                    e.batch_no = batch.batch_no
+                else:
+                    return JSONResponse({"status_code": 404, "message": f"Batch '{batch_no}' not found for this course"}, status_code=404)
+            else:
+                e.batch_id = None
+                e.batch_no = None
+
         if getattr(payload, "payment_plan", None) is not None:
             e.payment_plan = payload.payment_plan
         if getattr(payload, "downpayment", None) is not None:
@@ -1836,25 +1893,47 @@ class AdminPanelService:
 
         data = []
         for room in rooms:
-            # Find max enrollments of any class that meets in this room, either via Course.room or TimeTable.room_name
-            q = await session.execute(
-                select(func.count(Enrollment.enrollment_id))
-                .select_from(Enrollment)
-                .join(Course, Enrollment.course_id == Course.course_id)
-                .outerjoin(TimeTable, Course.course_id == TimeTable.course_id)
-                .where(
-                    and_(
-                        Enrollment.status == True,
-                        (Course.room == room.room_name) | (TimeTable.room_name == room.room_name)
-                    )
-                )
-                .group_by(Course.course_id)
+            # Load calculation: The maximum number of students across all time slots for this room.
+            # 1. Get all Course/Batch pairs assigned to this room in the timetable
+            tt_q = await session.execute(
+                select(TimeTable.course_id, TimeTable.batch_id)
+                .where(TimeTable.room_name == room.room_name)
+                .distinct()
             )
-            loads = q.scalars().all()
-            load = int(max(loads)) if loads else 0
+            pairs = tt_q.all()
+            
+            max_load = 0
+            for c_id, b_id in pairs:
+                en_q = select(func.count(Enrollment.enrollment_id)).where(Enrollment.status == True)
+                if b_id:
+                    en_q = en_q.where(and_(Enrollment.course_id == c_id, Enrollment.batch_id == b_id))
+                else:
+                    en_q = en_q.where(Enrollment.course_id == c_id)
+                
+                en_res = await session.execute(en_q)
+                count = en_res.scalar() or 0
+                if count > max_load:
+                    max_load = count
+            
+            # Also consider courses that have this room as default but no timetable yet
+            c_q = await session.execute(
+                select(Course.course_id)
+                .where(Course.room == room.room_name)
+            )
+            default_courses = c_q.scalars().all()
+            for c_id in default_courses:
+                # Check if this course already covered by timetable check
+                if any(p[0] == c_id for p in pairs): continue
+                
+                en_q = select(func.count(Enrollment.enrollment_id)).where(and_(Enrollment.course_id == c_id, Enrollment.status == True))
+                en_res = await session.execute(en_q)
+                count = en_res.scalar() or 0
+                if count > max_load:
+                    max_load = count
+
             d = _serialize_room(room)
-            d["current_load"] = load
-            d["is_full"] = load >= room.capacity
+            d["current_load"] = max_load
+            d["is_full"] = max_load >= room.capacity if room.capacity > 0 else False
             data.append(d)
 
         return JSONResponse({"status_code": 200, "message": "Rooms fetched successfully", "data": data})
@@ -1946,8 +2025,8 @@ class AdminPanelService:
             else:
                 merged[-1][1] = max(merged[-1][1], en)
 
-        day_start = 8 * 60
-        day_end = 18 * 60
+        day_start = 7 * 60
+        day_end = 21 * 60
         free = []
         cursor = day_start
         for st, en in merged:
@@ -2017,12 +2096,21 @@ class AdminPanelService:
         if not course:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
 
-        batch_id = None
-        if payload.batch_no:
-            b_r = await session.execute(select(Batch).where(and_(Batch.course_id == course.course_id, Batch.batch_no == payload.batch_no)))
+        batch_id = payload.batch_id if payload.batch_id and payload.batch_id != 0 else None
+        if not batch_id and payload.batch_no:
+            b_r = await session.execute(
+                select(Batch).where(
+                    and_(
+                        Batch.course_id == course.course_id, 
+                        func.lower(func.trim(Batch.batch_no)) == func.lower(payload.batch_no.strip())
+                    )
+                )
+            )
             batch = b_r.scalars().first()
             if batch:
                 batch_id = batch.batch_id
+            else:
+                return JSONResponse({"status_code": 404, "message": f"Batch '{payload.batch_no}' not found for this course"}, status_code=404)
 
         teacher_id = None
         if payload.teacher_code:
@@ -2030,6 +2118,8 @@ class AdminPanelService:
             teacher = t_r.scalars().first()
             if teacher:
                 teacher_id = teacher.user_id
+            else:
+                 return JSONResponse({"status_code": 404, "message": f"Teacher with code '{payload.teacher_code}' not found"}, status_code=404)
 
         subject_id = None
         if payload.subject_code:
@@ -2037,6 +2127,8 @@ class AdminPanelService:
             sub = s_r.scalars().first()
             if sub:
                 subject_id = sub.subject_id
+            else:
+                 return JSONResponse({"status_code": 404, "message": f"Subject with code '{payload.subject_code}' not found for this course"}, status_code=404)
 
         tt = TimeTable(
             course_id=course.course_id,
@@ -2048,6 +2140,7 @@ class AdminPanelService:
             end_time=payload.end_time,
             room_name=payload.room_name,
         )
+
         session.add(tt)
         await session.commit()
         await session.refresh(tt)
@@ -2077,12 +2170,23 @@ class AdminPanelService:
         if payload.room_name is not None:
             tt.room_name = payload.room_name
         
-        if payload.batch_no is not None:
-            if payload.batch_no:
-                b_r = await session.execute(select(Batch).where(and_(Batch.course_id == tt.course_id, Batch.batch_no == payload.batch_no)))
+        if payload.batch_id is not None or payload.batch_no is not None:
+            if payload.batch_id and payload.batch_id != 0:
+                tt.batch_id = payload.batch_id
+            elif payload.batch_no:
+                b_r = await session.execute(
+                    select(Batch).where(
+                        and_(
+                            Batch.course_id == tt.course_id, 
+                            func.lower(func.trim(Batch.batch_no)) == func.lower(payload.batch_no.strip())
+                        )
+                    )
+                )
                 batch = b_r.scalars().first()
                 if batch:
                     tt.batch_id = batch.batch_id
+                else:
+                    return JSONResponse({"status_code": 404, "message": f"Batch '{payload.batch_no}' not found for this course"}, status_code=404)
             else:
                 tt.batch_id = None
         
@@ -2092,6 +2196,8 @@ class AdminPanelService:
                 teacher = t_r.scalars().first()
                 if teacher:
                     tt.teacher_id = teacher.user_id
+                else:
+                    return JSONResponse({"status_code": 404, "message": f"Teacher with code '{payload.teacher_code}' not found"}, status_code=404)
             else:
                 tt.teacher_id = None
 
@@ -2101,8 +2207,11 @@ class AdminPanelService:
                 sub = s_r.scalars().first()
                 if sub:
                     tt.subject_id = sub.subject_id
+                else:
+                    return JSONResponse({"status_code": 404, "message": f"Subject with code '{payload.subject_code}' not found for this course"}, status_code=404)
             else:
                 tt.subject_id = None
+
 
         await session.commit()
         await _log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")

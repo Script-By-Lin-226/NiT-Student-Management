@@ -115,6 +115,13 @@ export function useSubjects(courseId?: number) {
   });
 }
 
+export function useRooms() {
+  return useQuery({
+    queryKey: adminKeys.rooms(),
+    queryFn: () => AdminService.listRooms(),
+  });
+}
+
 // --- Mutations ---
 
 export function useDeleteUser() {
