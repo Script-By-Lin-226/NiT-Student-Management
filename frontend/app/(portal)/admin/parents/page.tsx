@@ -1,18 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AdminService } from "@/services/admin.service";
-import { useAuth } from "@/hooks/useAuth";
-import { Users, Link2, UserPlus, AlertCircle, X, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Users, Link2, UserPlus, AlertCircle, X, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useParents, useCreateParent, useLinkParentChild } from "@/hooks/useAdmin";
+import { useParents, useCreateParent, useLinkParentChild, useUpdateUser, useDeleteUser } from "@/hooks/useAdmin";
+import { useAuth } from "@/hooks/useAuth";
 import { Pagination } from "@/components/ui/Pagination";
+
+function Modal({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: React.ReactNode }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40" onClick={onClose}>
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-bold text-slate-900">{title}</h3>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-50 text-slate-500"><X size={18}/></button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminParentsPage() {
   const { isAdminOrSales } = useAuth();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
-  
+
   const { data: parentsResponse, isLoading: loading, refetch: refresh } = useParents(page, limit);
   const rawParents = parentsResponse?.data || [];
   const pagination = parentsResponse?.pagination;
@@ -23,6 +37,13 @@ export default function AdminParentsPage() {
 
   const createParentMutation = useCreateParent();
   const linkParentMutation = useLinkParentChild();
+  const updateMutation = useUpdateUser();
+  const deleteMutation = useDeleteUser();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedParent, setSelectedParent] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ username: "", email: "", is_active: true });
 
   const [createForm, setCreateForm] = useState({
     username: "",
@@ -41,8 +62,8 @@ export default function AdminParentsPage() {
   const displayedParents = useMemo(() => {
     if (!q) return rawParents;
     const s = q.toLowerCase();
-    return rawParents.filter(p => 
-      p.username.toLowerCase().includes(s) || 
+    return rawParents.filter(p =>
+      p.username.toLowerCase().includes(s) ||
       p.user_code.toLowerCase().includes(s) ||
       p.email.toLowerCase().includes(s)
     );
@@ -99,6 +120,51 @@ export default function AdminParentsPage() {
       toast.success("Parent linked successfully");
     } catch (e: any) {
       setError(e?.response?.data?.message || e.message || "Failed to link parent to child");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  const openEdit = (p: any) => {
+    setSelectedParent(p);
+    setEditForm({ username: p.username || "", email: p.email || "", is_active: !!p.is_active });
+    setEditOpen(true);
+  };
+
+  const openDelete = (p: any) => {
+    setSelectedParent(p);
+    setDeleteOpen(true);
+  };
+
+  async function onEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setWorking(true);
+    try {
+      await updateMutation.mutateAsync({
+        code: selectedParent.user_code,
+        payload: {
+          username: editForm.username.trim(),
+          email: editForm.email.trim(),
+          is_active: editForm.is_active,
+        }
+      });
+      setEditOpen(false);
+      toast.success("Parent updated");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to update");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function onDeleteConfirm() {
+    setWorking(true);
+    try {
+      await deleteMutation.mutateAsync(selectedParent.user_code);
+      setDeleteOpen(false);
+      toast.success("Parent deleted");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to delete");
     } finally {
       setWorking(false);
     }
@@ -247,7 +313,7 @@ export default function AdminParentsPage() {
           <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
             <div className="relative flex-1 max-w-xs">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
+              <input
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder="Search..."
@@ -270,24 +336,31 @@ export default function AdminParentsPage() {
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Email</th>
                 <th className="px-6 py-4">Active</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {displayedParents.map((p) => (
-                <tr key={p.user_code} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={p.user_code} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4 font-semibold text-slate-800">{p.user_code}</td>
-                  <td className="px-6 py-4">{p.username}</td>
-                  <td className="px-6 py-4">{p.email}</td>
+                  <td className="px-6 py-4 font-medium">{p.username}</td>
+                  <td className="px-6 py-4 text-slate-500">{p.email}</td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${p.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${p.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                       {p.is_active ? "Yes" : "No"}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEdit(p)} className="p-2 rounded-xl text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Pencil size={16}/></button>
+                      <button onClick={() => openDelete(p)} className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={16}/></button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {displayedParents.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-400 font-medium">
                     {loading ? "Loading..." : "No parents found."}
                   </td>
                 </tr>
@@ -306,9 +379,10 @@ export default function AdminParentsPage() {
                   <div className="font-bold text-slate-900 leading-tight">{p.username}</div>
                   <div className="text-xs text-slate-500 font-medium mt-0.5">{p.email}</div>
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${p.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                  {p.is_active ? "Active" : "Inactive"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-slate-50 text-slate-500"><Pencil size={14}/></button>
+                  <button onClick={() => openDelete(p)} className="p-2 rounded-lg bg-slate-50 text-red-500"><Trash2 size={14}/></button>
+                </div>
               </div>
             </div>
           ))}
@@ -331,6 +405,45 @@ export default function AdminParentsPage() {
           />
         )}
       </div>
+
+      <Modal title={`Edit Parent — ${selectedParent?.user_code}`} open={editOpen} onClose={() => setEditOpen(false)}>
+        <form onSubmit={onEditSubmit} className="space-y-4">
+          <div className="space-y-3">
+            <label className="block text-sm font-bold text-slate-700">Username</label>
+            <input required value={editForm.username} onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20" />
+            
+            <label className="block text-sm font-bold text-slate-700">Email</label>
+            <input required type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20" />
+            
+            <label className="flex items-center gap-3 py-2 cursor-pointer group">
+              <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(p => ({ ...p, is_active: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20" />
+              <span className="text-sm font-bold text-slate-700 group-hover:text-brand-600 transition-colors">Active account</span>
+            </label>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={() => setEditOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-700 font-bold hover:bg-slate-100 transition-all">Cancel</button>
+            <button type="submit" disabled={working} className="flex-1 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 transition-all active:scale-95 disabled:opacity-50">{working ? "Saving..." : "Save Changes"}</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal title="Delete Parent" open={deleteOpen} onClose={() => setDeleteOpen(false)}>
+        <div className="space-y-4 text-center">
+          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 scale-in duration-300">
+            <Trash2 size={32} />
+          </div>
+          <h4 className="text-lg font-bold text-slate-900 leading-tight px-4">
+            Are you sure you want to delete <span className="text-red-600">{selectedParent?.username}</span>?
+          </h4>
+          <p className="text-sm text-slate-500 font-medium px-4">
+            This will permanently remove the parent account and all their child links. This action cannot be undone.
+          </p>
+          <div className="flex gap-3 pt-4">
+            <button onClick={() => setDeleteOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-700 font-bold hover:bg-slate-100 transition-all">Cancel</button>
+            <button onClick={onDeleteConfirm} disabled={working} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50">{working ? "Deleting..." : "Delete Permanently"}</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

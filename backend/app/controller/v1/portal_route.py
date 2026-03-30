@@ -34,8 +34,8 @@ async def parent_children(request: Request, session: AsyncSession = Depends(get_
     return await ParentPortalService.get_children(request, session)
 
 @router.get("/parent/children/{student_code}/attendance")
-async def child_attendance(student_code: str, request: Request, session: AsyncSession = Depends(get_db)):
-    return await ParentPortalService.get_child_attendance(student_code, request, session)
+async def child_attendance(student_code: str, request: Request, page: int = 1, limit: int = 10, session: AsyncSession = Depends(get_db)):
+    return await ParentPortalService.get_child_attendance(student_code, request, session, page=page, limit=limit)
 
 @router.get("/parent/children/{student_code}/grades")
 async def child_grades(student_code: str, request: Request, session: AsyncSession = Depends(get_db)):

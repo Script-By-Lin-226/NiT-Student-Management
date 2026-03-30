@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { PaginatedResponse } from "./admin.service";
 
 // types
 export interface PortalUser {
@@ -28,6 +29,23 @@ export interface AttendanceRecord {
   attendance_id?: number;
   date: string;
   status: "Present" | "Absent";
+  course_name?: string;
+  slot?: string;
+}
+
+export interface ChildAttendanceData {
+  records: AttendanceRecord[];
+  summary: {
+    total: number;
+    present: number;
+    rate: number;
+  };
+  pagination: {
+    total_count: number;
+    total_pages: number;
+    current_page: number;
+    limit: number;
+  };
 }
 
 export interface StudentAttendance {
@@ -118,8 +136,8 @@ export class PortalService {
     return res.data.data;
   }
 
-  static async getChildAttendance(code: string): Promise<AttendanceRecord[]> {
-    const res = await api.get(`/portal/parent/children/${code}/attendance`);
+  static async getChildAttendance(code: string, page: number = 1, limit: number = 10): Promise<ChildAttendanceData> {
+    const res = await api.get<{ data: ChildAttendanceData }>(`/portal/parent/children/${code}/attendance`, { params: { page, limit } });
     return res.data.data;
   }
 

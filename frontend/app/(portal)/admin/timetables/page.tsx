@@ -306,6 +306,14 @@ export default function AdminTimetablesPage() {
     }
   };
 
+  const format24h = (timeStr: string) => {
+    if (!timeStr) return "";
+    const parts = timeStr.split(":");
+    const h = parts[0];
+    const m = parts[1] || "00";
+    return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -371,7 +379,7 @@ export default function AdminTimetablesPage() {
                         <span className="font-bold text-slate-700">{r.batch_no || "-"}</span>
                       </td>
                       <td className="px-6 py-4">{r.day_of_week}</td>
-                      <td className="px-6 py-4 font-semibold">{r.start_time} - {r.end_time}</td>
+                      <td className="px-6 py-4 font-semibold">{format24h(r.start_time)} - {format24h(r.end_time)}</td>
                       <td className="px-6 py-4">{r.room_name || "-"}</td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-700">{r.teacher_name || "-"}</div>
@@ -380,16 +388,16 @@ export default function AdminTimetablesPage() {
                       <td className="px-6 py-4">
                         <div className="flex justify-end gap-2">
                           {isAdmin && (
-    <button onClick={() => openEdit(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
-                            <Pencil className="w-4 h-4" />
-                            Edit
-                          </button>
-    )}
+                            <button onClick={() => openEdit(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
+                              <Pencil className="w-4 h-4" />
+                              Edit
+                            </button>
+                          )}
                           {isAdmin && (
-                          <button onClick={() => doDelete(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
+                            <button onClick={() => doDelete(r)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
                           )}
                         </div>
                       </td>
@@ -694,4 +702,3 @@ export default function AdminTimetablesPage() {
     </div>
   );
 }
-

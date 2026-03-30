@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Child, PortalService, StudentCourse, StudentAttendance } from "@/services/portal.service";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminCourse, AdminEnrollment, AdminRoom, AdminService, AdminStudent } from "@/services/admin.service";
-import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound } from "lucide-react";
+import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -56,7 +56,8 @@ function lastNDays(n: number) {
 export default function DashboardPage() {
   const { isStudent, isParent, isAdminOrSales, isAdmin, user } = useAuth();
   const [selectedChild, setSelectedChild] = useState<string>("");
-  const { admin, parent, student } = useDashboardData(selectedChild);
+  const [childPage, setChildPage] = useState<number>(1);
+  const { admin, parent, student } = useDashboardData(selectedChild, childPage);
 
   // Sync selectedChild when parent data arrives
   useEffect(() => {
@@ -64,6 +65,11 @@ export default function DashboardPage() {
       setSelectedChild(parent.children[0].student_code);
     }
   }, [isParent, parent.children, selectedChild]);
+
+  // Reset page when child changes
+  useEffect(() => {
+    setChildPage(1);
+  }, [selectedChild]);
 
   const dashboardLoading = (typeof admin.isLoading === 'boolean' ? admin.isLoading : admin.isLoading.overall) || parent.isLoading || student.isLoading;
   const dashboardError = admin.error || parent.error || student.error;
@@ -326,39 +332,16 @@ export default function DashboardPage() {
     const selected = children.find((c) => c.student_code === selectedChild) || null;
 
     const summary = (() => {
-      const total = childAttendance.length;
-      const present = childAttendance.filter((r) => r.status === "Present").length;
-      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-      return { total, present, rate };
-    })();
-
-    const trend = (() => {
-      const days = lastNDays(7);
-      const byDay: Record<string, { present: number; total: number }> = {};
-      for (const d of days) byDay[d] = { present: 0, total: 0 };
-      
-      for (const rec of childAttendance) {
-        if (!(rec.date in byDay)) continue;
-        byDay[rec.date].total += 1;
-        if (rec.status === "Present") byDay[rec.date].present += 1;
-      }
-      return days.map((d) => {
-        const rate = byDay[d].total > 0 ? Math.round((byDay[d].present / byDay[d].total) * 100) : null;
-        return { 
-          day: d.slice(5), 
-          rate: rate,
-          present: byDay[d].present,
-          total: byDay[d].total
-        };
-      });
+      if (Array.isArray(childAttendance)) return { total: 0, present: 0, rate: 0 };
+      const attData = childAttendance as any; // ChildAttendanceData
+      if (!attData || !attData.summary) return { total: 0, present: 0, rate: 0 };
+      return attData.summary;
     })();
 
     const pieData = [
       { name: "Present", value: summary.present, color: "#10b981" },
       { name: "Absent", value: summary.total - summary.present, color: "#ef4444" },
     ];
-
-    const hasAnyInWindow = trend.some((d) => d.total > 0);
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -467,75 +450,82 @@ export default function DashboardPage() {
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100/50 p-8 lg:col-span-2 flex flex-col min-h-[400px]">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="font-black text-slate-900 text-xl tracking-tight">Attendance Trend</h3>
-                <p className="text-sm text-slate-500 font-medium mt-1">Daily attendance percentage (last 7 days)</p>
+                <h3 className="font-black text-slate-900 text-xl tracking-tight">Recent Attended Classes</h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">Status of your child's recent class attendances</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-bold text-slate-500">Rate</span>
-                </div>
+              <div className="p-2.5 bg-brand-50 text-brand-600 rounded-xl">
+                <BookOpen className="w-5 h-5" />
               </div>
             </div>
             
-            {!hasAnyInWindow ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
-                <div className="p-4 bg-slate-50 rounded-3xl">
-                  <div className="w-8 h-8 text-slate-300" />
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              {(!(childAttendance as any)?.records || (childAttendance as any).records.length === 0) ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3 py-10">
+                  <div className="p-4 bg-slate-50 rounded-full">
+                    <Fingerprint className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <p className="font-bold">No attendance records found</p>
                 </div>
-                <p className="font-bold">No data found within this period</p>
-              </div>
-            ) : (
-              <div className="flex-1 w-full relative min-h-0">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <AreaChart data={trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="day" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 700 }} 
-                      dy={15} 
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 700 }} 
-                      domain={[0, 100]}
-                      unit="%"
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "20px",
-                        border: "none",
-                        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
-                        padding: "12px 16px"
-                      }}
-                      itemStyle={{ fontWeight: 800 }}
-                      labelStyle={{ marginBottom: "4px", color: "#64748b", fontWeight: 700 }}
-                      cursor={{ stroke: "#10b981", strokeWidth: 2, strokeDasharray: "5 5" }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="rate"
-                      name="Attendance Rate"
-                      stroke="#10b981"
-                      strokeWidth={4}
-                      fillOpacity={1}
-                      fill="url(#colorRate)"
-                      dot={{ r: 6, fill: "#fff", strokeWidth: 3, stroke: "#10b981" }}
-                      activeDot={{ r: 8, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-4">
+                  {(childAttendance as any).records?.map((record: any, index: number) => (
+                    <div 
+                      key={index} 
+                      className="group flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:shadow-md hover:border-brand-100 transition-all duration-300"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
+                          record.status === 'Present' 
+                            ? 'bg-emerald-50 text-emerald-600' 
+                            : 'bg-rose-50 text-rose-600'
+                        }`}>
+                          {record.status === 'Present' ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-2 h-2 rounded-full bg-rose-500" />}
+                        </div>
+                        <div>
+                          <div className="font-black text-slate-800 tracking-tight">{record.course_name}</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{record.slot}</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-200" />
+                            <span className="text-xs font-bold text-slate-500">{record.date}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${
+                        record.status === 'Present' 
+                          ? 'bg-emerald-500/10 text-emerald-600' 
+                          : 'bg-rose-500/10 text-rose-600'
+                      }`}>
+                        {record.status}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+                    <button 
+                      onClick={() => setChildPage(p => Math.max(1, p - 1))}
+                      disabled={childPage === 1}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </button>
+                    <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                      Page {childPage} of {(childAttendance as any).pagination?.total_pages || 1}
+                    </div>
+                    <button 
+                      onClick={() => setChildPage(p => p + 1)}
+                      disabled={childPage >= ((childAttendance as any).pagination?.total_pages || 1)}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 hover:text-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100/50 p-8 flex flex-col items-center">

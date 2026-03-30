@@ -3,7 +3,7 @@ import { AdminService } from "@/services/admin.service";
 import { PortalService } from "@/services/portal.service";
 import { useAuth } from "@/hooks/useAuth";
 
-export function useDashboardData(selectedChildCode?: string) {
+export function useDashboardData(selectedChildCode?: string, childAttendancePage: number = 1) {
   const { isStudent, isParent, isAdminOrSales } = useAuth();
 
   // Admin Data - Split into smaller queries for faster perceived loading
@@ -43,8 +43,8 @@ export function useDashboardData(selectedChildCode?: string) {
   });
 
   const childAttendance = useQuery({
-    queryKey: ["parent", "childAttendance", selectedChildCode],
-    queryFn: () => PortalService.getChildAttendance(selectedChildCode!),
+    queryKey: ["parent", "childAttendance", selectedChildCode, childAttendancePage],
+    queryFn: () => PortalService.getChildAttendance(selectedChildCode!, childAttendancePage),
     enabled: !!isParent && !!selectedChildCode,
   });
 
@@ -91,7 +91,7 @@ export function useDashboardData(selectedChildCode?: string) {
     },
     parent: {
       children: children.data || [],
-      childAttendance: childAttendance.data || [],
+      childAttendance: childAttendance.data || { records: [], summary: { total: 0, present: 0, rate: 0 }, pagination: { total_count: 0, total_pages: 0, current_page: 1, limit: 10 } },
       isLoading: children.isLoading || childAttendance.isLoading,
       isFetching: children.isFetching || childAttendance.isFetching,
       error: children.error || childAttendance.error,

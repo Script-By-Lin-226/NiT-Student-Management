@@ -1,7 +1,7 @@
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from app.models.model import User, Enrollment, Course, Grade, TimeTable, Attendance, ParentStudent
 from app.services.rbac_portal import validating_student_role, validating_parent_role
 
@@ -215,7 +215,7 @@ class ParentPortalService:
         ]
         return JSONResponse({"success": True, "data": data, "error": None})
 
-    async def get_child_attendance(student_code: str, request: Request, session: AsyncSession):
+    async def get_child_attendance(student_code: str, request: Request, session: AsyncSession, page: int = 1, limit: int = 10):
         parent = await ParentPortalService._resolve_parent(request, session)
 
         # Verify link
@@ -231,16 +231,61 @@ class ParentPortalService:
         student_q = select(User).where(User.user_code == student_code)
         student_r = await session.execute(student_q)
         student = student_r.scalars().first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
 
-        q = select(Attendance).where(Attendance.user_id == student.user_id)
+        # Total count for pagination
+        count_q = select(func.count(Attendance.attendance_id)).where(Attendance.user_id == student.user_id)
+        count_r = await session.execute(count_q)
+        total_count = count_r.scalar() or 0
+
+        # Overall summary
+        present_q = select(func.count(Attendance.attendance_id)).where(and_(Attendance.user_id == student.user_id, Attendance.check_today == True))
+        present_r = await session.execute(present_q)
+        present_count = present_r.scalar() or 0
+        rate = round((present_count / total_count * 100), 1) if total_count else 0
+
+        # Paginated query
+        q = (
+            select(Attendance, Course)
+            .outerjoin(Course, Attendance.course_id == Course.course_id)
+            .where(Attendance.user_id == student.user_id)
+            .order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
         r = await session.execute(q)
-        records = r.scalars().all()
+        rows = r.all()
 
         data = [
-            {"date": str(rec.attendance_date), "status": "Present" if rec.check_today else "Absent"}
-            for rec in records
+            {
+                "attendance_id": rec.attendance_id,
+                "date": str(rec.attendance_date),
+                "status": "Present" if rec.check_today else "Absent",
+                "course_name": course.course_name if course else "General",
+                "slot": rec.slot
+            }
+            for rec, course in rows
         ]
-        return JSONResponse({"success": True, "data": data, "error": None})
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "records": data,
+                "summary": {
+                    "total": total_count,
+                    "present": present_count,
+                    "rate": rate
+                },
+                "pagination": {
+                    "total_count": total_count,
+                    "total_pages": (total_count + limit - 1) // limit,
+                    "current_page": page,
+                    "limit": limit
+                }
+            },
+            "error": None
+        })
 
     async def get_child_grades(student_code: str, request: Request, session: AsyncSession):
         parent = await ParentPortalService._resolve_parent(request, session)

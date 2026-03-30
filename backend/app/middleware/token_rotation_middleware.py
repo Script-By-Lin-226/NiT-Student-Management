@@ -1,72 +1,146 @@
+import logging
+from datetime import datetime, timezone, timedelta
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from jose import jwt, JWTError
-from datetime import datetime, timedelta, timezone
+from jose import JWTError
+
 from app.security.jwt_tok import decode_token
 from app.services.authentication_service import AuthenticationService
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
+
 class TokenRotationMiddleware(BaseHTTPMiddleware):
+
     async def dispatch(self, request: Request, call_next):
-        # Skip public routes and OPTIONS
-        EXCLUDE_PATH = ["/auth/login", "/auth/register", "/auth/courses", "/docs", "/openapi.json", "/redoc", "/favicon.ico", "/register", "/health"]
-        if request.method == "OPTIONS" or request.url.path in EXCLUDE_PATH:
+
+        if self._is_excluded(request):
             return await call_next(request)
 
-        # 1. Identify current access token
-        auth_header = request.headers.get("Authorization")
-        token = None
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-        else:
-            token = request.cookies.get("access_token")
-
+        access_token = self._get_access_token(request)
         new_tokens = None
-        
-        # 2. Check for proactive rotation
-        if token:
+
+        if access_token:
             try:
-                payload = await decode_token(token)
-                exp = payload.get("exp")
-                if exp:
-                    exp_time = datetime.fromtimestamp(exp, tz=timezone.utc)
-                    now = datetime.now(tz=timezone.utc)
-                    
-                    # If token expires in less than 5 minutes, rotate proactively
-                    if (exp_time - now).total_seconds() < 300:
-                        refresh_token = request.cookies.get("refresh_token")
-                        if refresh_token:
-                            try:
-                                new_tokens = await AuthenticationService.rotate_token(refresh_token)
-                            except:
-                                # If rotation fails, we don't block the request here, 
-                                # we let AuthMiddleware handle the potential expiry
-                                pass
-            except JWTError:
-                # Token already expired, AuthMiddleware will handle it using refresh token
-                pass
+                payload = await decode_token(access_token)
+
+                if self._should_rotate(payload):
+                    new_tokens = await self._rotate_tokens(request, payload)
+
+            except JWTError as e:
+                logger.warning(f"[JWT ERROR] {e}")
+            except Exception as e:
+                logger.error(f"[UNEXPECTED ERROR] {e}")
 
         response = await call_next(request)
 
-        # 3. If rotation occurred, set new cookies
         if new_tokens:
-            self._set_token_cookies(response, new_tokens["access_token"], new_tokens["refresh_token"])
-            response.headers["x-new-token"] = new_tokens["access_token"]
-            
+            self._attach_tokens(response, new_tokens)
+
         return response
 
-    def _set_token_cookies(self, response, access_token, refresh_token):
-        is_production = not settings.FRONTEND_URL.startswith("http://localhost")
-        cookie_secure = is_production
-        cookie_samesite = "none" if is_production else "lax"
-        
-        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
-        response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
+    # -----------------------------
+    # 🔹 Core Logic
+    # -----------------------------
 
-        # Ensure CORS exposes the header
-        existing_expose = response.headers.get("Access-Control-Expose-Headers", "")
-        if "x-new-token" not in existing_expose.lower():
-            if existing_expose:
-                response.headers["Access-Control-Expose-Headers"] = f"{existing_expose}, x-new-token"
-            else:
-                response.headers["Access-Control-Expose-Headers"] = "x-new-token"
+    def _is_excluded(self, request: Request) -> bool:
+        return (
+            request.method == "OPTIONS"
+            or request.url.path in settings.EXCLUDED_PATHS
+        )
+
+    def _get_access_token(self, request: Request):
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            return auth_header.split(" ")[1]
+        return request.cookies.get("access_token")
+
+    def _should_rotate(self, payload: dict) -> bool:
+        exp = payload.get("exp")
+        if not exp:
+            return False
+
+        exp_time = datetime.fromtimestamp(exp, tz=timezone.utc)
+        now = datetime.now(tz=timezone.utc)
+
+        # Rotate if < 5 minutes remaining
+        return (exp_time - now).total_seconds() < settings.TOKEN_ROTATE_THRESHOLD
+
+    async def _rotate_tokens(self, request: Request, payload: dict):
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            return None
+
+        try:
+            # 🔐 Optional fingerprint validation
+            self._validate_fingerprint(request, payload)
+
+            new_tokens = await AuthenticationService.rotate_token(refresh_token)
+
+            # 🔄 Sliding session (extend refresh lifetime)
+            await AuthenticationService.extend_session(payload.get("sub"))
+
+            return new_tokens
+
+        except Exception as e:
+            logger.warning(f"[ROTATION FAILED] {e}")
+            return None
+
+    # -----------------------------
+    # 🔐 Security Enhancements
+    # -----------------------------
+
+    def _validate_fingerprint(self, request: Request, payload: dict):
+        """
+        Prevent token theft (optional but recommended)
+        """
+        request_ip = request.client.host
+        token_ip = payload.get("ip")
+
+        if settings.ENABLE_IP_BINDING:
+            if token_ip and token_ip != request_ip:
+                raise Exception("IP mismatch detected")
+
+    # -----------------------------
+    # 🍪 Response Handling
+    # -----------------------------
+
+    def _attach_tokens(self, response, tokens: dict):
+        access_token = tokens["access_token"]
+        refresh_token = tokens["refresh_token"]
+
+        is_production = not settings.FRONTEND_URL.startswith("http://localhost")
+
+        # Access token
+        response.set_cookie(
+            "access_token",
+            access_token,
+            httponly=True,
+            secure=is_production,
+            samesite="none" if is_production else "lax",
+            max_age=settings.ACCESS_TOKEN_EXPIRE_SECONDS
+        )
+
+        # Refresh token
+        response.set_cookie(
+            "refresh_token",
+            refresh_token,
+            httponly=True,
+            secure=is_production,
+            samesite="none" if is_production else "lax",
+            max_age=settings.REFRESH_TOKEN_EXPIRE_SECONDS
+        )
+
+        # Optional header for frontend
+        response.headers["x-new-token"] = access_token
+
+        self._expose_headers(response)
+
+    def _expose_headers(self, response):
+        existing = response.headers.get("Access-Control-Expose-Headers", "")
+
+        if "x-new-token" not in existing.lower():
+            response.headers["Access-Control-Expose-Headers"] = (
+                f"{existing}, x-new-token" if existing else "x-new-token"
+            )

@@ -19,11 +19,13 @@
   --color-border: #e2e8f0;
 }
 
+
 @layer base {
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     @apply antialiased min-h-screen text-sm;
+    text-wrap: nowrap;
   }
 }
 

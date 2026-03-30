@@ -78,8 +78,8 @@ export default function AdminRoomsPage() {
       const matches =
         !term ||
         r.room_name.toLowerCase().includes(term) ||
-        String(r.capacity).includes(term) ||
-        String(r.current_load ?? "").includes(term);
+        r.capacity.toString().includes(term) ||
+        (r.current_load?.toString() || "").includes(term);
       const matchesStatus =
         status === "all" ? true : status === "full" ? !!r.is_full : status === "free" ? !r.is_full : true;
       return matches && matchesStatus;
@@ -197,6 +197,14 @@ export default function AdminRoomsPage() {
     }
   };
 
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return "";
+    const [h, m] = timeStr.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -285,22 +293,22 @@ export default function AdminRoomsPage() {
                         Free time
                       </button>
                       {isAdmin && (
-<button
-                        onClick={() => openEdit(r)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
-                      >
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                      </button>
-)}
+                        <button
+                          onClick={() => openEdit(r)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </button>
+                      )}
                       {isAdmin && (
-                      <button
-                        onClick={() => doDelete(r)}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+                        <button
+                          onClick={() => doDelete(r)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                       )}
                     </div>
                   </td>
@@ -395,7 +403,7 @@ export default function AdminRoomsPage() {
                   {availability.busy.length === 0 && <li className="text-slate-400">No busy slots</li>}
                   {availability.busy.map((b, i) => (
                     <li key={i} className="font-semibold">
-                      {b.start} - {b.end}
+                      {formatTime(b.start)} - {formatTime(b.end)}
                     </li>
                   ))}
                 </ul>
@@ -406,7 +414,7 @@ export default function AdminRoomsPage() {
                   {availability.free.length === 0 && <li className="text-slate-400">No free slots</li>}
                   {availability.free.map((f, i) => (
                     <li key={i} className="font-semibold">
-                      {f.start} - {f.end}
+                      {formatTime(f.start)} - {formatTime(f.end)}
                     </li>
                   ))}
                 </ul>
@@ -431,4 +439,3 @@ export default function AdminRoomsPage() {
     </div>
   );
 }
-

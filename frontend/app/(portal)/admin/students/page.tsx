@@ -861,7 +861,7 @@ export default function AdminStudentsPage() {
                         {s.username}
                       </td>
                       <td className="px-6 py-4">{s.email}</td>
-                      <td className="px-6 py-4">{s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}</td>
+                      <td className="px-6 py-4 text-nowrap">{s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}</td>
                       <td className="px-6 py-4">
                         <span
                           className={[
