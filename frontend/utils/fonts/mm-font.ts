@@ -8,4 +8,4 @@
 // 3. Upload your .ttf file.
 // 4. Download the result and paste ONLY the Base64 string here.
 
-export const PYIDAUNGSU_FONT_BASE64 = ""; 
+export const PYIDAUNGSU_FONT_BASE64: string = ""; 
