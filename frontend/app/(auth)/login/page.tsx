@@ -65,7 +65,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
           <div className="space-y-1.5 group">
-            <label className="text-sm font-semibold text-slate-800 transition-colors group-focus-within:text-slate-900" htmlFor="email">
+            <label className="text-sm font-semibold text-slate-800 transition-colors group-focus-within:text-slate-900 text-wrap" htmlFor="email">
               Email
             </label>
             <input
