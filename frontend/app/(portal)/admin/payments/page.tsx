@@ -112,8 +112,8 @@ export default function AdminPaymentsPage() {
 
     // auto select current month and year setup
     const d = new Date();
-    if (enr.payment_plan === 'full') {
-      setPMonth('Full Payment');
+    if (enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') {
+      setPMonth('Cash Down');
     } else {
       setPMonth(d.toLocaleString('default', { month: 'long' }));
     }
@@ -270,7 +270,7 @@ export default function AdminPaymentsPage() {
                   "Student Code": enr.student_code,
                   "Course": enr.course_name,
                   "Batch": enr.batch_no || "-",
-                  "Payment Plan": enr.payment_plan === 'full' ? 'Full Payment' : 'Installment',
+                  "Payment Plan": (enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'Cash Down' : (enr.payment_plan === 'installment' ? 'Installment' : 'N/A'),
                   "Course Fee (MMK)": enr.course_cost || 0,
                   "Total Paid (MMK)": totalPaid,
                   "Total Discount (MMK)": totalDiscount,
@@ -341,8 +341,8 @@ export default function AdminPaymentsPage() {
                       {enr.payment_plan ? (
                         <div className="flex flex-col gap-2 min-w-[max-content]">
                           <div className="flex items-center justify-between">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border tracking-tight ${enr.payment_plan === 'full' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
-                              {enr.payment_plan === 'full' ? 'Full Plan' : 'Installment'}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border tracking-tight ${(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
+                              {(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'Cash Down' : 'Installment'}
                             </span>
                           </div>
 
@@ -469,8 +469,8 @@ export default function AdminPaymentsPage() {
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{enr.student_code}</div>
                   </div>
                   {enr.payment_plan && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border tracking-tight ${enr.payment_plan === 'full' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
-                      {enr.payment_plan === 'full' ? 'Full' : 'Inst.'}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border tracking-tight ${(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
+                      {(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'Cash' : 'Inst.'}
                     </span>
                   )}
                 </div>
@@ -569,7 +569,7 @@ export default function AdminPaymentsPage() {
         )}
       </div>
 
-      <Modal title={selectedEnrollment?.payment_plan === 'full' ? "Record Full Payment" : "Record Installment Payment"} open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
+      <Modal title={(selectedEnrollment?.payment_plan === 'full' || selectedEnrollment?.payment_plan === 'cash_down') ? "Record Cash Down Payment" : "Record Installment Payment"} open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
         {selectedEnrollment && (
           <div className="space-y-4 pt-2">
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
@@ -584,10 +584,10 @@ export default function AdminPaymentsPage() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-slate-500 uppercase">
-                    {selectedEnrollment.payment_plan === 'full' ? 'Course Bal.' : 'Monthly Exp.'}
+                    {(selectedEnrollment.payment_plan === 'full' || selectedEnrollment.payment_plan === 'cash_down') ? 'Course Bal.' : 'Monthly Exp.'}
                   </div>
                   <div className="font-semibold text-slate-800">
-                    {selectedEnrollment.payment_plan === 'full' ? formatAmount(calculateLeftAmount(selectedEnrollment)) : formatAmount(selectedEnrollment.installment_amount)} MMK
+                    {(selectedEnrollment.payment_plan === 'full' || selectedEnrollment.payment_plan === 'cash_down') ? formatAmount(calculateLeftAmount(selectedEnrollment)) : formatAmount(selectedEnrollment.installment_amount)} MMK
                   </div>
                 </div>
                 <div>
@@ -686,8 +686,8 @@ export default function AdminPaymentsPage() {
                   {selectedEnrollment?.payment_plan === 'installment' && (
                     <option value="Down Payment">Down Payment</option>
                   )}
-                  {selectedEnrollment?.payment_plan === 'full' && (
-                    <option value="Full Payment">Full Payment</option>
+                  {(selectedEnrollment?.payment_plan === 'full' || selectedEnrollment?.payment_plan === 'cash_down') && (
+                    <option value="Cash Down">Cash Down</option>
                   )}
                   {selectedEnrollment?.payment_plan === 'installment' &&
                     ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (

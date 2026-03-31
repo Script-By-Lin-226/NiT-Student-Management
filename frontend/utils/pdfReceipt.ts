@@ -100,7 +100,7 @@ export const generateReceiptPDF = async (
   setCorrectFont("Payment Plan Info", 10, "bold");
   doc.text("Payment Plan Info", 14, contentY);
   
-  const planName = enrollment.payment_plan === 'full' ? 'Full Payment' : (enrollment.payment_plan === 'installment' ? 'Installment' : 'N/A');
+  const planName = (enrollment.payment_plan === 'full' || enrollment.payment_plan === 'cash_down') ? 'Cash Down' : (enrollment.payment_plan === 'installment' ? 'Installment' : 'N/A');
   setCorrectFont(`Plan: ${planName}`, 10, "normal");
   doc.text(`Plan: ${planName}`, 14, contentY + 7);
   doc.text(`Course Cost: ${enrollment.course_cost ? enrollment.course_cost.toLocaleString() + ' MMK' : 'N/A'}`, 14, contentY + 14);

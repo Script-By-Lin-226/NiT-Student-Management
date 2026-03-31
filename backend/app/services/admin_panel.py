@@ -4,7 +4,7 @@ from app.models.model import User, AcademicYear, Attendance, Course, Enrollment,
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.academic_year import AdminAcademicYearCreate, AdminAcademicYearUpdate
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceUpdateRequest
-from sqlalchemy import and_, select, update, delete, Integer
+from sqlalchemy import and_, select, update, delete, Integer, text
 from sqlalchemy.orm import defer
 from fastapi.responses import JSONResponse
 from fastapi import Request
@@ -962,33 +962,24 @@ class AdminPanelService:
         if not await validating_admin_role(request):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
-        # Delete data in correct reverse order of dependencies
-        # 1. High level domain data (Logs, Tokens, etc.)
-        await session.execute(delete(ActivityLog))
-        await session.execute(delete(RefreshToken))
+        # Tables that can be fully wiped
+        tables = [
+            "activity_logs", "refresh_tokens", "parent_student", "grades",
+            "attendances", "staff_attendance", "payments", "enrollments",
+            "timetables", "batches", "subjects", "courses", "academic_years", "rooms"
+        ]
         
-        # 2. Relationship Links
-        await session.execute(delete(ParentStudent))
-        await session.execute(delete(Grade))
-        await session.execute(delete(Attendance))
-        await session.execute(delete(StaffAttendance))
+        # 1. Truncate all tables except users to reset their IDs to 1
+        truncate_query = f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE;"
+        await session.execute(text(truncate_query))
         
-        # 3. Financial and Enrollment (Payments fall under Enrollment)
-        await session.execute(delete(Payment))
-        await session.execute(delete(Enrollment))
-        
-        # 4. Schedule and Logical grouping (Timetables and Batches fall under Course)
-        await session.execute(delete(TimeTable))
-        await session.execute(delete(Batch))
-        await session.execute(delete(Subject))
-        
-        # 5. Domain Core (Course falls under Academic Year and Room)
-        await session.execute(delete(Course))
-        await session.execute(delete(AcademicYear))
-        await session.execute(delete(Room))
-        
-        # 6. Users (Keep only admins)
+        # 2. Delete non-admin users
         await session.execute(delete(User).where(User.role != "admin"))
+        
+        # 3. Reset users sequence to avoid gaps
+        res = await session.execute(select(func.max(User.user_id)))
+        max_id = res.scalar() or 0
+        await session.execute(text(f"SELECT setval('users_user_id_seq', {max_id}, true)"))
 
         await session.commit()
         return JSONResponse({"status_code": 200, "message": "Purged all data except admin accounts and base structure"})
@@ -1489,7 +1480,7 @@ class AdminPanelService:
             d["exam_fee_pending_gbp"] = max(0.0, float(c.exam_fee_gbp or 0) - paid_gbp)
             d["payment_count"] = pay_counts.get(e.enrollment_id, 0)
             
-            d["foc_items"] = getattr(c, "foc_items", None)
+            d["foc_items"] = (c.foc_items_installment if plan == "installment" else c.foc_items)
             d["profile_picture"] = u.profile_picture
             data.append(d)
         return JSONResponse({
@@ -2279,7 +2270,7 @@ class AdminPanelService:
                 "payment_method_2": getattr(p, "payment_method_2", None),
                 "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
                 "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0,
-                "foc_items": getattr(c, "foc_items", None),
+                "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
                 "downpayment": getattr(e, "downpayment", 0) or 0,
                 "installment_amount": getattr(e, "installment_amount", 0) or 0,
                 "fine_amount": getattr(p, "fine_amount", 0) or 0,

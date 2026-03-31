@@ -140,6 +140,13 @@ class BackupService:
                             # Handle academic_year_id vs academicyear_id
                             if 'academicyear_id' in record:
                                 record['academic_year_id'] = record.pop('academicyear_id')
+
+                        if model == Course:
+                            # Handle deprecated foc_items_cash_down (merge into foc_items if empty)
+                            if 'foc_items_cash_down' in record:
+                                if not record.get('foc_items'):
+                                    record['foc_items'] = record['foc_items_cash_down']
+                                # record.pop('foc_items_cash_down') # Handled by model_columns check later
                         
                         # Clean NaN/Null values explicitly and handle Timestamps
                         clean_record = {}
@@ -300,6 +307,38 @@ class BackupService:
                     # Commit each table
                     await session.commit()
                     stats[sheet_name] = count
+            
+            await session.commit()
+            
+            # --- Reset Sequences after import to ensure next ID is correct ---
+            from sqlalchemy import text, func
+            sequence_maps = [
+                ("users", "user_id"),
+                ("academic_years", "academic_year_id"),
+                ("courses", "course_id"),
+                ("rooms", "room_id"),
+                ("enrollments", "enrollment_id"),
+                ("payments", "payment_id"),
+                ("batches", "batch_id"),
+                ("subjects", "subject_id"),
+                ("timetables", "timetable_id"),
+                ("grades", "grade_id"),
+                ("attendances", "attendance_id"),
+                ("staff_attendance", "id"),
+                ("parent_student", "id"),
+                ("activity_logs", "log_id"),
+                ("refresh_tokens", "id")
+            ]
+            
+            for table, pk in sequence_maps:
+                try:
+                    res = await session.execute(text(f"SELECT MAX({pk}) FROM {table}"))
+                    max_id = res.scalar() or 0
+                    seq_name = f"{table}_{pk}_seq"
+                    # Handle cases where sequence name might differ (like id vs table_id)
+                    await session.execute(text(f"SELECT setval('{seq_name}', {max_id}, true)"))
+                except Exception as e:
+                    print(f"Skipping sequence reset for {table}: {str(e)}")
             
             await session.commit()
             return JSONResponse({
