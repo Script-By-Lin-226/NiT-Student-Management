@@ -19,11 +19,13 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = (localStorage.getItem("role") || "").toLowerCase();
-    const user_code = localStorage.getItem("user_code");
-    const username = localStorage.getItem("username") || undefined;
-    const profile_picture = localStorage.getItem("profile_picture") || undefined;
+    const getStorageItem = (key: string) => localStorage.getItem(key) || sessionStorage.getItem(key);
+
+    const token = getStorageItem("token");
+    const role = (getStorageItem("role") || "").toLowerCase();
+    const user_code = getStorageItem("user_code");
+    const username = getStorageItem("username") || undefined;
+    const profile_picture = getStorageItem("profile_picture") || undefined;
 
     if (token && role && user_code) {
       setUser({ token, role, user_code, username, profile_picture });
@@ -42,11 +44,21 @@ export function useAuth() {
     } catch (e) {
       console.error("Backend logout failed", e);
     }
+    
+    // Clear both
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user_code");
     localStorage.removeItem("username");
     localStorage.removeItem("profile_picture");
+    localStorage.removeItem("remember_me");
+    
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("role");
+    sessionStorage.removeItem("user_code");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("profile_picture");
+
     setUser(null);
     router.replace("/login");
   };

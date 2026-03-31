@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService } from "@/services/auth.service";
 import { Loader2, Eye, EyeOff } from "lucide-react";
@@ -14,6 +14,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    if (token && role) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +34,21 @@ export default function LoginPage() {
       const data = await AuthService.login({ email: email.trim(), password });
       const { access_token, role, user_code, username, profile_picture } = data;
       
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("role", String(role || "").toLowerCase());
-      localStorage.setItem("user_code", user_code);
-      if (username) localStorage.setItem("username", username);
-      if (profile_picture) localStorage.setItem("profile_picture", profile_picture);
+      const storage = rememberMe ? localStorage : sessionStorage;
+      
+      storage.setItem("token", access_token);
+      storage.setItem("role", String(role || "").toLowerCase());
+      storage.setItem("user_code", user_code);
+      if (username) storage.setItem("username", username);
+      if (profile_picture) storage.setItem("profile_picture", profile_picture);
+
+      // If remember me is unchecked, we still might need some things in localStorage for consistent checks across components
+      // but for "long time logined", localStorage is the way.
+      if (rememberMe) {
+        localStorage.setItem("remember_me", "true");
+      } else {
+        localStorage.removeItem("remember_me");
+      }
 
       router.push("/dashboard"); 
     } catch (err: any) {
@@ -109,6 +129,8 @@ export default function LoginPage() {
               <div className="relative flex items-center">
                 <input 
                   type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-200 bg-white checked:bg-slate-900 checked:border-slate-900 transition-all duration-200 focus:ring-2 focus:ring-slate-900/10 focus:ring-offset-0" 
                 />
                 <svg className="absolute h-3.5 w-3.5 pointer-events-none stroke-white stroke-[4] opacity-0 peer-checked:opacity-100 transition-opacity duration-200 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none">

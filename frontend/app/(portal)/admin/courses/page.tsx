@@ -420,7 +420,7 @@ export default function AdminCoursesPage() {
               <option value="ABE courses" />
             </datalist>
           </div>
-          <div className="sm:col-span-2">
+          {/* <div className="sm:col-span-2"> ROOM in Course
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Default Room (Optional)</label>
             <select value={cRoom} onChange={(e) => setCRoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               <option value="">Select Room…</option>
@@ -430,7 +430,7 @@ export default function AdminCoursesPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
             <button onClick={submitCreate} disabled={busy || !cName.trim() || cYearId === ""} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
               Create

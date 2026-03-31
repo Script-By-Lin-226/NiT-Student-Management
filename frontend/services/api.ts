@@ -23,7 +23,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
@@ -37,7 +37,9 @@ api.interceptors.response.use(
     if (typeof window !== "undefined") {
       const newToken = response.headers["x-new-token"];
       if (newToken) {
-        localStorage.setItem("token", newToken);
+        const isRemembered = localStorage.getItem("remember_me") === "true";
+        const storage = isRemembered ? localStorage : sessionStorage;
+        storage.setItem("token", newToken);
       }
     }
     return response;
@@ -46,9 +48,14 @@ api.interceptors.response.use(
     if (error.response?.status === 401 || error.response?.status === 403) {
       if (typeof window !== "undefined") {
         if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+          // Clear both
           localStorage.removeItem("token");
           localStorage.removeItem("role");
           localStorage.removeItem("user_code");
+          localStorage.removeItem("remember_me");
+          sessionStorage.removeItem("token");
+          sessionStorage.removeItem("role");
+          sessionStorage.removeItem("user_code");
           window.location.href = "/login";
         }
       }
