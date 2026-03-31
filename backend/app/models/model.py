@@ -111,7 +111,8 @@ class Course(Base):
     fee_installment = Column(Float, nullable=True)
     exam_fee = Column(Float, nullable=True)
     exam_fee_gbp = Column(Float, nullable=True) # Fee in Pounds (GBP) as mentioned by user
-    foc_items = Column(String, nullable=True)
+    foc_items = Column(String, nullable=True) # Used for both Full Payment and Cash Down
+    foc_items_installment = Column(String, nullable=True)
     category = Column(String, nullable=True)
 
 

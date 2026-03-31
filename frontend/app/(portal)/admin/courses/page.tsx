@@ -77,6 +77,7 @@ export default function AdminCoursesPage() {
   const [cFeeInst, setCFeeInst] = useState<number | "">(0);
   const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">(0);
   const [cFocItems, setCFocItems] = useState("");
+  const [cFocInstallment, setCFocInstallment] = useState("");
   const [cCategory, setCCategory] = useState("");
   const [cRoom, setCRoom] = useState("");
 
@@ -87,6 +88,7 @@ export default function AdminCoursesPage() {
   const [eFeeInst, setEFeeInst] = useState<number | "">("");
   const [eExamFeeGbp, setEExamFeeGbp] = useState<number | "">("");
   const [eFocItems, setEFocItems] = useState("");
+  const [eFocInstallment, setEFocInstallment] = useState("");
   const [eCategory, setECategory] = useState("");
   const [eRoom, setERoom] = useState("");
 
@@ -114,6 +116,7 @@ export default function AdminCoursesPage() {
   const openCreate = () => {
     setCName(""); setCInstructor(""); setCFeeFull(0); setCFeeInst(0); setCExamFeeGbp(0);
     setCFocItems("");
+    setCFocInstallment("");
     setCCategory("");
     setCRoom("");
     setCYearId(years[0]?.academic_year_id ?? "");
@@ -131,6 +134,7 @@ export default function AdminCoursesPage() {
         fee_installment: cFeeInst !== "" ? Number(cFeeInst) : null,
         exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : undefined,
         foc_items: cFocItems.trim() || undefined,
+        foc_items_installment: cFocInstallment.trim() || undefined,
         category: cCategory.trim() || undefined,
         room: cRoom || undefined,
       });
@@ -146,6 +150,7 @@ export default function AdminCoursesPage() {
     setEName(c.course_name); setEYearId(c.academic_year_id); setEInstructor(""); setEFeeFull(c.fee_full_payment ?? ""); setEFeeInst(c.fee_installment ?? "");
     setEExamFeeGbp(c.exam_fee_gbp || "");
     setEFocItems(c.foc_items || "");
+    setEFocInstallment(c.foc_items_installment || "");
     setECategory(c.category || "");
     setERoom(c.room || "");
     setEditOpen(true);
@@ -164,6 +169,7 @@ export default function AdminCoursesPage() {
           fee_installment: eFeeInst !== "" ? Number(eFeeInst) : null,
           exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : undefined,
           foc_items: eFocItems.trim() || undefined,
+          foc_items_installment: eFocInstallment.trim() || undefined,
           category: eCategory.trim() || undefined,
           room: eRoom || undefined,
         }
@@ -382,7 +388,7 @@ export default function AdminCoursesPage() {
           </div> */}
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fee (Full Payment)</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fee (Cash Down)</label>
             <input type="number" value={cFeeFull} onChange={(e) => setCFeeFull(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
           </div>
           <div>
@@ -393,14 +399,27 @@ export default function AdminCoursesPage() {
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Fee (GBP £)</label>
             <input type="number" value={cExamFeeGbp} onChange={(e) => setCExamFeeGbp(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
           </div>
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Add-ons)</label>
-            <input
-              value={cFocItems}
-              onChange={(e) => setCFocItems(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              placeholder="e.g. Uniform, Books (comma separated)"
-            />
+          <div className="sm:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Cash Down)</label>
+                <input
+                  value={cFocItems}
+                  onChange={(e) => setCFocItems(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  placeholder="e.g. Uniform, Books"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Installment)</label>
+                <input
+                  value={cFocInstallment}
+                  onChange={(e) => setCFocInstallment(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  placeholder="e.g. No FOC"
+                />
+              </div>
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
@@ -462,7 +481,7 @@ export default function AdminCoursesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fee (Full Payment)</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fee (Cash Down)</label>
             <input type="number" value={eFeeFull} onChange={(e) => setEFeeFull(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
           </div>
           <div>
@@ -473,14 +492,27 @@ export default function AdminCoursesPage() {
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Fee (GBP £)</label>
             <input type="number" value={eExamFeeGbp} onChange={(e) => setEExamFeeGbp(e.target.value ? Number(e.target.value) : "")} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
           </div>
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Add-ons)</label>
-            <input
-              value={eFocItems}
-              onChange={(e) => setEFocItems(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              placeholder="e.g. Uniform, Books (comma separated)"
-            />
+          <div className="sm:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Cash Down)</label>
+                <input
+                  value={eFocItems}
+                  onChange={(e) => setEFocItems(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  placeholder="e.g. Uniform, Books"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">FOC Items (Installment)</label>
+                <input
+                  value={eFocInstallment}
+                  onChange={(e) => setEFocInstallment(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  placeholder="e.g. No FOC"
+                />
+              </div>
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>

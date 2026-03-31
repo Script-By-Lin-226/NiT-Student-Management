@@ -461,11 +461,12 @@ export default function AdminEnrollmentsPage() {
             <select value={cPaymentPlan} onChange={(e) => setCPaymentPlan(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               <option value="">Select Plan...</option>
               <option value="full">Full Payment</option>
+              <option value="cash_down">Cash Down</option>
               <option value="installment">Installment</option>
             </select>
           </div>
 
-          {cPaymentPlan === "installment" && (
+          {(cPaymentPlan === "installment" || cPaymentPlan === "cash_down") && (
             <>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Deposit Amount (MMK)</label>
@@ -517,11 +518,12 @@ export default function AdminEnrollmentsPage() {
             <select value={ePaymentPlan} onChange={(e) => setEPaymentPlan(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
               <option value="">Select Plan...</option>
               <option value="full">Full Payment</option>
+              <option value="cash_down">Cash Down</option>
               <option value="installment">Installment</option>
             </select>
           </div>
 
-          {ePaymentPlan === "installment" && (
+          {(ePaymentPlan === "installment" || ePaymentPlan === "cash_down") && (
             <>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Deposit Amount (MMK)</label>

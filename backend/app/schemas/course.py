@@ -8,6 +8,8 @@ class CourseBase(BaseModel):
     academic_year_id: int
     user_id: int
     category: Optional[str] = None
+    foc_items: Optional[str] = None  # Full Payment & Cash Down
+    foc_items_installment: Optional[str] = None
 
 
 class AdminCourseCreate(BaseModel):
@@ -17,7 +19,8 @@ class AdminCourseCreate(BaseModel):
     fee_full_payment: Optional[float] = None
     fee_installment: Optional[float] = None
     exam_fee_gbp: Optional[float] = None
-    foc_items: Optional[str] = None
+    foc_items: Optional[str] = None # Full & Cash Down
+    foc_items_installment: Optional[str] = None
     category: Optional[str] = None
 
 
@@ -28,5 +31,6 @@ class AdminCourseUpdate(BaseModel):
     fee_full_payment: Optional[float] = None
     fee_installment: Optional[float] = None
     exam_fee_gbp: Optional[float] = None
-    foc_items: Optional[str] = None
+    foc_items: Optional[str] = None # Full & Cash Down
+    foc_items_installment: Optional[str] = None
     category: Optional[str] = None

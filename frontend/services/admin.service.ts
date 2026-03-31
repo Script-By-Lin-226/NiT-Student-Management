@@ -123,6 +123,7 @@ export interface AdminCourse {
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
+  foc_items_installment?: string | null;
   discount?: number | null;
   category?: string | null;
   room?: string | null;
@@ -138,6 +139,7 @@ export interface AdminCourseCreate {
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
+  foc_items_installment?: string | null;
   category?: string | null;
   room?: string | null;
 }
@@ -150,6 +152,7 @@ export interface AdminCourseUpdate {
   fee_installment?: number | null;
   exam_fee_gbp?: number | null;
   foc_items?: string | null;
+  foc_items_installment?: string | null;
   category?: string | null;
   room?: string | null;
 }

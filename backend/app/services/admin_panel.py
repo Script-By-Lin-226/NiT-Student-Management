@@ -147,6 +147,7 @@ def _serialize_course(c: Course) -> dict:
         "fee_installment": getattr(c, "fee_installment", None),
         "exam_fee_gbp": getattr(c, "exam_fee_gbp", None),
         "foc_items": getattr(c, "foc_items", None),
+        "foc_items_installment": getattr(c, "foc_items_installment", None),
         "discount": getattr(c, "discount", 0.0),
         "category": getattr(c, "category", None),
     }
@@ -511,7 +512,7 @@ class AdminPanelService:
                     "course_name": c.course_name,
                     "course_code": c.course_code,
                     "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
-                    "foc_items": getattr(c, "foc_items", None),
+                    "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
                     "payment_plan": getattr(e, "payment_plan", None),
                     "downpayment": getattr(e, "downpayment", 0) or 0,
                     "installment_amount": getattr(e, "installment_amount", 0) or 0,
@@ -537,7 +538,7 @@ class AdminPanelService:
                             "course_code": c.course_code,
                             "course_name": c.course_name,
                             "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
-                            "foc_items": getattr(c, "foc_items", None),
+                            "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
                             "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
                             "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
                             "room": b.room if b and b.room else getattr(e, "room", None)
@@ -1169,6 +1170,7 @@ class AdminPanelService:
             fee_installment=payload.fee_installment,
             exam_fee_gbp=payload.exam_fee_gbp,
             foc_items=payload.foc_items,
+            foc_items_installment=payload.foc_items_installment,
             category=payload.category,
         )
         session.add(new_course)
@@ -1207,6 +1209,8 @@ class AdminPanelService:
             course.exam_fee_gbp = payload.exam_fee_gbp
         if getattr(payload, "foc_items", None) is not None:
             course.foc_items = payload.foc_items
+        if getattr(payload, "foc_items_installment", None) is not None:
+            course.foc_items_installment = payload.foc_items_installment
         if getattr(payload, "category", None) is not None:
             course.category = payload.category
 
