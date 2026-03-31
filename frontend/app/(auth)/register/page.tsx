@@ -413,7 +413,7 @@ export default function RegisterPage() {
                                                 .filter(c => !selectedCategory || c.category === selectedCategory)
                                                 .map((course) => (
                                                     <option key={course.course_code} value={course.course_code}>
-                                                        {course.course_name} ({course.course_code})
+                                                        {course.course_name}
                                                     </option>
                                                 ))
                                             }
