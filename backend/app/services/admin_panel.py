@@ -1516,12 +1516,14 @@ class AdminPanelService:
 
         # Find matching Batch if possible
         batch_id = payload.batch_id if payload.batch_id and payload.batch_id != 0 else None
-        if not batch_id and payload.batch_no:
+        batch_no = payload.batch_no
+        
+        if not batch_id and batch_no:
             b_r = await session.execute(
                 select(Batch).where(
                     and_(
                         Batch.course_id == course.course_id, 
-                        func.lower(func.trim(Batch.batch_no)) == func.lower(payload.batch_no.strip())
+                        func.lower(func.trim(Batch.batch_no)) == func.lower(batch_no.strip())
                     )
                 )
             )
@@ -2341,10 +2343,15 @@ class AdminPanelService:
                     "message": f"Exam fee payment ({new_exam_gbp} GBP) exceeds remaining balance ({max(0, left_exam_gbp)} GBP)"
                 }, status_code=400)
 
+        pay_date = payload.payment_date
+        if pay_date and pay_date.tzinfo:
+            pay_date = pay_date.replace(tzinfo=None)
+
         pay = Payment(
             enrollment_id=payload.enrollment_id,
             amount=payload.amount,
             month=payload.month,
+            payment_date=pay_date or func.now(),
             status=payload.status or "Paid",
             payment_method=payload.payment_method,
             amount_2=getattr(payload, "amount_2", 0.0),
@@ -2361,7 +2368,8 @@ class AdminPanelService:
         session.add(pay)
         await session.commit()
         await session.refresh(pay)
-        await _log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({payload.month})")
+        log_date = str(pay.payment_date) if pay.payment_date else payload.month
+        await _log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({log_date})")
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})
 
     @staticmethod

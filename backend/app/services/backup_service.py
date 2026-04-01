@@ -330,13 +330,16 @@ class BackupService:
                 ("refresh_tokens", "id")
             ]
             
+            # Reset Sequences
             for table, pk in sequence_maps:
                 try:
-                    res = await session.execute(text(f"SELECT MAX({pk}) FROM {table}"))
-                    max_id = res.scalar() or 0
-                    seq_name = f"{table}_{pk}_seq"
-                    # Handle cases where sequence name might differ (like id vs table_id)
-                    await session.execute(text(f"SELECT setval('{seq_name}', {max_id}, true)"))
+                    await session.execute(text(f"""
+                        SELECT setval(
+                            pg_get_serial_sequence('"{table}"', '{pk}'), 
+                            COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) + 1, 
+                            false
+                        )
+                    """))
                 except Exception as e:
                     print(f"Skipping sequence reset for {table}: {str(e)}")
             

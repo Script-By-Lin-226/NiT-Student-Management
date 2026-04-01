@@ -447,6 +447,7 @@ export interface AdminPaymentCreate {
   exam_fee_paid_mmk?: number | null;
   exam_fee_currency?: string | null;
   discount_amount?: number | null;
+  payment_date?: string | null;
 }
 
 export class AdminService {

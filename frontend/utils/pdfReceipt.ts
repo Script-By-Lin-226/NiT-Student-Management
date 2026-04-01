@@ -120,7 +120,13 @@ export const generateReceiptPDF = async (
     .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime())
     .map((p, index) => [
       index + 1,
-      new Date(p.payment_date).toLocaleDateString(),
+      new Date(p.payment_date).toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
       p.month || "N/A",
       p.amount_2 && p.amount_2 > 0 ? `${p.payment_method || "N/A"}\n${p.payment_method_2 || "N/A"}` : (p.payment_method || "N/A"),
       p.status || "Completed",

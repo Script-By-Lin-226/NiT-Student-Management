@@ -555,7 +555,7 @@ export default function AdminStudentsPage() {
         const totalPaidForEnrollment = paidPerEnrollment[p.enrollment_id] || 0;
         return {
           "Receipt ID": p.payment_id,
-          "Date": p.payment_date ? p.payment_date.slice(0, 10) : "-",
+          "Date": p.payment_date ? new Date(p.payment_date).toLocaleString() : "-",
           "Course Name": p.course_name,
           "Category": (courses.find((c: AdminCourse) => c.course_name === p.course_name))?.category || "-",
           "Month": p.month,
@@ -669,7 +669,7 @@ export default function AdminStudentsPage() {
           "Category": (courses.find((c: AdminCourse) => c.course_name === p.course_name))?.category || "-",
           "Month": p.month,
           "Method": p.payment_method || "-",
-          "Date": p.payment_date ? p.payment_date.slice(0, 10) : "-",
+          "Date": p.payment_date ? new Date(p.payment_date).toLocaleString() : "-",
           "Course Amount (MMK)": courseCost,
           "Amount Paid (MMK)": p.amount,
           "Discount (MMK)": p.discount_amount || 0,

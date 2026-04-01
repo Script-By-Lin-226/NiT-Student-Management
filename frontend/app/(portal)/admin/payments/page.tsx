@@ -77,6 +77,7 @@ export default function AdminPaymentsPage() {
   const [pMethod, setPMethod] = useState("");
   const [pAmount2, setPAmount2] = useState<number | "">(0);
   const [pMethod2, setPMethod2] = useState("");
+  const [pDate, setPDate] = useState("");
 
   const calculateLeftAmount = (enr: AdminEnrollment) => {
     return enr.balance_due || 0;
@@ -130,6 +131,10 @@ export default function AdminPaymentsPage() {
     setPExamFeeCurrency("MMK");
     setPAmount2(0);
     setPMethod2("");
+
+    const now = new Date();
+    const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setPDate(localNow);
 
     setPaymentModalOpen(true);
   };
@@ -206,6 +211,7 @@ export default function AdminPaymentsPage() {
         exam_fee_paid_gbp: pExamFeePaidGbp !== "" ? Number(pExamFeePaidGbp) : undefined,
         exam_fee_paid_mmk: pExamFeePaidMmk !== "" ? Number(pExamFeePaidMmk) : undefined,
         exam_fee_currency: pExamFeeCurrency || "MMK",
+        payment_date: pDate ? new Date(pDate).toISOString() : undefined,
       };
 
       await createPaymentMutation.mutateAsync(payload);
@@ -281,7 +287,8 @@ export default function AdminPaymentsPage() {
                   "Exam Fee Paid (MMK)": totalExamMmk,
                   "Balance Due (MMK)": calculateLeftAmount(enr),
                   "FOC Items": enr.foc_items || "-",
-                  "Status": (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? "Fully Paid" : "Balance Due"
+                  "Status": (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? "Fully Paid" : "Balance Due",
+                  "Last Payment": (enrPayments.length > 0) ? new Date([...enrPayments].sort((a,b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0].payment_date).toLocaleString() : "-"
                 };
               });
               exportToExcel(dataToExport, "Payments_Overview", "Payments");
@@ -674,6 +681,16 @@ export default function AdminPaymentsPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Date & Time</label>
+              <input
+                type="datetime-local"
+                value={pDate}
+                onChange={(e) => setPDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment For</label>
               <div className="grid grid-cols-2 gap-3">
                 <select
@@ -877,7 +894,15 @@ export default function AdminPaymentsPage() {
                               {p.payment_method}
                               {p.amount_2 ? ` + ${p.payment_method_2}` : ""}
                             </span>
-                            <span className="text-xs text-slate-400 font-medium">{p.month}</span>
+                            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                              {p.payment_date ? new Date(p.payment_date).toLocaleString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) : p.month}
+                            </span>
                           </div>
                           {(p.fine_amount != null && p.fine_amount > 0) && (
                             <div className="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-md inline-block mr-2 uppercase tracking-tight">
