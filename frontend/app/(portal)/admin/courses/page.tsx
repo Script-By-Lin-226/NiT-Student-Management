@@ -862,6 +862,17 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!subjectToDelete}
+        onClose={() => setSubjectToDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Subject"
+        message="Are you sure you want to delete this subject? It will be removed from all timetables and attendance records (they will show '-' instead)."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteSubject.isPending}
+      />
     </div>
   );
 }
