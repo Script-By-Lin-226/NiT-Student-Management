@@ -274,8 +274,8 @@ async def delete_enrollment(enrollment_code: str, request: Request, session: Asy
 # --- Payments CRUD ---
 
 @router.get("/payments")
-async def list_payments(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.list_payments(request, session, page, limit)
+async def list_payments(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db), enrollment_id: int = None):
+    return await AdminPanelService.list_payments(request, session, page, limit, enrollment_id)
 
 @router.post("/payments")
 async def create_payment(payload: PaymentCreate, request: Request, session: AsyncSession = Depends(get_db)):
