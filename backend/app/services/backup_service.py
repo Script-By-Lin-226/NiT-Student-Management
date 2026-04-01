@@ -12,14 +12,19 @@ from app.models.model import (
 )
 from app.services.rbac_portal import validating_admin_role
 from app.core.timezone_utils import get_now_local
+from app.services.activity_log_service import log_activity
 import json
+from app.core.logging import logger
 
 class BackupService:
     @staticmethod
     async def export_to_excel(request: Request, session: AsyncSession):
         if not await validating_admin_role(request):
+            logger.warning("Unauthorized access attempt to export backup")
             return JSONResponse({"status_code": 403, "message": "Unauthorized"}, status_code=403)
 
+        await log_activity(request, session, "Export Backup", "Administrator started database export to Excel")
+        logger.info("Starting Excel export...")
         # Tables to export
         models = [
             (User, "Users"),
@@ -65,6 +70,7 @@ class BackupService:
         output.seek(0)
         filename = f"backup_{get_now_local().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
+        logger.info(f"Excel export completed: {filename}")
         return StreamingResponse(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -74,8 +80,10 @@ class BackupService:
     @staticmethod
     async def import_from_excel(file: UploadFile, request: Request, session: AsyncSession):
         if not await validating_admin_role(request):
+            logger.warning("Unauthorized access attempt to import backup")
             return JSONResponse({"status_code": 403, "message": "Unauthorized"}, status_code=403)
 
+        logger.info(f"Starting Excel import from file: {file.filename}...")
         from app.security.password_hashing import hash_password
         try:
             contents = await file.read()
@@ -302,13 +310,14 @@ class BackupService:
                                     session.add(model(**record))
                                     count += 1
                         except Exception as e:
-                            print(f"Error importing record into {sheet_name}: {str(e)}")
+                            logger.error(f"Error importing record into {sheet_name}: {str(e)}")
                     
                     # Commit each table
                     await session.commit()
                     stats[sheet_name] = count
             
             await session.commit()
+            await log_activity(request, session, "Import Backup", f"Database restore completed. Stats: {json.dumps(stats)}")
             
             # --- Reset Sequences after import to ensure next ID is correct ---
             from sqlalchemy import text, func
@@ -341,7 +350,7 @@ class BackupService:
                         )
                     """))
                 except Exception as e:
-                    print(f"Skipping sequence reset for {table}: {str(e)}")
+                    logger.error(f"Skipping sequence reset for {table}: {str(e)}")
             
             await session.commit()
             return JSONResponse({
@@ -352,7 +361,7 @@ class BackupService:
 
         except Exception as e:
             import traceback
-            traceback.print_exc()
+            logger.error(f"Import failed: {str(e)}\n{traceback.format_exc()}")
             return JSONResponse({
                 "status_code": 500, 
                 "message": f"Import failed: {str(e)}"

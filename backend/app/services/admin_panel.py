@@ -21,6 +21,7 @@ from app.schemas.payment import PaymentCreate, PaymentUpdate
 from app.schemas.batch import AdminBatchCreate, AdminBatchUpdate
 from app.schemas.subject import AdminSubjectCreate, AdminSubjectUpdate
 from app.core.timezone_utils import get_now_local
+from app.services.activity_log_service import log_activity
 
 
 def _serialize_user_lite(u: User) -> dict:
@@ -204,35 +205,6 @@ def _serialize_room(r: Room) -> dict:
     }
 
 
-async def _log_activity(request: Request, session: AsyncSession, action: str, details: str):
-    from app.services.rbac_portal import _get_user
-    try:
-        user_info = _get_user(request)
-        user_id = user_info.get("user_id")
-        
-        # If user_id is missing, try looking it up once (cached in request state)
-        if not user_id and user_info.get("user_code"):
-            if hasattr(request.state, "user_id_cache"):
-                user_id = request.state.user_id_cache
-            else:
-                from app.models.model import User as UserModel
-                result = await session.execute(
-                    select(UserModel.user_id).where(UserModel.user_code == user_info["user_code"])
-                )
-                user_id = result.scalar_one_or_none()
-                request.state.user_id_cache = user_id
-
-        if user_id:
-            al = ActivityLog(
-                user_id=user_id,
-                action=action,
-                details=details
-            )
-            session.add(al)
-            # Commit to ensure the log is persisted even if called after the main transaction commit
-            await session.commit()
-    except Exception as e:
-        print("_log_activity error:", e)
 
 class AdminPanelService:
 
@@ -396,7 +368,7 @@ class AdminPanelService:
         )
         session.add(new_user)
         await session.flush()
-        await _log_activity(request, session, "Create Student", f"Student {user_code} created")
+        await log_activity(request, session, "Create Student", f"Student {user_code} created")
         
         # Auto-enroll if course is given
         if payload.course_code:
@@ -666,7 +638,7 @@ class AdminPanelService:
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
-        await _log_activity(request, session, "Create Parent", f"Parent {user_code} ({payload.username}) created")
+        await log_activity(request, session, "Create Parent", f"Parent {user_code} ({payload.username}) created")
         return JSONResponse(
             {"status_code": 201, "message": "Parent created successfully", "data": _serialize_user(new_user)},
             status_code=201,
@@ -698,7 +670,7 @@ class AdminPanelService:
         await session.refresh(new_user)
         
         # Log the activity
-        await _log_activity(
+        await log_activity(
             request, 
             session, 
             action="Create Staff", 
@@ -732,7 +704,7 @@ class AdminPanelService:
             # allow relationship label updates
             link.relationship_label = payload.relationship_label or link.relationship_label
             await session.commit()
-            await _log_activity(request, session, "Update Parent Link", f"Parent {parent_code} linked to {payload.student_code} - relationship updated")
+            await log_activity(request, session, "Update Parent Link", f"Parent {parent_code} linked to {payload.student_code} - relationship updated")
             return JSONResponse({"status_code": 200, "message": "Parent already linked to student; relationship updated"})
 
         session.add(
@@ -743,7 +715,7 @@ class AdminPanelService:
             )
         )
         await session.commit()
-        await _log_activity(request, session, "Link Parent-Student", f"Parent {parent_code} linked to student {payload.student_code}")
+        await log_activity(request, session, "Link Parent-Student", f"Parent {parent_code} linked to student {payload.student_code}")
         return JSONResponse({"status_code": 201, "message": "Parent linked to student successfully"}, status_code=201)
     
     async def update_user(user_code: str, user_update: UserUpdate, request: Request, session: AsyncSession):
@@ -782,7 +754,7 @@ class AdminPanelService:
             )
             
         await session.commit()
-        await _log_activity(request, session, "Update User", f"User {user_code} updated")
+        await log_activity(request, session, "Update User", f"User {user_code} updated")
         return JSONResponse({"status_code": 200, "message": "User updated successfully"})
         
     async def delete_user(user_code: str, request: Request, session: AsyncSession):
@@ -816,7 +788,7 @@ class AdminPanelService:
 
         await session.delete(user)
         await session.commit()
-        await _log_activity(request, session, "Delete User", f"User {user_code} deleted")
+        await log_activity(request, session, "Delete User", f"User {user_code} deleted")
         return JSONResponse({"status_code": 200, "message": "User deleted successfully"})
 
     async def change_user_password(user_code: str, payload: AdminUserPasswordChange, request: Request, session: AsyncSession):
@@ -835,7 +807,7 @@ class AdminPanelService:
         user.password_hash = hashed
         await session.commit()
         
-        await _log_activity(request, session, "Change Password", f"Password changed for user {user_code}")
+        await log_activity(request, session, "Change Password", f"Password changed for user {user_code}")
         
         return JSONResponse({"status_code": 200, "message": "Password updated successfully"})
 
@@ -864,7 +836,7 @@ class AdminPanelService:
         user.password_hash = hashed
         await session.commit()
         
-        await _log_activity(request, session, "Change Self Password", "Changed own password")
+        await log_activity(request, session, "Change Self Password", "Changed own password")
         
         return JSONResponse({"status_code": 200, "message": "Your password has been changed successfully"})
 
@@ -1021,7 +993,7 @@ class AdminPanelService:
         session.add(new_academic_year)
         await session.commit()
         await session.refresh(new_academic_year)
-        await _log_activity(request, session, "Create Academic Year", f"Academic year '{payload.academic_year_name}' created")
+        await log_activity(request, session, "Create Academic Year", f"Academic year '{payload.academic_year_name}' created")
         return JSONResponse({"status_code": 201, "message": "Academic year created successfully", "data": _serialize_academic_year(new_academic_year)}, status_code=201)
         
     async def get_all_academic_years(request: Request, session: AsyncSession):
@@ -1062,7 +1034,7 @@ class AdminPanelService:
             target_year.end_date = datetime.strptime(payload.end_date, "%Y-%m-%d")
         
         await session.commit()
-        await _log_activity(request, session, "Update Academic Year", f"Academic year ID {academic_year_id} updated")
+        await log_activity(request, session, "Update Academic Year", f"Academic year ID {academic_year_id} updated")
         return JSONResponse({"status_code": 200, "message": "Academic year updated successfully", "data": _serialize_academic_year(target_year)})
         
     async def delete_academic_year(academic_year_id: int, request: Request, session: AsyncSession):
@@ -1078,7 +1050,7 @@ class AdminPanelService:
             
         await session.delete(target_year)
         await session.commit()
-        await _log_activity(request, session, "Delete Academic Year", f"Academic year ID {academic_year_id} deleted")
+        await log_activity(request, session, "Delete Academic Year", f"Academic year ID {academic_year_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Academic year deleted successfully"})
 
     # CRUD - Courses
@@ -1177,7 +1149,7 @@ class AdminPanelService:
         session.add(new_course)
         await session.commit()
         await session.refresh(new_course)
-        await _log_activity(request, session, "Create Course", f"Course {course_code} ({payload.course_name}) created")
+        await log_activity(request, session, "Create Course", f"Course {course_code} ({payload.course_name}) created")
         return JSONResponse({"status_code": 201, "message": "Course created successfully", "data": _serialize_course(new_course)}, status_code=201)
 
     async def update_course(request: Request, session: AsyncSession, course_code: str, payload: AdminCourseUpdate):
@@ -1216,7 +1188,7 @@ class AdminPanelService:
             course.category = payload.category
 
         await session.commit()
-        await _log_activity(request, session, "Update Course", f"Course {course_code} updated")
+        await log_activity(request, session, "Update Course", f"Course {course_code} updated")
         return JSONResponse({"status_code": 200, "message": "Course updated successfully", "data": _serialize_course(course)})
 
     async def delete_course(request: Request, session: AsyncSession, course_code: str):
@@ -1228,7 +1200,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
         await session.delete(course)
         await session.commit()
-        await _log_activity(request, session, "Delete Course", f"Course {course_code} deleted")
+        await log_activity(request, session, "Delete Course", f"Course {course_code} deleted")
         return JSONResponse({"status_code": 200, "message": "Course deleted successfully"})
 
     # --- CRUD - Batches ---
@@ -1284,7 +1256,7 @@ class AdminPanelService:
         session.add(new_batch)
         await session.commit()
         await session.refresh(new_batch)
-        await _log_activity(request, session, "Create Batch", f"Batch {payload.batch_no} created for course {course.course_name}")
+        await log_activity(request, session, "Create Batch", f"Batch {payload.batch_no} created for course {course.course_name}")
         return JSONResponse({"status_code": 201, "message": "Batch created successfully", "data": _serialize_batch(new_batch)}, status_code=201)
 
     async def update_batch(request: Request, session: AsyncSession, batch_id: int, payload: AdminBatchUpdate):
@@ -1317,7 +1289,7 @@ class AdminPanelService:
                 batch.instructor_id = None
                 
         await session.commit()
-        await _log_activity(request, session, "Update Batch", f"Batch ID {batch_id} updated")
+        await log_activity(request, session, "Update Batch", f"Batch ID {batch_id} updated")
         return JSONResponse({"status_code": 200, "message": "Batch updated successfully", "data": _serialize_batch(batch)})
 
     async def delete_batch(request: Request, session: AsyncSession, batch_id: int):
@@ -1329,7 +1301,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
         await session.delete(batch)
         await session.commit()
-        await _log_activity(request, session, "Delete Batch", f"Batch ID {batch_id} deleted")
+        await log_activity(request, session, "Delete Batch", f"Batch ID {batch_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Batch deleted successfully"})
 
     # --- CRUD - Subjects ---
@@ -1375,7 +1347,7 @@ class AdminPanelService:
         session.add(new_subject)
         await session.commit()
         await session.refresh(new_subject)
-        await _log_activity(request, session, "Create Subject", f"Subject {payload.subject_code} created for course {course.course_name}")
+        await log_activity(request, session, "Create Subject", f"Subject {payload.subject_code} created for course {course.course_name}")
         return JSONResponse({"status_code": 201, "message": "Subject created successfully", "data": _serialize_subject(new_subject)}, status_code=201)
 
     async def update_subject(request: Request, session: AsyncSession, subject_id: int, payload: AdminSubjectUpdate):
@@ -1399,7 +1371,7 @@ class AdminPanelService:
         if payload.is_active is not None: subject.is_active = payload.is_active
                 
         await session.commit()
-        await _log_activity(request, session, "Update Subject", f"Subject ID {subject_id} updated")
+        await log_activity(request, session, "Update Subject", f"Subject ID {subject_id} updated")
         return JSONResponse({"status_code": 200, "message": "Subject updated successfully", "data": _serialize_subject(subject)})
 
     async def delete_subject(request: Request, session: AsyncSession, subject_id: int):
@@ -1411,7 +1383,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Subject not found"}, status_code=404)
         await session.delete(subject)
         await session.commit()
-        await _log_activity(request, session, "Delete Subject", f"Subject ID {subject_id} deleted")
+        await log_activity(request, session, "Delete Subject", f"Subject ID {subject_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Subject deleted successfully"})
 
     # --- CRUD - Enrollments ---
@@ -1565,7 +1537,7 @@ class AdminPanelService:
         session.add(e)
         await session.commit()
         await session.refresh(e)
-        await _log_activity(request, session, "Create Enrollment", f"Enrollment {enrollment_code} created for student {payload.student_code} in course {payload.course_code}")
+        await log_activity(request, session, "Create Enrollment", f"Enrollment {enrollment_code} created for student {payload.student_code} in course {payload.course_code}")
         return JSONResponse({"status_code": 201, "message": "Enrollment created successfully", "data": _serialize_enrollment(e)}, status_code=201)
 
     async def update_enrollment(request: Request, session: AsyncSession, enrollment_code: str, payload: AdminEnrollmentUpdate):
@@ -1611,7 +1583,7 @@ class AdminPanelService:
             e.installment_amount = payload.installment_amount
             
         await session.commit()
-        await _log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
+        await log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
         return JSONResponse({"status_code": 200, "message": "Enrollment updated successfully", "data": _serialize_enrollment(e)})
 
     async def delete_enrollment(request: Request, session: AsyncSession, enrollment_code: str):
@@ -1623,7 +1595,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Enrollment not found"}, status_code=404)
         await session.delete(e)
         await session.commit()
-        await _log_activity(request, session, "Delete Enrollment", f"Enrollment {enrollment_code} deleted")
+        await log_activity(request, session, "Delete Enrollment", f"Enrollment {enrollment_code} deleted")
         return JSONResponse({"status_code": 200, "message": "Enrollment deleted successfully"})
 
     async def approve_student(request: Request, session: AsyncSession, user_id: int, payload: AdminStudentApprove):
@@ -1657,7 +1629,7 @@ class AdminPanelService:
             e.status = True
             
         await session.commit()
-        await _log_activity(request, session, "Approve Student", f"Student {u.user_code} (was {old_code}) and their enrollments were approved and activated")
+        await log_activity(request, session, "Approve Student", f"Student {u.user_code} (was {old_code}) and their enrollments were approved and activated")
         return JSONResponse({"status_code": 200, "message": "Student approved successfully", "data": {"user_code": u.user_code}})
 
     # CRUD - Attendance
@@ -1758,7 +1730,7 @@ class AdminPanelService:
         
         log_msg = f"Attendance marked for {payload.student_code} slot={payload.slot}"
         if payload.subject_id: log_msg += f" subject_id={payload.subject_id}"
-        await _log_activity(request, session, "Mark Attendance", log_msg)
+        await log_activity(request, session, "Mark Attendance", log_msg)
         
         return JSONResponse({
             "status_code": 201,
@@ -1879,7 +1851,7 @@ class AdminPanelService:
 
         record.check_today = payload.check_today
         await session.commit()
-        await _log_activity(request, session, "Update Attendance", f"Attendance ID {attendance_id} updated to {payload.check_today}")
+        await log_activity(request, session, "Update Attendance", f"Attendance ID {attendance_id} updated to {payload.check_today}")
         return JSONResponse({
             "status_code": 200,
             "message": "Attendance updated successfully",
@@ -1958,7 +1930,7 @@ class AdminPanelService:
         session.add(room)
         await session.commit()
         await session.refresh(room)
-        await _log_activity(request, session, "Create Room", f"Room '{payload.room_name}' created with capacity {payload.capacity}")
+        await log_activity(request, session, "Create Room", f"Room '{payload.room_name}' created with capacity {payload.capacity}")
         return JSONResponse({"status_code": 201, "message": "Room created successfully", "data": _serialize_room(room)}, status_code=201)
 
     async def update_room(request: Request, session: AsyncSession, room_id: int, payload: AdminRoomUpdate):
@@ -1978,7 +1950,7 @@ class AdminPanelService:
             room.is_active = payload.is_active
 
         await session.commit()
-        await _log_activity(request, session, "Update Room", f"Room ID {room_id} updated")
+        await log_activity(request, session, "Update Room", f"Room ID {room_id} updated")
         return JSONResponse({"status_code": 200, "message": "Room updated successfully", "data": _serialize_room(room)})
 
     async def delete_room(request: Request, session: AsyncSession, room_id: int):
@@ -1992,7 +1964,7 @@ class AdminPanelService:
 
         await session.delete(room)
         await session.commit()
-        await _log_activity(request, session, "Delete Room", f"Room ID {room_id} deleted")
+        await log_activity(request, session, "Delete Room", f"Room ID {room_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Room deleted successfully"})
 
     @staticmethod
@@ -2157,7 +2129,7 @@ class AdminPanelService:
         if payload.subject_code: msg += f" Subject {payload.subject_code}"
         if payload.teacher_code: msg += f" with Teacher {payload.teacher_code}"
         msg += f" on {payload.day_of_week} {payload.start_time}-{payload.end_time} created"
-        await _log_activity(request, session, "Create Timetable", msg)
+        await log_activity(request, session, "Create Timetable", msg)
         return JSONResponse({"status_code": 201, "message": "Timetable created successfully", "data": {"timetable_id": tt.timetable_id}}, status_code=201)
 
     async def update_timetable(request: Request, session: AsyncSession, timetable_id: int, payload: AdminTimeTableUpdate):
@@ -2222,7 +2194,7 @@ class AdminPanelService:
 
 
         await session.commit()
-        await _log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")
+        await log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")
         return JSONResponse({"status_code": 200, "message": "Timetable updated successfully"})
 
     async def delete_timetable(request: Request, session: AsyncSession, timetable_id: int):
@@ -2235,7 +2207,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Timetable not found"}, status_code=404)
         await session.delete(tt)
         await session.commit()
-        await _log_activity(request, session, "Delete Timetable", f"Timetable ID {timetable_id} deleted")
+        await log_activity(request, session, "Delete Timetable", f"Timetable ID {timetable_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Timetable deleted successfully"})
 
     # --- Payments CRUD ---
@@ -2380,7 +2352,7 @@ class AdminPanelService:
         await session.commit()
         await session.refresh(pay)
         log_date = str(pay.payment_date) if pay.payment_date else payload.month
-        await _log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({log_date})")
+        await log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({log_date})")
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})
 
     @staticmethod
