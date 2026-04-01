@@ -28,6 +28,7 @@ class UserBase(BaseModel):
 class LoginUser(BaseModel):
     email: str
     password: str
+    remember_me: Optional[bool] = False
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None

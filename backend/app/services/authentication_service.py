@@ -71,7 +71,7 @@ class AuthenticationService:
             raise HTTPException(status_code=404, detail="User not found")
             
         if not existent_user.is_active:
-            raise HTTPException(status_code=403, detail="Account is not active yet. Please contact admin for approval.")
+            raise HTTPException(status_code=403, detail="Account is inactive")
         
         try:
             password_valid = await verify_password(user.password, existent_user.password_hash)
@@ -125,8 +125,19 @@ class AuthenticationService:
         cookie_secure = is_production
         cookie_samesite = "none" if is_production else "lax"
         
-        response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
-        response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
+        cookie_params = {
+            "httponly": True,
+            "secure": cookie_secure,
+            "samesite": cookie_samesite
+        }
+        
+        if user.remember_me:
+            # Persistent cookies if remember me is on
+            max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+            cookie_params["max_age"] = max_age
+
+        response.set_cookie("access_token", access_token, **cookie_params)
+        response.set_cookie("refresh_token", refresh_token, **cookie_params)
         response.headers["Authorization"] = f"Bearer {access_token}"
         
         return response   
@@ -170,6 +181,9 @@ class AuthenticationService:
             user = result.scalar_one_or_none()
             if not user:
                 raise HTTPException(status_code=401, detail="User not found")
+            
+            if not user.is_active:
+                raise HTTPException(status_code=403, detail="Account is inactive")
 
             new_access_token = await create_access_token(data={
                 "sub": str(user.user_code).lower(),
@@ -195,6 +209,69 @@ class AuthenticationService:
                 }
             }
     
+    @staticmethod
+    async def get_me(request: Request, session: AsyncSession):
+        user_data = getattr(request.state, "user", None)
+        if not user_data:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        user_code = user_data.get("user_code")
+        query = select(User).where(User.user_code == user_code)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is inactive")
+            
+        return {
+            "user_id": user.user_id,
+            "user_code": user.user_code,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "is_active": user.is_active,
+            "profile_picture": user.profile_picture,
+            "phone": user.phone,
+            "nrc": user.nrc,
+            "gender": user.gender,
+            "address": user.address,
+            "parent_name": user.parent_name,
+            "parent_phone": user.parent_phone,
+            "data_of_birth": user.data_of_birth
+        }
+
+    @staticmethod
+    async def update_profile(request: Request, payload: dict, session: AsyncSession):
+        user_data = getattr(request.state, "user", None)
+        if not user_data:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+            
+        user_code = user_data.get("user_code")
+        query = select(User).where(User.user_code == user_code)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        if "username" in payload: user.username = payload["username"]
+        if "email" in payload: user.email = payload["email"]
+        if "phone" in payload: user.phone = payload["phone"]
+        if "profile_picture" in payload: user.profile_picture = payload["profile_picture"]
+        if "address" in payload: user.address = payload["address"]
+        
+        await session.commit()
+        await session.refresh(user)
+        
+        # Clear cache for this user
+        from app.core.cache import cache_manager
+        await cache_manager.delete(f"user:{user.user_code.lower()}")
+        
+        return {"message": "Profile updated successfully"}
+
     @staticmethod
     async def logout(request: Request):
         user = getattr(request.state, "user", None)

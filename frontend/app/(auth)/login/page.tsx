@@ -18,8 +18,8 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const role = localStorage.getItem("role") || sessionStorage.getItem("role");
     if (token && role) {
       router.replace("/dashboard");
     }
@@ -31,7 +31,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await AuthService.login({ email: email.trim(), password });
+      const data = await AuthService.login({ email: email.trim(), password, remember_me: rememberMe });
       const { access_token, role, user_code, username, profile_picture } = data;
       
       const storage = rememberMe ? localStorage : sessionStorage;
@@ -42,8 +42,6 @@ export default function LoginPage() {
       if (username) storage.setItem("username", username);
       if (profile_picture) storage.setItem("profile_picture", profile_picture);
 
-      // If remember me is unchecked, we still might need some things in localStorage for consistent checks across components
-      // but for "long time logined", localStorage is the way.
       if (rememberMe) {
         localStorage.setItem("remember_me", "true");
       } else {

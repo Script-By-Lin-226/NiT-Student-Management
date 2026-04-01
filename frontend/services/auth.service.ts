@@ -1,6 +1,7 @@
 import { api } from "./api";
 
 export interface PublicCourse {
+  course_id: number;
   course_code: string;
   course_name: string;
   category: string;
@@ -25,6 +26,16 @@ export class AuthService {
     profile_picture?: string;
   }> {
     const res = await api.post("/auth/login", payload);
+    return res.data;
+  }
+
+  static async getMe(): Promise<any> {
+    const res = await api.get("/auth/me");
+    return res.data;
+  }
+
+  static async updateProfile(payload: any): Promise<any> {
+    const res = await api.put("/auth/profile/update", payload);
     return res.data;
   }
 

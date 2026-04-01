@@ -373,34 +373,6 @@ export default function AdminStudentsPage() {
     }
   };
 
-  const handleApprove = (s: AdminStudent) => {
-    setSelected(s);
-    setApproveManualCode(s.user_code);
-    setApprovePrefix("");
-    setApproveOpen(true);
-  };
-
-  const submitApprove = async () => {
-    if (!selected) return;
-    setBusy(true);
-    setError("");
-    try {
-      await approveMutation.mutateAsync({
-        id: selected.user_id,
-        payload: {
-          user_code: approvePrefix === "" ? approveManualCode : undefined,
-          auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
-        }
-      });
-      setApproveOpen(false);
-      await load();
-    } catch (e: any) {
-      handleError(e, "Failed to approve student");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const openEnrollEdit = (enr: any) => {
     setEnrollToEdit(enr);
     setEBatch(enr.batch_no || "");
@@ -428,6 +400,51 @@ export default function AdminStudentsPage() {
       setEnrollEditOpen(false);
     } catch (e: any) {
       handleError(e, "Failed to update enrollment");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleApprove = (s: AdminStudent) => {
+    setSelected(s);
+    setApproveManualCode(s.user_code || "");
+    setApprovePrefix("");
+    setApproveOpen(true);
+  };
+
+  const submitApprove = async () => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      await approveMutation.mutateAsync({
+        id: selected.user_id,
+        payload: {
+          user_code: approvePrefix === "" ? approveManualCode : undefined,
+          auto_prefix: approvePrefix !== "" ? approvePrefix : undefined,
+        }
+      });
+      setApproveOpen(false);
+      await load();
+    } catch (e: any) {
+      handleError(e, "Failed to approve student");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleStatus = async (s: AdminStudent) => {
+    setBusy(true);
+    setError("");
+    try {
+      await updateMutation.mutateAsync({
+        code: s.user_code,
+        payload: { is_active: !s.is_active }
+      });
+      toast.success(`Student ${s.is_active ? 'deactivated' : 'activated'} successfully`);
+      await load();
+    } catch (e: any) {
+      handleError(e, "Failed to toggle student status");
     } finally {
       setBusy(false);
     }
@@ -874,15 +891,40 @@ export default function AdminStudentsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-end gap-2">
-                          {!s.is_active && (
-                            <button
-                              onClick={() => handleApprove(s)}
-                              disabled={busy}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              Approve
-                            </button>
+                          {isAdmin && (
+                            <>
+                              {!s.is_active ? (
+                                <div className="flex gap-1.5 items-center">
+                                  <button
+                                    onClick={() => handleApprove(s)}
+                                    disabled={busy}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    Approve
+                                  </button>
+                                  {s.student_type !== "New Student" && (
+                                    <button
+                                      onClick={() => toggleStatus(s)}
+                                      disabled={busy}
+                                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold hover:bg-emerald-100 shadow-sm transition-all active:scale-95"
+                                      title="Quick Activate Again"
+                                    >
+                                      <ShieldCheck className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => toggleStatus(s)}
+                                  disabled={busy}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-800 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
+                                >
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  Leave
+                                </button>
+                              )}
+                            </>
                           )}
                           {isAdmin && (
                             <button
@@ -956,15 +998,40 @@ export default function AdminStudentsPage() {
                         {s.is_active ? "Active" : "Inactive"}
                       </span>
                       <div className="flex gap-2">
-                        {!s.is_active && (
-                          <button
-                            onClick={() => handleApprove(s)}
-                            disabled={busy}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
-                            title="Approve"
-                          >
-                            <Check className="w-5 h-5" />
-                          </button>
+                        {isAdmin && (
+                          <div className="flex gap-2 items-center">
+                            {!s.is_active ? (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(s)}
+                                  disabled={busy}
+                                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
+                                  title="Approve (Set/Manage Code)"
+                                >
+                                  <Check className="w-5 h-5" />
+                                </button>
+                                {s.student_type !== "New Student" && (
+                                  <button
+                                    onClick={() => toggleStatus(s)}
+                                    disabled={busy}
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-600 border border-emerald-700 text-white shadow-sm transition-all active:scale-90"
+                                    title="Quick Activate"
+                                  >
+                                    <ShieldCheck className="w-5 h-5" />
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => toggleStatus(s)}
+                                disabled={busy}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 shadow-sm transition-all active:scale-90"
+                                title="Mark as Leave"
+                              >
+                                <ShieldCheck className="w-5 h-5" />
+                              </button>
+                            )}
+                          </div>
                         )}
                         {isAdmin && (
                           <button
@@ -1782,15 +1849,40 @@ export default function AdminStudentsPage() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              {!selected.is_active && (
-                <button
-                  onClick={() => handleApprove(selected)}
-                  disabled={busy}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60"
-                >
-                  <Check className="w-4 h-4" />
-                  Approve Student
-                </button>
+              {isAdmin && (
+                <>
+                  {!selected.is_active ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApprove(selected)}
+                        disabled={busy}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95"
+                      >
+                        <Check className="w-4 h-4" />
+                        Approve Student
+                      </button>
+                      {selected.student_type !== "New Student" && (
+                        <button
+                          onClick={() => toggleStatus(selected)}
+                          disabled={busy}
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-sm disabled:opacity-60 transition-all active:scale-95"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          Quick Activate
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => toggleStatus(selected)}
+                      disabled={busy}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 shadow-sm disabled:opacity-60 transition-all active:scale-95"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      Mark as Leave
+                    </button>
+                  )}
+                </>
               )}
               <button
                 onClick={exportSelectedStudent}
@@ -1811,91 +1903,6 @@ export default function AdminStudentsPage() {
         )}
       </Modal>
 
-      {/* Approval Modal */}
-      <Modal
-        title="Approve Student Account"
-        open={approveOpen}
-        onClose={() => setApproveOpen(false)}
-      >
-        <div className="space-y-6">
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
-              <AlertCircle size={14} className="shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Approval Error</p>
-                {error}
-              </div>
-            </div>
-          )}
-          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-sm text-amber-800">
-            Review or change the student code before activating the account.
-            You can either set a manual code or auto-generate one with a prefix.
-          </div>
-
-          <div className="space-y-4">
-            <label className="block text-sm font-bold text-slate-700">Code Assignment Method</label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setApprovePrefix("")}
-                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-              >
-                Manual
-              </button>
-              <button
-                onClick={() => setApprovePrefix("CO")}
-                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "CO" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-              >
-                Auto CO
-              </button>
-              <button
-                onClick={() => setApprovePrefix("IN")}
-                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "IN" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-              >
-                Auto IN
-              </button>
-            </div>
-          </div>
-
-          {approvePrefix === "" && (
-            <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-              <label className="block text-sm font-bold text-slate-700">Student Code (Manual)</label>
-              <input
-                value={approveManualCode}
-                onChange={(e) => setApproveManualCode(e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all font-mono tracking-wider text-slate-900"
-              />
-            </div>
-          )}
-
-          {approvePrefix !== "" && (
-            <div className="p-5 bg-[#0d4d4d]/5 rounded-3xl border border-[#0d4d4d]/10 flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
-              <div className="w-12 h-12 bg-[#0d4d4d] text-white rounded-2xl flex items-center justify-center font-bold text-xl">
-                {approvePrefix}
-              </div>
-              <div className="text-sm text-[#0d4d4d]">
-                <p className="font-bold">System Managed</p>
-                <p className="opacity-70">A new sequence number will be generated for prefix <span className="font-mono">{approvePrefix}</span></p>
-              </div>
-            </div>
-          )}
-
-          <div className="pt-4 border-t border-slate-100 flex gap-3">
-            <button
-              onClick={() => setApproveOpen(false)}
-              className="flex-1 py-4 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all border-2 border-transparent"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={submitApprove}
-              disabled={busy}
-              className="flex-[2] py-4 bg-[#0d4d4d] text-white font-bold rounded-2xl hover:bg-[#0d4d4d]/90 active:scale-95 transition-all shadow-lg shadow-[#0d4d4d]/20 disabled:opacity-50"
-            >
-              Confirm Approval
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Formalize Enrollment Modal */}
       <Modal
@@ -2036,6 +2043,92 @@ export default function AdminStudentsPage() {
               className="flex-[2] py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-200/50 disabled:opacity-50"
             >
               Formalize Enrollment
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Approval Modal */}
+      <Modal
+        title="Approve Student Account"
+        open={approveOpen}
+        onClose={() => setApproveOpen(false)}
+      >
+        <div className="space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-extrabold mb-0.5 uppercase tracking-tighter">Approval Error</p>
+                {error}
+              </div>
+            </div>
+          )}
+          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 italic text-sm text-amber-800">
+            Review or change the student code before activating the account.
+            You can either set a manual code or auto-generate one with a prefix.
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-sm font-bold text-slate-700">Code Assignment Method</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setApprovePrefix("")}
+                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+              >
+                Manual
+              </button>
+              <button
+                onClick={() => setApprovePrefix("CO")}
+                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "CO" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+              >
+                Auto CO
+              </button>
+              <button
+                onClick={() => setApprovePrefix("IN")}
+                className={`py-3 rounded-2xl border-2 text-sm font-bold transition-all ${approvePrefix === "IN" ? 'border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
+              >
+                Auto IN
+              </button>
+            </div>
+          </div>
+
+          {approvePrefix === "" && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+              <label className="block text-sm font-bold text-slate-700">Student Code (Manual)</label>
+              <input
+                value={approveManualCode}
+                onChange={(e) => setApproveManualCode(e.target.value)}
+                className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all font-mono tracking-wider text-slate-900"
+              />
+            </div>
+          )}
+
+          {approvePrefix !== "" && (
+            <div className="p-5 bg-[#0d4d4d]/5 rounded-3xl border border-[#0d4d4d]/10 flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
+              <div className="w-12 h-12 bg-[#0d4d4d] text-white rounded-2xl flex items-center justify-center font-bold text-xl">
+                {approvePrefix}
+              </div>
+              <div className="text-sm text-[#0d4d4d]">
+                <p className="font-bold">System Managed</p>
+                <p className="opacity-70">A new sequence number will be generated for prefix <span className="font-mono">{approvePrefix}</span></p>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-slate-100 flex gap-3">
+            <button
+              onClick={() => setApproveOpen(false)}
+              className="flex-1 py-4 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all border-2 border-transparent"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitApprove}
+              disabled={busy}
+              className="flex-[2] py-4 bg-[#0d4d4d] text-white font-bold rounded-2xl hover:bg-[#0d4d4d]/90 active:scale-95 transition-all shadow-lg shadow-[#0d4d4d]/20 disabled:opacity-50"
+            >
+              Confirm Approval
             </button>
           </div>
         </div>

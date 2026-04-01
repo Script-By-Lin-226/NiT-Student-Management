@@ -771,6 +771,16 @@ class AdminPanelService:
             if hasattr(user, key):
                 setattr(user, key, value)
             
+        # Synchronize enrollments if is_active is toggled
+        if "is_active" in update_data:
+            from app.models.model import Enrollment
+            from sqlalchemy import update as sqlalchemy_update
+            await session.execute(
+                sqlalchemy_update(Enrollment)
+                .where(Enrollment.student_id == user.user_id)
+                .values(status=update_data["is_active"])
+            )
+            
         await session.commit()
         await _log_activity(request, session, "Update User", f"User {user_code} updated")
         return JSONResponse({"status_code": 200, "message": "User updated successfully"})
@@ -1638,6 +1648,7 @@ class AdminPanelService:
             u.user_code = new_code
             
         u.is_active = True
+        u.student_type = "Active Student"
         
         # Also activate all their enrollments
         en_r = await session.execute(select(Enrollment).where(Enrollment.student_id == u.user_id))
