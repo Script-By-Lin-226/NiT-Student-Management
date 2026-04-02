@@ -100,6 +100,8 @@ export default function AdminStudentsPage() {
   const [cPaymentPlan, setCPaymentPlan] = useState("");
   const [cDownpayment, setCDownpayment] = useState<number | "">(0);
   const [cInstallment, setCInstallment] = useState<number | "">(0);
+  const [cTotalFee, setCTotalFee] = useState<number | "">("");
+  const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">("");
   const [cBatchId, setCBatchId] = useState<number | "" | "manual">("");
 
   // Formalize enrollment state
@@ -111,6 +113,8 @@ export default function AdminStudentsPage() {
   const [fPlan, setFPlan] = useState("");
   const [fDown, setFDown] = useState<number | "">("");
   const [fInst, setFInst] = useState<number | "">("");
+  const [fTotalFee, setFTotalFee] = useState<number | "">("");
+  const [fExamFeeGbp, setFExamFeeGbp] = useState<number | "">("");
   const [fBatchId, setFBatchId] = useState<number | "" | "manual">("");
 
   // Edit form
@@ -135,6 +139,8 @@ export default function AdminStudentsPage() {
   const [ePlan, setEPlan] = useState("");
   const [eDown, setEDown] = useState("");
   const [eInst, setEInst] = useState("");
+  const [eTotalFee, setETotalFee] = useState("");
+  const [eExamFeeGbp, setEExamFeeGbp] = useState("");
 
   const [studentToDelete, setStudentToDelete] = useState<AdminStudent | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
@@ -245,6 +251,8 @@ export default function AdminStudentsPage() {
     setCPaymentPlan("");
     setCDownpayment(0);
     setCInstallment(0);
+    setCTotalFee("");
+    setCExamFeeGbp("");
     setCreateOpen(true);
   };
 
@@ -276,6 +284,8 @@ export default function AdminStudentsPage() {
         payment_plan: cPaymentPlan || null,
         downpayment: cDownpayment !== "" ? Number(cDownpayment) : null,
         installment_amount: cInstallment !== "" ? Number(cInstallment) : null,
+        total_fee: cTotalFee !== "" ? Number(cTotalFee) : null,
+        exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : null,
       });
       setCreateOpen(false);
     } catch (e: any) {
@@ -379,6 +389,8 @@ export default function AdminStudentsPage() {
     setEPlan(enr.payment_plan || "");
     setEDown(enr.downpayment ? String(enr.downpayment) : "");
     setEInst(enr.installment_amount ? String(enr.installment_amount) : "");
+    setETotalFee(enr.total_fee ? String(enr.total_fee) : "");
+    setEExamFeeGbp(enr.exam_fee_gbp ? String(enr.exam_fee_gbp) : "");
     setEnrollEditOpen(true);
   };
 
@@ -392,6 +404,8 @@ export default function AdminStudentsPage() {
         payment_plan: ePlan || null,
         downpayment: eDown !== "" ? Number(eDown) : null,
         installment_amount: eInst !== "" ? Number(eInst) : null,
+        total_fee: eTotalFee !== "" ? Number(eTotalFee) : null,
+        exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : null,
       });
 
       // Refresh relations
@@ -471,6 +485,8 @@ export default function AdminStudentsPage() {
     setFPlan("");
     setFDown("");
     setFInst("");
+    setFTotalFee("");
+    setFExamFeeGbp("");
     setError("");
     setBusy(false);
     setFormalizeOpen(true);
@@ -488,6 +504,8 @@ export default function AdminStudentsPage() {
         payment_plan: fPlan || undefined,
         downpayment: fDown !== "" ? Number(fDown) : undefined,
         installment_amount: fInst !== "" ? Number(fInst) : undefined,
+        total_fee: fTotalFee !== "" ? Number(fTotalFee) : undefined,
+        exam_fee_gbp: fExamFeeGbp !== "" ? Number(fExamFeeGbp) : undefined,
       });
 
       // Refresh relations
@@ -891,7 +909,7 @@ export default function AdminStudentsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-end gap-2">
-                          {isAdmin && (
+                          {isAdminOrSales && (
                             <>
                               {!s.is_active ? (
                                 <div className="flex gap-1.5 items-center">
@@ -926,7 +944,7 @@ export default function AdminStudentsPage() {
                               )}
                             </>
                           )}
-                          {isAdmin && (
+                          {isAdminOrSales && (
                             <button
                               onClick={() => openEdit(s)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95 text-xs"
@@ -998,42 +1016,42 @@ export default function AdminStudentsPage() {
                         {s.is_active ? "Active" : "Inactive"}
                       </span>
                       <div className="flex gap-2">
-                        {isAdmin && (
-                          <div className="flex gap-2 items-center">
-                            {!s.is_active ? (
-                              <>
-                                <button
-                                  onClick={() => handleApprove(s)}
-                                  disabled={busy}
-                                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
-                                  title="Approve (Set/Manage Code)"
-                                >
-                                  <Check className="w-5 h-5" />
-                                </button>
-                                {s.student_type !== "New Student" && (
+                          {isAdminOrSales && (
+                            <div className="flex gap-2 items-center">
+                              {!s.is_active ? (
+                                <>
                                   <button
-                                    onClick={() => toggleStatus(s)}
+                                    onClick={() => handleApprove(s)}
                                     disabled={busy}
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-600 border border-emerald-700 text-white shadow-sm transition-all active:scale-90"
-                                    title="Quick Activate"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
+                                    title="Approve (Set/Manage Code)"
                                   >
-                                    <ShieldCheck className="w-5 h-5" />
+                                    <Check className="w-5 h-5" />
                                   </button>
-                                )}
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => toggleStatus(s)}
-                                disabled={busy}
-                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 shadow-sm transition-all active:scale-90"
-                                title="Mark as Leave"
-                              >
-                                <ShieldCheck className="w-5 h-5" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {isAdmin && (
+                                  {s.student_type !== "New Student" && (
+                                    <button
+                                      onClick={() => toggleStatus(s)}
+                                      disabled={busy}
+                                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-600 border border-emerald-700 text-white shadow-sm transition-all active:scale-90"
+                                      title="Quick Activate"
+                                    >
+                                      <ShieldCheck className="w-5 h-5" />
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => toggleStatus(s)}
+                                  disabled={busy}
+                                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 shadow-sm transition-all active:scale-90"
+                                  title="Mark as Leave"
+                                >
+                                  <ShieldCheck className="w-5 h-5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        {isAdminOrSales && (
                           <button
                             onClick={() => openEdit(s)}
                             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
@@ -1364,13 +1382,45 @@ export default function AdminStudentsPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Plan</label>
                     <select
                       value={cPaymentPlan}
-                      onChange={(e) => setCPaymentPlan(e.target.value)}
+                      onChange={(e) => {
+                        setCPaymentPlan(e.target.value);
+                        if (e.target.value && cCourseCode) {
+                          const c = courses.find(x => x.course_code === cCourseCode);
+                          if (c) {
+                            setCTotalFee(e.target.value === "full" ? (c.fee_full_payment || 0) : (c.fee_installment || 0));
+                            if (c.exam_fee_gbp) setCExamFeeGbp(c.exam_fee_gbp);
+                          }
+                        }
+                      }}
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                     >
                       <option value="">Select Plan...</option>
                       <option value="full">Full Payment</option>
                       <option value="installment">Installment</option>
                     </select>
+                  </div>
+
+                  <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-brand-50/50 p-4 rounded-2xl border border-brand-100">
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Course Fee (MMK)</label>
+                      <input
+                        type="number"
+                        value={cTotalFee}
+                        onChange={(e) => setCTotalFee(e.target.value ? Number(e.target.value) : "")}
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        placeholder="Default from course"
+                      />
+                    </div>
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Fee (GBP)</label>
+                      <input
+                        type="number"
+                        value={cExamFeeGbp}
+                        onChange={(e) => setCExamFeeGbp(e.target.value ? Number(e.target.value) : "")}
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        placeholder="Default from course"
+                      />
+                    </div>
                   </div>
 
                   {cPaymentPlan === "installment" && (
@@ -1644,6 +1694,26 @@ export default function AdminStudentsPage() {
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Fee (MMK)</label>
+              <input
+                value={eTotalFee}
+                onChange={(e) => setETotalFee(e.target.value)}
+                type="number"
+                placeholder="0"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Fee (GBP)</label>
+              <input
+                value={eExamFeeGbp}
+                onChange={(e) => setEExamFeeGbp(e.target.value)}
+                type="number"
+                placeholder="0"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
           </div>
 
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
@@ -1849,7 +1919,7 @@ export default function AdminStudentsPage() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              {isAdmin && (
+              {isAdminOrSales && (
                 <>
                   {!selected.is_active ? (
                     <div className="flex gap-2">
@@ -1995,13 +2065,45 @@ export default function AdminStudentsPage() {
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Payment Plan</label>
               <select
                 value={fPlan}
-                onChange={(e) => setFPlan(e.target.value)}
+                onChange={(e) => {
+                  setFPlan(e.target.value);
+                  if (e.target.value && fCourseCode) {
+                    const c = courses.find(x => x.course_code === fCourseCode);
+                    if (c) {
+                      setFTotalFee(e.target.value === "full" ? (c.fee_full_payment || 0) : (c.fee_installment || 0));
+                      if (c.exam_fee_gbp) setFExamFeeGbp(c.exam_fee_gbp);
+                    }
+                  }
+                }}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               >
                 <option value="">Select Plan...</option>
                 <option value="full">Cash Down</option>
                 <option value="installment">Installment</option>
               </select>
+            </div>
+
+            <div className="sm:col-span-2 grid grid-cols-2 gap-4 bg-brand-50 p-4 rounded-2xl border border-brand-100/50">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Total Fee (MMK)</label>
+                <input
+                  type="number"
+                  value={fTotalFee}
+                  onChange={(e) => setFTotalFee(e.target.value ? Number(e.target.value) : "")}
+                  placeholder="Default from course"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Exam Fee (GBP)</label>
+                <input
+                  type="number"
+                  value={fExamFeeGbp}
+                  onChange={(e) => setFExamFeeGbp(e.target.value ? Number(e.target.value) : "")}
+                  placeholder="Default from course"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
             </div>
 
             {fPlan === "installment" && (

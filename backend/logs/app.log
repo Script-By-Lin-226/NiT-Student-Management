@@ -1,0 +1,229 @@
+2026-04-02 11:16:29,104 - NiT-SMS - INFO - Activity logged: [Unknown] Update Course: Course CRS0040 updated
+2026-04-02 11:21:31,060 - NiT-SMS - INFO - Activity logged: [Unknown] Update Course: Course CRS0040 updated
+2026-04-02 11:21:47,136 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-04-02 11:21:47,136 - NiT-SMS - INFO - Starting Excel export...
+2026-04-02 11:21:54,310 - NiT-SMS - INFO - Excel export completed: backup_20260402_112154.xlsx
+2026-04-02 11:24:57,573 - NiT-SMS - INFO - Activity logged: [Unknown] Update Course: Course CRS0040 updated
+2026-04-02 11:26:32,762 - NiT-SMS - INFO - Starting Excel import from file: backup_2026-04-02T04-51-54.xlsx...
+2026-04-02 11:27:51,509 - NiT-SMS - ERROR - log_activity error: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-04-02 11:27:51,509 - NiT-SMS - ERROR - Skipping sequence reset for users: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,511 - NiT-SMS - ERROR - Skipping sequence reset for academic_years: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,512 - NiT-SMS - ERROR - Skipping sequence reset for courses: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,513 - NiT-SMS - ERROR - Skipping sequence reset for rooms: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,516 - NiT-SMS - ERROR - Skipping sequence reset for enrollments: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,519 - NiT-SMS - ERROR - Skipping sequence reset for payments: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,523 - NiT-SMS - ERROR - Skipping sequence reset for batches: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,527 - NiT-SMS - ERROR - Skipping sequence reset for subjects: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,532 - NiT-SMS - ERROR - Skipping sequence reset for timetables: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,532 - NiT-SMS - ERROR - Skipping sequence reset for grades: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,539 - NiT-SMS - ERROR - Skipping sequence reset for attendances: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,540 - NiT-SMS - ERROR - Skipping sequence reset for staff_attendance: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,544 - NiT-SMS - ERROR - Skipping sequence reset for parent_student: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,553 - NiT-SMS - ERROR - Skipping sequence reset for activity_logs: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,555 - NiT-SMS - ERROR - Skipping sequence reset for refresh_tokens: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:27:51,565 - NiT-SMS - ERROR - Import failed: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+Traceback (most recent call last):
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\app\services\backup_service.py", line 355, in import_from_excel
+    await session.commit()
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 1000, in commit
+    await greenlet_spawn(self.sync_session.commit)
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 190, in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 101, in _go
+    self._raise_for_prerequisite_state(fn.__name__, current_state)
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 971, in _raise_for_prerequisite_state
+    raise sa_exc.PendingRollbackError(
+sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+
+2026-04-02 11:29:32,126 - NiT-SMS - INFO - Starting Excel import from file: backup_2026-04-02T04-51-54.xlsx...
+2026-04-02 11:30:33,161 - NiT-SMS - ERROR - log_activity error: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-04-02 11:30:33,163 - NiT-SMS - ERROR - Skipping sequence reset for users: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,163 - NiT-SMS - ERROR - Skipping sequence reset for academic_years: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,163 - NiT-SMS - ERROR - Skipping sequence reset for courses: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,168 - NiT-SMS - ERROR - Skipping sequence reset for rooms: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,169 - NiT-SMS - ERROR - Skipping sequence reset for enrollments: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,171 - NiT-SMS - ERROR - Skipping sequence reset for payments: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,177 - NiT-SMS - ERROR - Skipping sequence reset for batches: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,178 - NiT-SMS - ERROR - Skipping sequence reset for subjects: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,183 - NiT-SMS - ERROR - Skipping sequence reset for timetables: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,191 - NiT-SMS - ERROR - Skipping sequence reset for grades: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,197 - NiT-SMS - ERROR - Skipping sequence reset for attendances: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,198 - NiT-SMS - ERROR - Skipping sequence reset for staff_attendance: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,204 - NiT-SMS - ERROR - Skipping sequence reset for parent_student: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,208 - NiT-SMS - ERROR - Skipping sequence reset for activity_logs: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,212 - NiT-SMS - ERROR - Skipping sequence reset for refresh_tokens: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+2026-04-02 11:30:33,231 - NiT-SMS - ERROR - Import failed: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+Traceback (most recent call last):
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\app\services\backup_service.py", line 355, in import_from_excel
+    await session.commit()
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 1000, in commit
+    await greenlet_spawn(self.sync_session.commit)
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 190, in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 101, in _go
+    self._raise_for_prerequisite_state(fn.__name__, current_state)
+  File "C:\Users\Script-Kid\Desktop\NiT-Student-Management\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 971, in _raise_for_prerequisite_state
+    raise sa_exc.PendingRollbackError(
+sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(2) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Import Backup', 'Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 67}')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+
+2026-04-02 11:32:10,613 - NiT-SMS - ERROR - log_activity error: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(3) already exists.
+[SQL: INSERT INTO activity_logs (user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, now()) RETURNING activity_logs.log_id, activity_logs.timestamp]
+[parameters: (10151, 'Update Course', 'Course CRS0040 updated')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-04-02 11:33:14,290 - NiT-SMS - INFO - Activity logged: [Unknown] Update Course: Course CRS0040 updated
+2026-04-02 11:34:21,703 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-04-02 11:34:21,705 - NiT-SMS - INFO - Starting Excel export...
+2026-04-02 11:34:25,364 - NiT-SMS - INFO - Excel export completed: backup_20260402_113425.xlsx

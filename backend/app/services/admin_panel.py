@@ -191,6 +191,8 @@ def _serialize_enrollment(e: Enrollment) -> dict:
         "payment_plan": getattr(e, "payment_plan", None),
         "downpayment": getattr(e, "downpayment", None),
         "installment_amount": getattr(e, "installment_amount", None),
+        "total_fee": getattr(e, "total_fee", None),
+        "exam_fee_gbp": getattr(e, "exam_fee_gbp", None),
     }
 
 
@@ -399,7 +401,9 @@ class AdminPanelService:
                     batch_no=payload.batch_no,
                     payment_plan=payload.payment_plan,
                     downpayment=payload.downpayment,
-                    installment_amount=payload.installment_amount
+                    installment_amount=payload.installment_amount,
+                    total_fee=payload.total_fee if payload.total_fee is not None else (course_obj.fee_full_payment if payload.payment_plan == "full" else course_obj.fee_installment),
+                    exam_fee_gbp=payload.exam_fee_gbp if payload.exam_fee_gbp is not None else course_obj.exam_fee_gbp
                 )
                 session.add(enroll)
 
@@ -483,7 +487,7 @@ class AdminPanelService:
                     "payment_method_2": getattr(p, "payment_method_2", None),
                     "course_name": c.course_name,
                     "course_code": c.course_code,
-                    "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
+                    "course_cost": float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0.0)) or 0.0),
                     "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
                     "payment_plan": getattr(e, "payment_plan", None),
                     "downpayment": getattr(e, "downpayment", 0) or 0,
@@ -494,6 +498,7 @@ class AdminPanelService:
                     "fine_reason": getattr(p, "fine_reason", None),
                     "exam_fee_paid_gbp": getattr(p, "exam_fee_paid_gbp", 0) or 0,
                     "exam_fee_paid_mmk": getattr(p, "exam_fee_paid_mmk", 0) or 0,
+                    "exam_fee_total_gbp": float(getattr(e, "exam_fee_gbp", 0.0) or c.exam_fee_gbp or 0.0),
                     "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK"),
                     "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0
                 })
@@ -509,7 +514,7 @@ class AdminPanelService:
                             **_serialize_enrollment(e),
                             "course_code": c.course_code,
                             "course_name": c.course_name,
-                            "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
+                            "course_cost": float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0.0)) or 0.0),
                             "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
                             "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
                             "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
@@ -1447,8 +1452,7 @@ class AdminPanelService:
             d["room"] = getattr(c, "room", None)
             
             plan = getattr(e, "payment_plan", None)
-            base_fee = (c.fee_full_payment if plan == "full" else (c.fee_installment if plan == "installment" else 0)) or 0
-            course_cost = float(max(0, base_fee))
+            course_cost = float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if plan == "full" else (c.fee_installment if plan == "installment" else 0.0)) or 0.0)
             
             total_paid = pay_sums.get(e.enrollment_id, 0.0)
             total_discount = pay_discounts.get(e.enrollment_id, 0.0)
@@ -1458,8 +1462,8 @@ class AdminPanelService:
             d["total_paid"] = total_paid
             d["balance_due"] = max(0.0, course_cost - (total_paid + total_discount))
             d["exam_fee_paid_gbp"] = paid_gbp
-            d["exam_fee_total_gbp"] = float(c.exam_fee_gbp or 0)
-            d["exam_fee_pending_gbp"] = max(0.0, float(c.exam_fee_gbp or 0) - paid_gbp)
+            d["exam_fee_total_gbp"] = float(getattr(e, "exam_fee_gbp", 0.0) or c.exam_fee_gbp or 0.0)
+            d["exam_fee_pending_gbp"] = max(0.0, d["exam_fee_total_gbp"] - paid_gbp)
             d["payment_count"] = pay_counts.get(e.enrollment_id, 0)
             
             d["foc_items"] = (c.foc_items_installment if plan == "installment" else c.foc_items)
@@ -1532,7 +1536,9 @@ class AdminPanelService:
             batch_no=batch_no,
             payment_plan=payload.payment_plan,
             downpayment=payload.downpayment,
-            installment_amount=payload.installment_amount
+            installment_amount=payload.installment_amount,
+            total_fee=payload.total_fee if payload.total_fee is not None else (course.fee_full_payment if payload.payment_plan == "full" else course.fee_installment),
+            exam_fee_gbp=payload.exam_fee_gbp if payload.exam_fee_gbp is not None else course.exam_fee_gbp
         )
         session.add(e)
         await session.commit()
@@ -1581,6 +1587,10 @@ class AdminPanelService:
             e.downpayment = payload.downpayment
         if getattr(payload, "installment_amount", None) is not None:
             e.installment_amount = payload.installment_amount
+        if getattr(payload, "total_fee", None) is not None:
+            e.total_fee = payload.total_fee
+        if getattr(payload, "exam_fee_gbp", None) is not None:
+            e.exam_fee_gbp = payload.exam_fee_gbp
             
         await session.commit()
         await log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
@@ -2253,7 +2263,7 @@ class AdminPanelService:
                 "payment_method": getattr(p, "payment_method", None),
                 "amount_2": getattr(p, "amount_2", 0.0) or 0.0,
                 "payment_method_2": getattr(p, "payment_method_2", None),
-                "course_cost": max(0, (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0))),
+                "course_cost": float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0.0)) or 0.0),
                 "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0,
                 "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
                 "downpayment": getattr(e, "downpayment", 0) or 0,
@@ -2295,7 +2305,7 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
 
         # 1. Course Fee Validation
-        total_cost = (course.fee_full_payment if enroll.payment_plan == "full" else course.fee_installment) or 0
+        total_cost = float(getattr(enroll, "total_fee", 0.0) or (course.fee_full_payment if enroll.payment_plan == "full" else course.fee_installment) or 0.0)
         payments_r = await session.execute(select(Payment).where(Payment.enrollment_id == enroll.enrollment_id))
         existing_payments = payments_r.scalars().all()
 
@@ -2314,7 +2324,7 @@ class AdminPanelService:
             }, status_code=400)
 
         # 2. Exam Fee Validation (GBP)
-        total_exam_gbp = course.exam_fee_gbp or 0
+        total_exam_gbp = float(getattr(enroll, "exam_fee_gbp", 0.0) or course.exam_fee_gbp or 0.0)
         if total_exam_gbp > 0:
             existing_exam_gbp = sum(p.exam_fee_paid_gbp or 0 for p in existing_payments)
             left_exam_gbp = total_exam_gbp - existing_exam_gbp

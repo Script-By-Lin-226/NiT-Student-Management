@@ -80,6 +80,8 @@ export default function AdminEnrollmentsPage() {
   const [cPaymentPlan, setCPaymentPlan] = useState("");
   const [cDownpayment, setCDownpayment] = useState<number | "">(0);
   const [cInstallment, setCInstallment] = useState<number | "">(0);
+  const [cTotalFee, setCTotalFee] = useState<number | "">("");
+  const [cExamFeeGbp, setCExamFeeGbp] = useState<number | "">("");
 
   const [eStatus, setEStatus] = useState(true);
   const [eBatchNo, setEBatchNo] = useState("");
@@ -87,6 +89,8 @@ export default function AdminEnrollmentsPage() {
   const [ePaymentPlan, setEPaymentPlan] = useState("");
   const [eDownpayment, setEDownpayment] = useState<number | "">(0);
   const [eInstallment, setEInstallment] = useState<number | "">(0);
+  const [eTotalFee, setETotalFee] = useState<number | "">("");
+  const [eExamFeeGbp, setEExamFeeGbp] = useState<number | "">("");
 
   const updateMutation = useUpdateEnrollment();
 
@@ -139,6 +143,8 @@ export default function AdminEnrollmentsPage() {
     setCPaymentPlan("");
     setCDownpayment(0);
     setCInstallment(0);
+    setCTotalFee("");
+    setCExamFeeGbp("");
     setCreateOpen(true);
   };
 
@@ -153,6 +159,8 @@ export default function AdminEnrollmentsPage() {
         payment_plan: cPaymentPlan || null,
         downpayment: cDownpayment !== "" ? Number(cDownpayment) : null,
         installment_amount: cInstallment !== "" ? Number(cInstallment) : null,
+        total_fee: cTotalFee !== "" ? Number(cTotalFee) : null,
+        exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : null,
       });
       setCreateOpen(false);
       reload();
@@ -170,6 +178,8 @@ export default function AdminEnrollmentsPage() {
     setEPaymentPlan(e.payment_plan || "");
     setEDownpayment(e.downpayment || "");
     setEInstallment(e.installment_amount || "");
+    setETotalFee(e.total_fee || "");
+    setEExamFeeGbp(e.exam_fee_gbp || "");
     setEditOpen(true);
   };
 
@@ -185,6 +195,8 @@ export default function AdminEnrollmentsPage() {
           payment_plan: ePaymentPlan || null,
           downpayment: eDownpayment !== "" ? Number(eDownpayment) : null,
           installment_amount: eInstallment !== "" ? Number(eInstallment) : null,
+          total_fee: eTotalFee !== "" ? Number(eTotalFee) : null,
+          exam_fee_gbp: eExamFeeGbp !== "" ? Number(eExamFeeGbp) : null,
         },
       });
       setEditOpen(false);
@@ -298,7 +310,7 @@ export default function AdminEnrollmentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 text-xs">
-                          {isAdmin && (
+                          {isAdminOrSales && (
                             <button onClick={() => openEdit(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm">
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -357,7 +369,7 @@ export default function AdminEnrollmentsPage() {
                         {e.status ? "Active" : "Inactive"}
                       </span>
                       <div className="flex gap-2">
-                        {isAdmin && (
+                        {isAdminOrSales && (
                           <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
                             <Pencil className="w-5 h-5" />
                           </button>
@@ -458,11 +470,47 @@ export default function AdminEnrollmentsPage() {
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Plan</label>
-            <select value={cPaymentPlan} onChange={(e) => setCPaymentPlan(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+            <select
+              value={cPaymentPlan}
+              onChange={(e) => {
+                setCPaymentPlan(e.target.value);
+                if (e.target.value && cCourseCode) {
+                  const c = courses.find(x => x.course_code === cCourseCode);
+                  if (c) {
+                    setCTotalFee(e.target.value === "full" ? (c.fee_full_payment || 0) : (c.fee_installment || 0));
+                    if (c.exam_fee_gbp) setCExamFeeGbp(c.exam_fee_gbp);
+                  }
+                }
+              }}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            >
               <option value="">Select Plan...</option>
               <option value="full">Full Payment</option>
               <option value="installment">Installment</option>
             </select>
+          </div>
+
+          <div className="sm:col-span-2 grid grid-cols-2 gap-4 bg-brand-50/50 p-4 rounded-2xl border border-brand-100">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Fee (MMK)</label>
+              <input
+                type="number"
+                value={cTotalFee}
+                onChange={(e) => setCTotalFee(e.target.value ? Number(e.target.value) : "")}
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none"
+                placeholder="Default from course"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Fee (GBP)</label>
+              <input
+                type="number"
+                value={cExamFeeGbp}
+                onChange={(e) => setCExamFeeGbp(e.target.value ? Number(e.target.value) : "")}
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none"
+                placeholder="Default from course"
+              />
+            </div>
           </div>
 
           {(cPaymentPlan === "installment" || cPaymentPlan === "cash_down") && (
@@ -520,6 +568,27 @@ export default function AdminEnrollmentsPage() {
               <option value="cash_down">Cash Down</option>
               <option value="installment">Installment</option>
             </select>
+          </div>
+
+          <div className="sm:col-span-2 grid grid-cols-2 gap-4 bg-brand-50/50 p-4 rounded-2xl border border-brand-100">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Fee (MMK)</label>
+              <input
+                type="number"
+                value={eTotalFee}
+                onChange={(e) => setETotalFee(e.target.value ? Number(e.target.value) : "")}
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Fee (GBP)</label>
+              <input
+                type="number"
+                value={eExamFeeGbp}
+                onChange={(e) => setEExamFeeGbp(e.target.value ? Number(e.target.value) : "")}
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none"
+              />
+            </div>
           </div>
 
           {(ePaymentPlan === "installment" || ePaymentPlan === "cash_down") && (

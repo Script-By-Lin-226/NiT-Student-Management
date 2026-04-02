@@ -317,7 +317,6 @@ class BackupService:
                     stats[sheet_name] = count
             
             await session.commit()
-            await log_activity(request, session, "Import Backup", f"Database restore completed. Stats: {json.dumps(stats)}")
             
             # --- Reset Sequences after import to ensure next ID is correct ---
             from sqlalchemy import text, func
@@ -353,6 +352,9 @@ class BackupService:
                     logger.error(f"Skipping sequence reset for {table}: {str(e)}")
             
             await session.commit()
+            await log_activity(request, session, "Import Backup", f"Database restore completed. Stats: {json.dumps(stats)}")
+            await session.commit()
+
             return JSONResponse({
                 "status_code": 200, 
                 "message": "Data imported successfully", 

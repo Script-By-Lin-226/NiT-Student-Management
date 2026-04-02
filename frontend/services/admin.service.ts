@@ -71,6 +71,8 @@ export interface AdminStudentCreate {
   payment_plan?: string | null;
   downpayment?: number | null;
   installment_amount?: number | null;
+  total_fee?: number | null;
+  exam_fee_gbp?: number | null;
   department?: string;
   profile_picture?: string | null;
   how_did_you_hear?: string | null;
@@ -228,6 +230,8 @@ export interface AdminEnrollment {
   payment_plan?: string | null;
   downpayment?: number | null;
   installment_amount?: number | null;
+  total_fee?: number | null;
+  exam_fee_gbp?: number | null;
   course_cost?: number | null;
   total_paid?: number;
   balance_due?: number;
@@ -250,6 +254,8 @@ export interface AdminEnrollmentCreate {
   payment_plan?: string | null;
   downpayment?: number | null;
   installment_amount?: number | null;
+  total_fee?: number | null;
+  exam_fee_gbp?: number | null;
 }
 
 export interface AdminEnrollmentUpdate {
@@ -259,6 +265,8 @@ export interface AdminEnrollmentUpdate {
   payment_plan?: string | null;
   downpayment?: number | null;
   installment_amount?: number | null;
+  total_fee?: number | null;
+  exam_fee_gbp?: number | null;
 }
 
 export interface AdminAttendanceRecord {

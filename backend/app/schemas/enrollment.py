@@ -19,6 +19,8 @@ class AdminEnrollmentCreate(BaseModel):
     payment_plan: Optional[str] = None
     downpayment: Optional[float] = None
     installment_amount: Optional[float] = None
+    total_fee: Optional[float] = None
+    exam_fee_gbp: Optional[float] = None
 
 
 class AdminEnrollmentUpdate(BaseModel):
@@ -28,3 +30,5 @@ class AdminEnrollmentUpdate(BaseModel):
     payment_plan: Optional[str] = None
     downpayment: Optional[float] = None
     installment_amount: Optional[float] = None
+    total_fee: Optional[float] = None
+    exam_fee_gbp: Optional[float] = None

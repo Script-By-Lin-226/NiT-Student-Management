@@ -217,6 +217,8 @@ class Enrollment(Base):
     payment_plan = Column(String, nullable=True)
     downpayment = Column(Float, nullable=True)
     installment_amount = Column(Float, nullable=True)
+    total_fee = Column(Float, nullable=True) # Price at the time of enrollment
+    exam_fee_gbp = Column(Float, nullable=True) # Exam fee in GBP at time of enrollment
 
     # Relationships
     student = relationship("User", back_populates="enrollments")
