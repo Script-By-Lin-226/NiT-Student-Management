@@ -16,6 +16,7 @@ export interface StudentCourse {
   enrollment_code: string;
   enrollment_date: string;
   status: string;
+  batch_no?: string | null;
   course: {
     course_id: number;
     course_code: string;
