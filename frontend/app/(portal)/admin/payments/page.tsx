@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { AdminService, AdminEnrollment, AdminPayment, AdminPaymentCreate } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 import { generateReceiptPDF } from "@/utils/pdfReceipt";
+import clsx from "clsx";
 import { formatAmount } from "@/utils/format";
 import { useEnrollments, useCourses, useCreatePayment } from "@/hooks/useAdmin";
 import { Pagination } from "@/components/ui/Pagination";
