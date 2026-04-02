@@ -2305,7 +2305,8 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Course not found"}, status_code=404)
 
         # 1. Course Fee Validation
-        total_cost = float(getattr(enroll, "total_fee", 0.0) or (course.fee_full_payment if enroll.payment_plan == "full" else course.fee_installment) or 0.0)
+        # Priority: Enrollment stored fee > Course current fee (for legacy/missing records)
+        total_cost = float(enroll.total_fee if enroll.total_fee is not None else (course.fee_full_payment if enroll.payment_plan == "full" else course.fee_installment) or 0.0)
         payments_r = await session.execute(select(Payment).where(Payment.enrollment_id == enroll.enrollment_id))
         existing_payments = payments_r.scalars().all()
 

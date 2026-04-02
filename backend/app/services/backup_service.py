@@ -309,6 +309,8 @@ class BackupService:
                                     # Create new
                                     session.add(model(**record))
                                     count += 1
+                                
+                                await session.flush()
                         except Exception as e:
                             logger.error(f"Error importing record into {sheet_name}: {str(e)}")
                     

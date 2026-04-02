@@ -227,3 +227,4 @@ DETAIL:  Key (log_id)=(3) already exists.
 2026-04-02 11:34:21,703 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
 2026-04-02 11:34:21,705 - NiT-SMS - INFO - Starting Excel export...
 2026-04-02 11:34:25,364 - NiT-SMS - INFO - Excel export completed: backup_20260402_113425.xlsx
+2026-04-02 11:51:52,425 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User CO010426 deleted

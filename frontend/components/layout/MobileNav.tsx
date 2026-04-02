@@ -34,11 +34,12 @@ const adminNav = [
 
 export default function MobileNav() {
   const pathname = usePathname();
-  const { isStudent, isParent, isStaff, isAdmin, logout } = useAuth();
+  const { isStudent, isParent, isStaff, isAdmin, logout, user } = useAuth();
 
   let navigation = studentNav;
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
+  if (user?.role === "sales") navigation = adminNav;
   if (isAdmin) navigation = adminNav;
 
   return (

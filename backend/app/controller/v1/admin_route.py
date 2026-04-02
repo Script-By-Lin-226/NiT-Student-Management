@@ -289,6 +289,6 @@ async def export_backup(request: Request, session: AsyncSession = Depends(get_db
 
 from fastapi import UploadFile, File
 @router.post("/backup/import")
-async def import_backup(file: UploadFile = File(...), request: Request = None, session: AsyncSession = Depends(get_db)):
+async def import_backup(request: Request, file: UploadFile = File(...), session: AsyncSession = Depends(get_db)):
     return await BackupService.import_from_excel(file, request, session)
 

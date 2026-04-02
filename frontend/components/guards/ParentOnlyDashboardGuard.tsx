@@ -12,10 +12,9 @@ export function ParentOnlyDashboardGuard({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (loading) return;
     if (!isParent) return;
-    if (pathname === "/dashboard") return;
+    if (pathname === "/dashboard" || pathname === "/profile") return;
     router.replace("/dashboard");
   }, [isParent, loading, pathname, router]);
 
   return <>{children}</>;
 }
-

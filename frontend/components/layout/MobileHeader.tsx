@@ -19,10 +19,12 @@ const studentNav = [
   { name: "Attendance", href: "/attendance", icon: Clock },
   { name: "Timetable", href: "/timetable", icon: CalendarDays },
   { name: "Grades", href: "/grades", icon: Award },
+  { name: "Profile", href: "/profile", icon: User },
 ];
 
 const parentNav = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Profile", href: "/profile", icon: User },
 ];
 
 const staffNav = [
