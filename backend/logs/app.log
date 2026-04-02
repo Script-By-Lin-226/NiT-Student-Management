@@ -228,3 +228,26 @@ DETAIL:  Key (log_id)=(3) already exists.
 2026-04-02 11:34:21,705 - NiT-SMS - INFO - Starting Excel export...
 2026-04-02 11:34:25,364 - NiT-SMS - INFO - Excel export completed: backup_20260402_113425.xlsx
 2026-04-02 11:51:52,425 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User CO010426 deleted
+2026-04-02 12:21:36,066 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-04-02 12:21:36,066 - NiT-SMS - INFO - Starting Excel export...
+2026-04-02 12:21:39,925 - NiT-SMS - INFO - Excel export completed: backup_20260402_122139.xlsx
+2026-04-02 12:22:00,276 - NiT-SMS - INFO - Starting Excel import from file: backup_2026-04-02T05-51-40.xlsx...
+2026-04-02 12:23:15,015 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 13, "Courses": 16, "Batches": 1, "Subjects": 0, "Enrollments": 7, "Payments": 29, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 68}
+2026-04-02 13:31:29,800 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-04-02 13:31:29,800 - NiT-SMS - INFO - Starting Excel export...
+2026-04-02 13:31:33,093 - NiT-SMS - INFO - Excel export completed: backup_20260402_133133.xlsx
+2026-04-02 13:33:42,596 - NiT-SMS - INFO - Starting Excel import from file: backup_2026-04-02T07-01-33.xlsx...
+2026-04-02 13:34:10,759 - NiT-SMS - INFO - Starting Excel import from file: backup_2026-04-02T07-01-33.xlsx...
+2026-04-02 13:34:50,724 - NiT-SMS - ERROR - Error importing record into Payments: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "payments_pkey"
+DETAIL:  Key (payment_id)=(1) already exists.
+[SQL: INSERT INTO payments (payment_id, enrollment_id, amount, payment_date, month, status, payment_method, amount_2, payment_method_2, fine_amount, fine_reason, extra_items_fee, extra_items, exam_fee_paid_gbp, exam_fee_paid_mmk, exam_fee_currency, discount_amount, created_at, updated_at) VALUES ($1::INTEGER, $2::INTEGER, $3::FLOAT, $4::TIMESTAMP WITHOUT TIME ZONE, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::FLOAT, $9::VARCHAR, $10::FLOAT, $11::VARCHAR, $12::FLOAT, $13::VARCHAR, $14::FLOAT, $15::FLOAT, $16::VARCHAR, $17::FLOAT, $18::TIMESTAMP WITHOUT TIME ZONE, $19::TIMESTAMP WITHOUT TIME ZONE)]
+[parameters: (1, 3, 1200000.0, datetime.datetime(2025, 6, 11, 3, 31), 'Cash Down 2026', 'Paid', 'Cash', 0.0, None, 0.0, None, 0.0, None, 0.0, 0.0, 'MMK', 0.0, datetime.datetime(2026, 4, 1, 8, 38, 26), datetime.datetime(2026, 4, 1, 8, 38, 26))]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-04-02 13:35:28,453 - NiT-SMS - ERROR - Error importing record into ActivityLogs: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "activity_logs_pkey"
+DETAIL:  Key (log_id)=(1) already exists.
+[SQL: INSERT INTO activity_logs (log_id, user_id, action, details, timestamp) VALUES ($1::INTEGER, $2::INTEGER, $3::VARCHAR, $4::VARCHAR, $5::TIMESTAMP WITHOUT TIME ZONE)]
+[parameters: (1, 10182, 'Create Student', 'Student CO001426 created', datetime.datetime(2026, 4, 1, 2, 57, 49))]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-04-02 13:35:31,380 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 26, "Courses": 16, "Batches": 2, "Subjects": 0, "Enrollments": 18, "Payments": 39, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 70}
+2026-04-02 13:35:59,676 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 26, "Courses": 16, "Batches": 2, "Subjects": 0, "Enrollments": 18, "Payments": 39, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 70}
+2026-04-02 14:21:23,368 - NiT-SMS - INFO - Activity logged: [Unknown] Approve Student: Student CO0131225 (was CO0131225) and their enrollments were approved and activated

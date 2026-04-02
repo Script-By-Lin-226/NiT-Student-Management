@@ -665,6 +665,14 @@ export class AdminService {
     await api.post("/admin/payments", payload);
   }
 
+  static async updatePayment(paymentId: number, payload: Partial<AdminPaymentCreate>): Promise<void> {
+    await api.put(`/admin/payments/${paymentId}`, payload);
+  }
+
+  static async deletePayment(paymentId: number): Promise<void> {
+    await api.delete(`/admin/payments/${paymentId}`);
+  }
+
   static async getActivityLogs(page: number = 1, limit: number = 50): Promise<PaginatedResponse<any>> {
     const res = await api.get<PaginatedResponse<any>>("/admin/activity-logs", { params: { page, limit } });
     return res.data;

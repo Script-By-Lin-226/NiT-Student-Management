@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Search, Plus, CreditCard, History, X, Download, AlertCircle, Receipt } from "lucide-react";
+import { RefreshCw, Search, Plus, CreditCard, History, X, Download, AlertCircle, Receipt, Edit, Trash2 } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
 import { toast } from "sonner";
 
@@ -60,6 +60,7 @@ export default function AdminPaymentsPage() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState<AdminEnrollment | null>(null);
+  const [editingPayment, setEditingPayment] = useState<AdminPayment | null>(null);
 
   // New Payment Form
   const [pAmount, setPAmount] = useState<number | "">(0);
@@ -139,6 +140,53 @@ export default function AdminPaymentsPage() {
     setPaymentModalOpen(true);
   };
 
+  const openEditPayment = (pay: AdminPayment) => {
+    // Find matching enrollment
+    const enr = rawEnrollments.find(e => e.enrollment_id === pay.enrollment_id);
+    if (!enr) {
+      toast.error("Related enrollment not found in current list.");
+      return;
+    }
+    
+    setEditingPayment(pay);
+    setSelectedEnrollment(enr);
+    
+    setPAmount(pay.amount);
+    setPAmount2(pay.amount_2 || 0);
+    setPMethod(pay.payment_method || "");
+    setPMethod2(pay.payment_method_2 || "");
+    
+    setPFine(pay.fine_amount || 0);
+    setPFineReason(pay.fine_reason || "");
+    setPExtraFee(pay.extra_items_fee || 0);
+    setPExtraItems(pay.extra_items || "");
+    setPDiscountAmount(pay.discount_amount || 0);
+    
+    setPExamFeePaidGbp(pay.exam_fee_paid_gbp || 0);
+    setPExamFeePaidMmk(pay.exam_fee_paid_mmk || 0);
+    setPExamFeeCurrency(pay.exam_fee_currency || "MMK");
+
+    // Split month/year
+    const parts = pay.month.split(' ');
+    if (parts.length >= 2) {
+       setPMonth(parts.slice(0, -1).join(' '));
+       setPYear(parts[parts.length - 1]);
+    } else {
+       setPMonth(pay.month);
+       setPYear(new Date().getFullYear().toString());
+    }
+
+    if (pay.payment_date) {
+      const d = new Date(pay.payment_date);
+      const localStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      setPDate(localStr);
+    } else {
+      setPDate("");
+    }
+
+    setPaymentModalOpen(true);
+  };
+
   const submitPayment = async () => {
     if (!selectedEnrollment) return;
 
@@ -160,15 +208,17 @@ export default function AdminPaymentsPage() {
     }
 
     const left = calculateLeftAmount(selectedEnrollment);
+    const balanceToCheck = editingPayment ? (left + (editingPayment.amount + (editingPayment.amount_2 || 0)) + (editingPayment.discount_amount || 0)) : left;
 
-    if ((totalAmount + totalDiscount) > left + 0.1) {
-      toast.error(`Total Payment + Discount (${(totalAmount + totalDiscount).toLocaleString()} MMK) cannot exceed remaining balance (${left.toLocaleString()} MMK)`);
+    if ((totalAmount + totalDiscount) > balanceToCheck + 0.1) {
+      toast.error(`Total Payment + Discount (${(totalAmount + totalDiscount).toLocaleString()} MMK) cannot exceed remaining balance (${balanceToCheck.toLocaleString()} MMK)`);
       return;
     }
 
     const leftGbp = calculateLeftExamFeeGbp(selectedEnrollment);
-    if ((Number(pExamFeePaidGbp) || 0) > leftGbp) {
-      toast.error(`Exam fee payment (${pExamFeePaidGbp} GBP) cannot exceed remaining balance (${leftGbp} GBP)`);
+    const gbpToCheck = editingPayment ? (leftGbp + (editingPayment.exam_fee_paid_gbp || 0)) : leftGbp;
+    if ((Number(pExamFeePaidGbp) || 0) > gbpToCheck + 0.001) {
+      toast.error(`Exam fee payment (${pExamFeePaidGbp} GBP) cannot exceed remaining balance (${gbpToCheck} GBP)`);
       return;
     }
 
@@ -214,9 +264,22 @@ export default function AdminPaymentsPage() {
         payment_date: pDate ? new Date(pDate).toISOString() : undefined,
       };
 
-      await createPaymentMutation.mutateAsync(payload);
-      toast.success("Payment recorded successfully!");
+      if (editingPayment) {
+        await AdminService.updatePayment(editingPayment.payment_id, payload);
+        toast.success("Payment updated successfully!");
+      } else {
+        await createPaymentMutation.mutateAsync(payload);
+        toast.success("Payment recorded successfully!");
+      }
+      
       setPaymentModalOpen(false);
+      setEditingPayment(null);
+      
+      // Refresh current history if open
+      if (historyModalOpen) {
+          const res = await AdminService.listPayments(1, 100, selectedEnrollment.enrollment_id);
+          setPayments(res.data);
+      }
       await load();
     } catch (e: any) {
       const msg = e?.response?.data?.detail || e?.response?.data?.message || "Failed to record payment";
@@ -225,6 +288,27 @@ export default function AdminPaymentsPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleDeletePayment = async (payId: number) => {
+     if (!window.confirm("Are you sure you want to delete this payment record? This cannot be undone.")) return;
+     
+     setBusy(true);
+     try {
+       await AdminService.deletePayment(payId);
+       toast.success("Payment deleted successfully");
+       
+       // Refresh list
+       if (selectedEnrollment) {
+           const res = await AdminService.listPayments(1, 100, selectedEnrollment.enrollment_id);
+           setPayments(res.data);
+       }
+       await load();
+     } catch (e: any) {
+       toast.error(e?.response?.data?.message || "Failed to delete payment");
+     } finally {
+       setBusy(false);
+     }
   };
 
   const openHistory = async (enr: AdminEnrollment) => {
@@ -506,11 +590,17 @@ export default function AdminPaymentsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{enr.student_code}</p>
-                       <span className="w-1 h-1 rounded-full bg-slate-300" />
-                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{enr.course_name}</span>
-                    </div>
+                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{enr.student_code}</p>
+                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{enr.course_name}</span>
+                        {enr.batch_no && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-slate-300" />
+                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">{enr.batch_no}</span>
+                          </>
+                        )}
+                     </div>
                   </div>
                 </div>
 
@@ -532,27 +622,38 @@ export default function AdminPaymentsPage() {
                   </div>
                 </div>
 
-                {/* Grid stats */}
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                {/* Grid stats - enhanced vertical/list style */}
+                <div className="mt-4 space-y-2">
                   {enr.payment_plan === 'installment' && (
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Installment</p>
-                      <p className="text-xs font-bold text-slate-700">{formatAmount(enr.installment_amount)} <span className="text-[9px] text-slate-400">MMK</span></p>
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-purple-600 shadow-sm">
+                            <CreditCard className="w-4 h-4" />
+                         </div>
+                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Installment</span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700">{formatAmount(enr.installment_amount)} <span className="text-[9px] text-slate-400 font-normal">MMK</span></p>
                     </div>
                   )}
                   {calculateLeftExamFeeGbp(enr) > 0 && (
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Exam Fee</p>
-                      <p className="text-xs font-bold text-indigo-700">{calculateLeftExamFeeGbp(enr)} <span className="text-[9px] text-indigo-400">GBP</span></p>
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                            <Award className="w-4 h-4" />
+                         </div>
+                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Exam Fee</span>
+                      </div>
+                      <p className="text-xs font-bold text-indigo-700">{calculateLeftExamFeeGbp(enr)} <span className="text-[9px] text-indigo-400 font-normal">GBP</span></p>
                     </div>
                   )}
-                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Payments</p>
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm">
+                          <History className="w-4 h-4" />
+                       </div>
+                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payments</span>
+                    </div>
                     <p className="text-xs font-bold text-slate-700">{enr.payment_count} Records</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Batch ID</p>
-                    <p className="text-xs font-bold text-slate-700 truncate">{enr.batch_no || 'N/A'}</p>
                   </div>
                 </div>
 
@@ -605,7 +706,14 @@ export default function AdminPaymentsPage() {
         )}
       </div>
 
-      <Modal title={(selectedEnrollment?.payment_plan === 'full' || selectedEnrollment?.payment_plan === 'cash_down') ? "Record Cash Down Payment" : "Record Installment Payment"} open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
+      <Modal 
+        title={editingPayment ? "Edit Payment Record" : (selectedEnrollment?.payment_plan === 'full' || selectedEnrollment?.payment_plan === 'cash_down') ? "Record Cash Down Payment" : "Record Installment Payment"} 
+        open={paymentModalOpen} 
+        onClose={() => {
+            setPaymentModalOpen(false);
+            setEditingPayment(null);
+        }}
+      >
         {selectedEnrollment && (
           <div className="space-y-4 pt-2">
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
@@ -910,56 +1018,95 @@ export default function AdminPaymentsPage() {
                   const isFirstPayment = sortedPayments.length > 0 && sortedPayments[0].payment_id === p.payment_id;
 
                   return (
-                    <div key={p.payment_id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-900">{formatAmount(p.amount + (p.amount_2 || 0))} MMK</span>
-                            <span className="px-2 py-0.5 rounded-full bg-brand-50 text-[10px] font-bold text-brand-600 uppercase tracking-wider">{p.status}</span>
+                    <div key={p.payment_id} className="relative pl-8 group">
+                      {/* Vertical line indicator */}
+                      <div className="absolute left-3 top-0 bottom-0 w-px bg-slate-200 group-last:bottom-auto group-last:h-4" />
+                      <div className="absolute left-[3px] top-4 w-5 h-5 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center z-10">
+                         <div className={clsx("w-1.5 h-1.5 rounded-full", p.status === 'Paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300')} />
+                      </div>
+
+                      <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-4 hover:bg-white hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-black text-slate-900 tracking-tight">{formatAmount(p.amount + (p.amount_2 || 0))} MMK</span>
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-black text-emerald-600 uppercase tracking-widest border border-emerald-100">{p.status}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                              <span className="text-xs text-slate-500 font-bold flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg shadow-sm border border-slate-100">
+                                <CreditCard className="w-3 h-3 text-brand-400" />
+                                {p.payment_method}
+                                {p.amount_2 ? ` + ${p.payment_method_2}` : ""}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                                {p.payment_date ? new Date(p.payment_date).toLocaleString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : p.month}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                              <Receipt className="w-3 h-3 text-slate-400" />
-                              {p.payment_method}
-                              {p.amount_2 ? ` + ${p.payment_method_2}` : ""}
-                            </span>
-                            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                              {p.payment_date ? new Date(p.payment_date).toLocaleString('en-US', { 
-                                year: 'numeric', 
-                                month: 'short', 
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : p.month}
-                            </span>
+                          
+                          <div className="flex items-center gap-1.5 sm:self-start">
+                             <button
+                               onClick={() => {
+                                 const leftExamGbp = calculateLeftExamFeeGbp(selectedEnrollment);
+                                 const leftAmountAtTime = calculateLeftAmount(selectedEnrollment); 
+                                 generateReceiptPDF(selectedEnrollment, [p], leftAmountAtTime, leftExamGbp, user?.username || "Admin", isFirstPayment);
+                               }}
+                               className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-brand-600 font-bold text-xs flex items-center gap-2 hover:bg-brand-50 transition-colors shadow-sm active:scale-95"
+                               title="Download Receipt"
+                             >
+                               <Receipt className="w-3.5 h-3.5" />
+                               Receipt
+                             </button>
+                             {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
+                               <>
+                                 <button
+                                   onClick={() => {
+                                     setHistoryModalOpen(false);
+                                     openEditPayment(p);
+                                   }}
+                                   className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition-colors shadow-sm active:scale-95"
+                                   title="Edit Payment"
+                                 >
+                                   <Edit className="w-4 h-4" />
+                                 </button>
+                                 <button
+                                   onClick={() => handleDeletePayment(p.payment_id)}
+                                   className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm active:scale-95"
+                                   title="Delete Payment"
+                                 >
+                                   <Trash2 className="w-4 h-4" />
+                                 </button>
+                               </>
+                             )}
                           </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                           {(p.fine_amount != null && p.fine_amount > 0) && (
-                            <div className="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-md inline-block mr-2 uppercase tracking-tight">
+                            <div className="text-[10px] text-red-600 font-black bg-white border border-red-100 px-2.5 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                               Fine: {formatAmount(p.fine_amount)} MMK {p.fine_reason ? `(${p.fine_reason})` : ""}
                             </div>
                           )}
                           {(p.extra_items_fee != null && p.extra_items_fee > 0) && (
-                            <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md inline-block uppercase tracking-tight">
+                            <div className="text-[10px] text-amber-600 font-black bg-white border border-amber-100 px-2.5 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                               Extra: {formatAmount(p.extra_items_fee)} MMK ({p.extra_items || "Items"})
                             </div>
                           )}
                           {((p.exam_fee_paid_gbp != null && p.exam_fee_paid_gbp > 0)) && (
-                            <div className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-md block mt-1 uppercase tracking-tight">
-                              Exam Fee: {p.exam_fee_paid_gbp} GBP ({formatAmount(p.exam_fee_paid_mmk || 0)} MMK)
+                            <div className="text-[10px] text-indigo-600 font-black bg-white border border-indigo-100 px-2.5 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                              Exam Fee: {p.exam_fee_paid_gbp} GBP
                             </div>
                           )}
                         </div>
-                        <button
-                          onClick={() => {
-                            const leftExamGbp = calculateLeftExamFeeGbp(selectedEnrollment);
-                            const leftAmountAtTime = calculateLeftAmount(selectedEnrollment); // Not perfect but works for now
-                            generateReceiptPDF(selectedEnrollment, [p], leftAmountAtTime, leftExamGbp, user?.username || "Admin", isFirstPayment);
-                          }}
-                          className="p-2 rounded-xl border border-slate-200 text-brand-600 hover:bg-brand-50 transition-colors"
-                          title="Download Receipt"
-                        >
-                          <Receipt className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
                   );

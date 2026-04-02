@@ -281,6 +281,14 @@ async def list_payments(request: Request, page: int = 1, limit: int = 50, sessio
 async def create_payment(payload: PaymentCreate, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.create_payment(request, session, payload)
 
+@router.put("/payments/{payment_id}")
+async def update_payment(payment_id: int, payload: PaymentUpdate, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.update_payment(request, session, payment_id, payload)
+
+@router.delete("/payments/{payment_id}")
+async def delete_payment(payment_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.delete_payment(request, session, payment_id)
+
 # --- Backup and Restore ---
 
 @router.get("/backup/export")

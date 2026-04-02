@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { AdminService, AdminStudent, AdminStudentRelations, AdminCourse } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus, CalendarClock, CreditCard, Users } from "lucide-react";
+import clsx from "clsx";
 import * as XLSX from "xlsx";
 import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment, useBatches } from "@/hooks/useAdmin";
 import { formatAmount } from "@/utils/format";
@@ -52,7 +53,7 @@ function Modal({
 
 export default function AdminStudentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading: authLoading } = useAuth();
+  const { isAdminOrSales, isAdmin, user, loading: authLoading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -919,7 +920,7 @@ export default function AdminStudentsPage() {
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm disabled:opacity-60 transition-all active:scale-95 text-xs"
                                   >
                                     <Check className="w-3.5 h-3.5" />
-                                    Approve
+                                    {user?.role === "sales" ? "Approve (Assign Code)" : "Approve"}
                                   </button>
                                   {s.student_type !== "New Student" && (
                                     <button
@@ -944,7 +945,7 @@ export default function AdminStudentsPage() {
                               )}
                             </>
                           )}
-                          {isAdminOrSales && (
+                          {isAdmin && (
                             <button
                               onClick={() => openEdit(s)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95 text-xs"
@@ -978,120 +979,138 @@ export default function AdminStudentsPage() {
             </tbody>
           </table>
         </div>
-
         {/* Mobile/Tablet Card View */}
-        <div className="block lg:hidden divide-y divide-slate-100">
+        <div className="block lg:hidden divide-y divide-slate-100 bg-slate-50/50">
           {studentsLoading ? (
-            <>
+            <div className="p-4 space-y-4">
               <CardSkeleton />
               <CardSkeleton />
               <CardSkeleton />
-            </>
+            </div>
           ) : (
             <>
               {filtered.map((s: AdminStudent) => (
-                <div key={s.user_code} className="p-4 bg-white hover:bg-blue-50 hover:shadow-md transition-colors space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      {s.profile_picture ? (
-                        <img src={s.profile_picture} alt="Profile" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-400 uppercase">
-                          {s.username?.[0] || "?"}
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{s.user_code}</div>
-                        <div className="text-base font-bold text-brand-600 cursor-pointer hover:underline" onClick={() => openView(s)}>{s.username}</div>
-                        <div className="text-xs text-slate-500 truncate max-w-[150px]">{s.email}</div>
+                <div key={s.user_code} className="p-5 bg-white mb-2 last:mb-0 shadow-sm active:bg-slate-50 transition-all border-y border-slate-100 first:border-t-0">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative group">
+                        {s.profile_picture ? (
+                          <img src={s.profile_picture} alt="Profile" className="w-14 h-14 rounded-2xl object-cover ring-2 ring-white shadow-xl" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 border border-brand-200 flex items-center justify-center text-lg font-black text-brand-600 uppercase shadow-inner">
+                            {s.username?.[0] || "?"}
+                          </div>
+                        )}
+                        <div className={clsx(
+                          "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm",
+                          s.is_active ? "bg-emerald-500" : "bg-slate-300"
+                        )} />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 font-mono">{s.user_code}</div>
+                        <h3 className="text-lg font-black text-slate-800 leading-tight truncate hover:text-brand-600 transition-colors" onClick={() => openView(s)}>
+                          {s.username}
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 truncate">{s.email}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className={[
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
-                          s.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-600 border-slate-200",
-                        ].join(" ")}
-                      >
-                        {s.is_active ? "Active" : "Inactive"}
-                      </span>
-                      <div className="flex gap-2">
-                          {isAdminOrSales && (
-                            <div className="flex gap-2 items-center">
-                              {!s.is_active ? (
-                                <>
-                                  <button
-                                    onClick={() => handleApprove(s)}
-                                    disabled={busy}
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm transition-all active:scale-90"
-                                    title="Approve (Set/Manage Code)"
-                                  >
-                                    <Check className="w-5 h-5" />
-                                  </button>
-                                  {s.student_type !== "New Student" && (
-                                    <button
-                                      onClick={() => toggleStatus(s)}
-                                      disabled={busy}
-                                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-600 border border-emerald-700 text-white shadow-sm transition-all active:scale-90"
-                                      title="Quick Activate"
-                                    >
-                                      <ShieldCheck className="w-5 h-5" />
-                                    </button>
-                                  )}
-                                </>
-                              ) : (
-                                <button
-                                  onClick={() => toggleStatus(s)}
-                                  disabled={busy}
-                                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 shadow-sm transition-all active:scale-90"
-                                  title="Mark as Leave"
-                                >
-                                  <ShieldCheck className="w-5 h-5" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        {isAdminOrSales && (
-                          <button
-                            onClick={() => openEdit(s)}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90"
-                            title="Edit"
-                          >
-                            <Pencil className="w-5 h-5" />
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            onClick={() => doDelete(s)}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-600 border border-red-100 transition-all active:scale-90"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
+                    
+                    <div className="flex flex-col items-end shrink-0 gap-2">
+                       <span className={clsx(
+                         "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border whitespace-nowrap",
+                         s.is_active 
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+                          : "bg-slate-50 text-slate-500 border-slate-200"
+                       )}>
+                         {s.is_active ? "Active" : "Inactive"}
+                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm pt-1">
-                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                      <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">DOB</div>
-                      <div className="font-semibold text-slate-700 text-nowrap">
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-0.5">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                        <CalendarClock size={10} /> DOB
+                      </span>
+                      <span className="text-xs font-bold text-slate-700">
                         {s.data_of_birth ? s.data_of_birth.slice(0, 10) : "-"}
-                      </div>
+                      </span>
                     </div>
-                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                      <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Phone</div>
-                      <div className="font-semibold text-slate-700 truncate">
+                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-0.5">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                        <CreditCard size={10} /> Phone
+                      </span>
+                      <span className="text-xs font-bold text-slate-700 truncate">
                         {s.phone || "-"}
-                      </div>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                    <div className="flex-1">
+                       <p className="font-premium text-[10px] text-slate-400 uppercase tracking-widest leading-none">Quick Actions</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isAdminOrSales && (
+                        <div className="flex items-center gap-2">
+                          {!s.is_active ? (
+                            <>
+                              <button
+                                onClick={() => handleApprove(s)}
+                                disabled={busy}
+                                className="h-10 px-4 flex items-center justify-center gap-2 rounded-xl bg-brand-600 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand-200 active:scale-95 transition-all"
+                              >
+                                <Check size={14} className="stroke-[3]" /> {user?.role === "sales" ? "Approve (Assign Code)" : "Approve"}
+                              </button>
+                              {s.student_type !== "New Student" && (
+                                <button
+                                  onClick={() => toggleStatus(s)}
+                                  disabled={busy}
+                                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 active:scale-95 transition-all"
+                                  title="Quick Activate"
+                                >
+                                  <ShieldCheck size={18} />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => toggleStatus(s)}
+                              disabled={busy}
+                              className="h-10 px-4 flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-600 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all border border-slate-200"
+                            >
+                              <ShieldCheck size={14} className="stroke-[3]" /> Leave
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {isAdmin && (
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-200 active:scale-95 transition-all"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                      )}
+                      
+                      {isAdmin && (
+                        <button
+                          onClick={() => doDelete(s)}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100 active:scale-95 transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
               {filtered.length === 0 && (
-                <div className="p-10 text-center text-slate-400 font-medium text-sm">
-                  No students found.
+                <div className="p-16 text-center text-slate-300">
+                   <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                   <p className="font-black text-xs uppercase tracking-widest">No results found</p>
                 </div>
               )}
             </>
@@ -2152,7 +2171,7 @@ export default function AdminStudentsPage() {
 
       {/* Approval Modal */}
       <Modal
-        title="Approve Student Account"
+        title={user?.role === "sales" ? "Assign Student Code & Approve" : "Approve Student Account"}
         open={approveOpen}
         onClose={() => setApproveOpen(false)}
       >
@@ -2230,7 +2249,7 @@ export default function AdminStudentsPage() {
               disabled={busy}
               className="flex-[2] py-4 bg-[#0d4d4d] text-white font-bold rounded-2xl hover:bg-[#0d4d4d]/90 active:scale-95 transition-all shadow-lg shadow-[#0d4d4d]/20 disabled:opacity-50"
             >
-              Confirm Approval
+              {user?.role === "sales" ? "Assign Code & Approve" : "Confirm Approval"}
             </button>
           </div>
         </div>

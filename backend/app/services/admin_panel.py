@@ -2366,6 +2366,72 @@ class AdminPanelService:
         await log_activity(request, session, "Create Payment", f"Payment of {payload.amount} recorded for enrollment {payload.enrollment_id} ({log_date})")
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})
 
+    async def update_payment(request: Request, session: AsyncSession, payment_id: int, payload: PaymentUpdate):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        pay_r = await session.execute(select(Payment).where(Payment.payment_id == payment_id))
+        pay = pay_r.scalars().first()
+        if not pay:
+            return JSONResponse({"status_code": 404, "message": "Payment record not found"}, status_code=404)
+
+        # Re-validate total fees if amount or discount is changing
+        if payload.amount is not None or payload.amount_2 is not None or payload.discount_amount is not None:
+             enroll_r = await session.execute(select(Enrollment).where(Enrollment.enrollment_id == pay.enrollment_id))
+             enroll = enroll_r.scalars().first()
+             if enroll:
+                course_r = await session.execute(select(Course).where(Course.course_id == enroll.course_id))
+                course = course_r.scalars().first()
+                if course:
+                    total_cost = float(enroll.total_fee if enroll.total_fee is not None else (course.fee_full_payment if enroll.payment_plan == "full" else course.fee_installment) or 0.0)
+                    
+                    # Sum other payments
+                    others_r = await session.execute(select(Payment).where(and_(Payment.enrollment_id == enroll.enrollment_id, Payment.payment_id != payment_id)))
+                    other_payments = others_r.scalars().all()
+                    
+                    total_paid_others = sum((p.amount or 0) + (p.amount_2 or 0) for p in other_payments)
+                    total_discount_others = sum(p.discount_amount or 0 for p in other_payments)
+                    
+                    new_amount = (payload.amount if payload.amount is not None else (pay.amount or 0)) + \
+                                 (payload.amount_2 if payload.amount_2 is not None else (pay.amount_2 or 0))
+                    new_discount = payload.discount_amount if payload.discount_amount is not None else (pay.discount_amount or 0)
+                    
+                    if (total_paid_others + new_amount + total_discount_others + new_discount) > total_cost + 0.1:
+                        left_amount = total_cost - (total_paid_others + total_discount_others)
+                        return JSONResponse({
+                            "status_code": 400, 
+                            "message": f"Updated Payment/Discount total ({new_amount + new_discount:,.0f} MMK) exceeds remaining balance ({max(0, left_amount):,.0f} MMK)"
+                        }, status_code=400)
+
+        # Update fields
+        update_data = payload.dict(exclude_unset=True)
+        if "payment_date" in update_data and update_data["payment_date"]:
+             if update_data["payment_date"].tzinfo:
+                 update_data["payment_date"] = update_data["payment_date"].replace(tzinfo=None)
+        
+        for key, value in update_data.items():
+            if hasattr(pay, key):
+                setattr(pay, key, value)
+
+        await session.commit()
+        await log_activity(request, session, "Update Payment", f"Payment ID {payment_id} updated")
+        return JSONResponse({"status_code": 200, "message": "Payment updated successfully"})
+
+    async def delete_payment(request: Request, session: AsyncSession, payment_id: int):
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        pay_r = await session.execute(select(Payment).where(Payment.payment_id == payment_id))
+        pay = pay_r.scalars().first()
+        if not pay:
+            return JSONResponse({"status_code": 404, "message": "Payment record not found"}, status_code=404)
+
+        amount = pay.amount or 0
+        await session.delete(pay)
+        await session.commit()
+        await log_activity(request, session, "Delete Payment", f"Payment ID {payment_id} (Amount: {amount}) deleted")
+        return JSONResponse({"status_code": 200, "message": "Payment deleted successfully"})
+
     @staticmethod
     def _parse_hhmm(t: str) -> int:
         try:

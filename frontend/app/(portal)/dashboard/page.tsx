@@ -725,30 +725,44 @@ export default function DashboardPage() {
           </table>
         </div>
 
-        {/* Mobile View */}
-        <div className="block sm:hidden divide-y divide-slate-100">
+        {/* Mobile View (Enhanced Cards) */}
+        <div className="block sm:hidden divide-y divide-slate-100/50 bg-slate-50/30">
           {courses.map((c, i) => (
-            <div key={i} className="p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold">
+            <div key={i} className="p-5 bg-white mb-2 last:mb-0 shadow-sm border-y border-slate-100 first:border-t-0 active:bg-slate-50 transition-all">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center font-black text-brand-600 text-lg shadow-inner shrink-0 leading-none">
                     {c.course.course_name[0]}
                   </div>
-                  <div>
-                    <div className="font-bold text-slate-900 leading-tight">{c.course.course_name}</div>
-                    <div className="text-xs text-slate-500 font-medium mt-0.5">Enrolled: {c.enrollment_date.split(" ")[0]}</div>
+                  <div className="min-w-0">
+                    <h4 className="font-black text-slate-800 leading-tight truncate text-sm">{c.course.course_name}</h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Enrolled • {c.enrollment_date.split(" ")[0]}</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {c.status}
-                </span>
+                <div className="shrink-0 flex flex-col items-end gap-1">
+                   <div className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      {c.status}
+                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100/50 flex flex-col gap-0.5">
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Batch Info</p>
+                    <p className="text-xs font-bold text-slate-700">{c.batch_no || "N/A"}</p>
+                 </div>
+                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100/50 flex flex-col gap-0.5">
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Section</p>
+                    <p className="text-xs font-bold text-slate-700">Regular Class</p>
+                 </div>
               </div>
             </div>
           ))}
           {courses.length === 0 && (
-            <div className="p-10 text-center text-slate-400 font-medium text-sm">
-              No enrollments found.
+            <div className="p-16 text-center text-slate-300">
+               <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" />
+               <p className="font-black text-xs uppercase tracking-widest">No enrollments yet</p>
             </div>
           )}
         </div>

@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
-import { Lexend, Arvo } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Arvo } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-const lexend = Lexend({
-  variable: "--font-lexend",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const arvo = Arvo({
@@ -40,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${lexend.variable} ${arvo.variable} antialiased`}
+        className={`${inter.variable} ${plusJakartaSans.variable} ${arvo.variable} antialiased`}
       >
         <Providers>
           {children}
@@ -52,5 +58,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-
