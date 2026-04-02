@@ -148,21 +148,21 @@ export default function AdminPaymentsPage() {
       toast.error("Related enrollment not found in current list.");
       return;
     }
-    
+
     setEditingPayment(pay);
     setSelectedEnrollment(enr);
-    
+
     setPAmount(pay.amount);
     setPAmount2(pay.amount_2 || 0);
     setPMethod(pay.payment_method || "");
     setPMethod2(pay.payment_method_2 || "");
-    
+
     setPFine(pay.fine_amount || 0);
     setPFineReason(pay.fine_reason || "");
     setPExtraFee(pay.extra_items_fee || 0);
     setPExtraItems(pay.extra_items || "");
     setPDiscountAmount(pay.discount_amount || 0);
-    
+
     setPExamFeePaidGbp(pay.exam_fee_paid_gbp || 0);
     setPExamFeePaidMmk(pay.exam_fee_paid_mmk || 0);
     setPExamFeeCurrency(pay.exam_fee_currency || "MMK");
@@ -170,11 +170,11 @@ export default function AdminPaymentsPage() {
     // Split month/year
     const parts = pay.month.split(' ');
     if (parts.length >= 2) {
-       setPMonth(parts.slice(0, -1).join(' '));
-       setPYear(parts[parts.length - 1]);
+      setPMonth(parts.slice(0, -1).join(' '));
+      setPYear(parts[parts.length - 1]);
     } else {
-       setPMonth(pay.month);
-       setPYear(new Date().getFullYear().toString());
+      setPMonth(pay.month);
+      setPYear(new Date().getFullYear().toString());
     }
 
     if (pay.payment_date) {
@@ -272,14 +272,14 @@ export default function AdminPaymentsPage() {
         await createPaymentMutation.mutateAsync(payload);
         toast.success("Payment recorded successfully!");
       }
-      
+
       setPaymentModalOpen(false);
       setEditingPayment(null);
-      
+
       // Refresh current history if open
       if (historyModalOpen) {
-          const res = await AdminService.listPayments(1, 100, selectedEnrollment.enrollment_id);
-          setPayments(res.data);
+        const res = await AdminService.listPayments(1, 100, selectedEnrollment.enrollment_id);
+        setPayments(res.data);
       }
       await load();
     } catch (e: any) {
@@ -292,24 +292,24 @@ export default function AdminPaymentsPage() {
   };
 
   const handleDeletePayment = async (payId: number) => {
-     if (!window.confirm("Are you sure you want to delete this payment record? This cannot be undone.")) return;
-     
-     setBusy(true);
-     try {
-       await AdminService.deletePayment(payId);
-       toast.success("Payment deleted successfully");
-       
-       // Refresh list
-       if (selectedEnrollment) {
-           const res = await AdminService.listPayments(1, 100, selectedEnrollment.enrollment_id);
-           setPayments(res.data);
-       }
-       await load();
-     } catch (e: any) {
-       toast.error(e?.response?.data?.message || "Failed to delete payment");
-     } finally {
-       setBusy(false);
-     }
+    if (!window.confirm("Are you sure you want to delete this payment record? This cannot be undone.")) return;
+
+    setBusy(true);
+    try {
+      await AdminService.deletePayment(payId);
+      toast.success("Payment deleted successfully");
+
+      // Refresh list
+      if (selectedEnrollment) {
+        const res = await AdminService.listPayments(1, 100, selectedEnrollment.enrollment_id);
+        setPayments(res.data);
+      }
+      await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to delete payment");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const openHistory = async (enr: AdminEnrollment) => {
@@ -393,7 +393,7 @@ export default function AdminPaymentsPage() {
                   "Balance Due (MMK)": calculateLeftAmount(enr),
                   "FOC Items": enr.foc_items || "-",
                   "Status": (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0) ? "Fully Paid" : "Balance Due",
-                  "Last Payment": (enrPayments.length > 0) ? new Date([...enrPayments].sort((a,b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0].payment_date).toLocaleString() : "-"
+                  "Last Payment": (enrPayments.length > 0) ? new Date([...enrPayments].sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0].payment_date).toLocaleString() : "-"
                 };
               });
               exportToExcel(dataToExport, "Payments_Overview", "Payments");
@@ -572,121 +572,121 @@ export default function AdminPaymentsPage() {
 
         {/* Mobile/Tablet Card View */}
         <div className="block lg:hidden divide-y divide-slate-100">          {displayedEnrollments.map((enr) => {
-            const isFullyPaid = (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0);
-            const initials = enr.student_name ? enr.student_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-            
-            return (
-              <div key={enr.enrollment_id} className="p-5 bg-white border-b border-slate-200">
-                {/* Header: Name & Course */}
-                <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${isFullyPaid ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                    {initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h4 className="text-sm font-bold text-slate-900 truncate">{enr.student_name}</h4>
-                      {enr.payment_plan && (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
-                          {(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'Cash' : 'Inst.'}
-                        </span>
-                      )}
-                    </div>
-                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{enr.student_code}</p>
-                        <span className="w-1 h-1 rounded-full bg-slate-300" />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{enr.course_name}</span>
-                        {enr.batch_no && (
-                          <>
-                            <span className="w-1 h-1 rounded-full bg-slate-300" />
-                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">{enr.batch_no}</span>
-                          </>
-                        )}
-                     </div>
-                  </div>
-                </div>
+          const isFullyPaid = (calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) <= 0);
+          const initials = enr.student_name ? enr.student_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
-                {/* Primary Metric: Remaining Balance */}
-                <div className={`mt-4 p-4 rounded-lg border ${isFullyPaid ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-200'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isFullyPaid ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {isFullyPaid ? 'Payment Status' : 'Remaining Balance'}
-                    </span>
-                    {isFullyPaid && (
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Fully Settled</span>
+          return (
+            <div key={enr.enrollment_id} className="p-5 bg-white border-b border-slate-200">
+              {/* Header: Name & Course */}
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${isFullyPaid ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h4 className="text-sm font-bold text-slate-900 truncate">{enr.student_name}</h4>
+                    {enr.payment_plan && (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                        {(enr.payment_plan === 'full' || enr.payment_plan === 'cash_down') ? 'Cash' : 'Inst.'}
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className={`text-xl font-bold tracking-tight ${isFullyPaid ? 'text-emerald-700' : 'text-rose-700'}`}>
-                      {formatAmount(calculateLeftAmount(enr))}
-                    </span>
-                    <span className={`text-xs font-bold ${isFullyPaid ? 'text-emerald-400' : 'text-rose-400'}`}>MMK</span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{enr.student_code}</p>
+                    <span className="w-1 h-1 rounded-full bg-slate-300" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{enr.course_name}</span>
+                    {enr.batch_no && (
+                      <>
+                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                        <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">{enr.batch_no}</span>
+                      </>
+                    )}
                   </div>
-                </div>
-
-                {/* Grid stats - enhanced vertical/list style */}
-                <div className="mt-4 space-y-2">
-                  {enr.payment_plan === 'installment' && (
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-purple-600 shadow-sm">
-                            <CreditCard className="w-4 h-4" />
-                         </div>
-                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Installment</span>
-                      </div>
-                      <p className="text-xs font-bold text-slate-700">{formatAmount(enr.installment_amount)} <span className="text-[9px] text-slate-400 font-normal">MMK</span></p>
-                    </div>
-                  )}
-                  {calculateLeftExamFeeGbp(enr) > 0 && (
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-indigo-600 shadow-sm">
-                            <Award className="w-4 h-4" />
-                         </div>
-                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Exam Fee</span>
-                      </div>
-                      <p className="text-xs font-bold text-indigo-700">{calculateLeftExamFeeGbp(enr)} <span className="text-[9px] text-indigo-400 font-normal">GBP</span></p>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center gap-3">
-                       <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm">
-                          <History className="w-4 h-4" />
-                       </div>
-                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payments</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-700">{enr.payment_count} Records</p>
-                  </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="mt-5 flex items-center gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => handleGenerateReceipt(enr)}
-                    disabled={busy}
-                    className="flex-1 h-9 flex items-center justify-center gap-2 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 transition-colors disabled:opacity-50"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Receipt
-                  </button>
-                  <button
-                    onClick={() => openHistory(enr)}
-                    className="flex-1 h-9 flex items-center justify-center gap-2 rounded-lg bg-white text-slate-700 text-[11px] font-bold border border-slate-200 hover:bg-slate-50 transition-colors"
-                  >
-                    <History className="w-3.5 h-3.5" />
-                    Logs
-                  </button>
-                  {!isFullyPaid && (
-                    <button
-                      onClick={() => openRecordPayment(enr)}
-                      className="flex-1 h-9 flex items-center justify-center rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors"
-                    >
-                      PAY NOW
-                    </button>
-                  )}
                 </div>
               </div>
-            );
-          })}
+
+              {/* Primary Metric: Remaining Balance */}
+              <div className={`mt-4 p-4 rounded-lg border ${isFullyPaid ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-200'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isFullyPaid ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {isFullyPaid ? 'Payment Status' : 'Remaining Balance'}
+                  </span>
+                  {isFullyPaid && (
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Fully Settled</span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-xl font-bold tracking-tight ${isFullyPaid ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {formatAmount(calculateLeftAmount(enr))}
+                  </span>
+                  <span className={`text-xs font-bold ${isFullyPaid ? 'text-emerald-400' : 'text-rose-400'}`}>MMK</span>
+                </div>
+              </div>
+
+              {/* Grid stats - enhanced vertical/list style */}
+              <div className="mt-4 space-y-2">
+                {enr.payment_plan === 'installment' && (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-purple-600 shadow-sm">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Installment</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">{formatAmount(enr.installment_amount)} <span className="text-[9px] text-slate-400 font-normal">MMK</span></p>
+                  </div>
+                )}
+                {calculateLeftExamFeeGbp(enr) > 0 && (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                        <Award className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Exam Fee</span>
+                    </div>
+                    <p className="text-xs font-bold text-indigo-700">{calculateLeftExamFeeGbp(enr)} <span className="text-[9px] text-indigo-400 font-normal">GBP</span></p>
+                  </div>
+                )}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm">
+                      <History className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payments</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">{enr.payment_count} Records</p>
+                </div>
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="mt-5 flex items-center gap-2 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => handleGenerateReceipt(enr)}
+                  disabled={busy}
+                  className="flex-1 h-9 flex items-center justify-center gap-2 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 transition-colors disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Receipt
+                </button>
+                <button
+                  onClick={() => openHistory(enr)}
+                  className="flex-1 h-9 flex items-center justify-center gap-2 rounded-lg bg-white text-slate-700 text-[11px] font-bold border border-slate-200 hover:bg-slate-50 transition-colors"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  Logs
+                </button>
+                {!isFullyPaid && (
+                  <button
+                    onClick={() => openRecordPayment(enr)}
+                    className="flex-1 h-9 flex items-center justify-center rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors"
+                  >
+                    PAY NOW
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
           {displayedEnrollments.length === 0 && (
             <div className="p-10 text-center text-slate-400 font-medium text-sm">
@@ -707,12 +707,12 @@ export default function AdminPaymentsPage() {
         )}
       </div>
 
-      <Modal 
-        title={editingPayment ? "Edit Payment Record" : (selectedEnrollment?.payment_plan === 'full' || selectedEnrollment?.payment_plan === 'cash_down') ? "Record Cash Down Payment" : "Record Installment Payment"} 
-        open={paymentModalOpen} 
+      <Modal
+        title={editingPayment ? "Edit Payment Record" : (selectedEnrollment?.payment_plan === 'full' || selectedEnrollment?.payment_plan === 'cash_down') ? "Record Cash Down Payment" : "Record Installment Payment"}
+        open={paymentModalOpen}
         onClose={() => {
-            setPaymentModalOpen(false);
-            setEditingPayment(null);
+          setPaymentModalOpen(false);
+          setEditingPayment(null);
         }}
       >
         {selectedEnrollment && (
@@ -1023,7 +1023,7 @@ export default function AdminPaymentsPage() {
                       {/* Vertical line indicator */}
                       <div className="absolute left-3 top-0 bottom-0 w-px bg-slate-200 group-last:bottom-auto group-last:h-4" />
                       <div className="absolute left-[3px] top-4 w-5 h-5 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center z-10">
-                         <div className={clsx("w-1.5 h-1.5 rounded-full", p.status === 'Paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300')} />
+                        <div className={clsx("w-1.5 h-1.5 rounded-full", p.status === 'Paid' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300')} />
                       </div>
 
                       <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-4 hover:bg-white hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
@@ -1040,8 +1040,8 @@ export default function AdminPaymentsPage() {
                                 {p.amount_2 ? ` + ${p.payment_method_2}` : ""}
                               </span>
                               <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                                {p.payment_date ? new Date(p.payment_date).toLocaleString('en-US', { 
-                                  month: 'short', 
+                                {p.payment_date ? new Date(p.payment_date).toLocaleString('en-US', {
+                                  month: 'short',
                                   day: 'numeric',
                                   year: 'numeric',
                                   hour: '2-digit',
@@ -1050,41 +1050,41 @@ export default function AdminPaymentsPage() {
                               </span>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-1.5 sm:self-start">
-                             <button
-                               onClick={() => {
-                                 const leftExamGbp = calculateLeftExamFeeGbp(selectedEnrollment);
-                                 const leftAmountAtTime = calculateLeftAmount(selectedEnrollment); 
-                                 generateReceiptPDF(selectedEnrollment, [p], leftAmountAtTime, leftExamGbp, user?.username || "Admin", isFirstPayment);
-                               }}
-                               className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-brand-600 font-bold text-xs flex items-center gap-2 hover:bg-brand-50 transition-colors shadow-sm active:scale-95"
-                               title="Download Receipt"
-                             >
-                               <Receipt className="w-3.5 h-3.5" />
-                               Receipt
-                             </button>
-                             {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
-                               <>
-                                 <button
-                                   onClick={() => {
-                                     setHistoryModalOpen(false);
-                                     openEditPayment(p);
-                                   }}
-                                   className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition-colors shadow-sm active:scale-95"
-                                   title="Edit Payment"
-                                 >
-                                   <Edit className="w-4 h-4" />
-                                 </button>
-                                 <button
-                                   onClick={() => handleDeletePayment(p.payment_id)}
-                                   className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm active:scale-95"
-                                   title="Delete Payment"
-                                 >
-                                   <Trash2 className="w-4 h-4" />
-                                 </button>
-                               </>
-                             )}
+                            <button
+                              onClick={() => {
+                                const leftExamGbp = calculateLeftExamFeeGbp(selectedEnrollment);
+                                const leftAmountAtTime = calculateLeftAmount(selectedEnrollment);
+                                generateReceiptPDF(selectedEnrollment, [p], leftAmountAtTime, leftExamGbp, user?.username || "Admin", isFirstPayment);
+                              }}
+                              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-brand-600 font-bold text-xs flex items-center gap-2 hover:bg-brand-50 transition-colors shadow-sm active:scale-95"
+                              title="Download Receipt"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                              Receipt
+                            </button>
+                            {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setHistoryModalOpen(false);
+                                    openEditPayment(p);
+                                  }}
+                                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition-colors shadow-sm active:scale-95"
+                                  title="Edit Payment"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePayment(p.payment_id)}
+                                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-red-600 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm active:scale-95"
+                                  title="Delete Payment"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
 

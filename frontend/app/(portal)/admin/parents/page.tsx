@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Users, Link2, UserPlus, AlertCircle, X, Search, Pencil, Trash2 } from "lucide-react";
+import { Users, Link2, UserPlus, AlertCircle, X, Search, Pencil, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useParents, useCreateParent, useLinkParentChild, useUpdateUser, useDeleteUser } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
@@ -252,7 +252,7 @@ export default function AdminParentsPage() {
           <button
             type="submit"
             disabled={!canCreate || working}
-            className="mt-5 w-full rounded-xl bg-brand-600 text-white font-bold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-brand-700 transition-all active:scale-95 text-sm"
+            className="btn-primary btn-md w-full mt-5"
           >
             {working ? "Working..." : "Create parent"}
           </button>
@@ -297,8 +297,9 @@ export default function AdminParentsPage() {
           <button
             type="submit"
             disabled={!canLink || working}
-            className="mt-5 w-full rounded-xl bg-slate-900 text-white font-bold px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-800 transition-all active:scale-95 text-sm"
+            className="btn-secondary btn-md w-full mt-5 !border-b-0 py-[11px]"
           >
+            <Link2 className="w-4 h-4 mr-1" />
             {working ? "Working..." : "Link parent → student"}
           </button>
         </form>
@@ -322,8 +323,9 @@ export default function AdminParentsPage() {
             </div>
             <button
               onClick={() => refresh().catch(console.error)}
-              className="inline-flex items-center justify-center px-4 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition-all active:scale-95 text-sm"
+              className="btn-secondary btn-sm !border-b-0"
             >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
               Refresh
             </button>
           </div>
@@ -352,8 +354,8 @@ export default function AdminParentsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEdit(p)} className="p-2 rounded-xl text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Pencil size={16} /></button>
-                      <button onClick={() => openDelete(p)} className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={16} /></button>
+                      <button onClick={() => openEdit(p)} className="btn-icon-sm hover:bg-slate-100 text-slate-400 group-hover:text-brand-600 transition-all"><Pencil size={16} /></button>
+                      <button onClick={() => openDelete(p)} className="btn-icon-sm hover:bg-red-50 text-slate-400 group-hover:text-red-600 transition-all"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -421,8 +423,8 @@ export default function AdminParentsPage() {
             </label>
           </div>
           <div className="flex gap-3 pt-4">
-            <button type="button" onClick={() => setEditOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-700 font-bold hover:bg-slate-100 transition-all">Cancel</button>
-            <button type="submit" disabled={working} className="flex-1 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 transition-all active:scale-95 disabled:opacity-50">{working ? "Saving..." : "Save Changes"}</button>
+            <button type="button" onClick={() => setEditOpen(false)} className="btn-secondary btn-md flex-1">Cancel</button>
+            <button type="submit" disabled={working} className="btn-primary btn-md flex-1">{working ? "Saving..." : "Save Changes"}</button>
           </div>
         </form>
       </Modal>
@@ -439,8 +441,8 @@ export default function AdminParentsPage() {
             This will permanently remove the parent account and all their child links. This action cannot be undone.
           </p>
           <div className="flex gap-3 pt-4">
-            <button onClick={() => setDeleteOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-700 font-bold hover:bg-slate-100 transition-all">Cancel</button>
-            <button onClick={onDeleteConfirm} disabled={working} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50">{working ? "Deleting..." : "Delete Permanently"}</button>
+            <button onClick={() => setDeleteOpen(false)} className="btn-secondary btn-md flex-1">Cancel</button>
+            <button onClick={onDeleteConfirm} disabled={working} className="btn-danger btn-md flex-1">{working ? "Deleting..." : "Delete Permanently"}</button>
           </div>
         </div>
       </Modal>

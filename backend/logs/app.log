@@ -251,3 +251,6 @@ DETAIL:  Key (log_id)=(1) already exists.
 2026-04-02 13:35:31,380 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 26, "Courses": 16, "Batches": 2, "Subjects": 0, "Enrollments": 18, "Payments": 39, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 70}
 2026-04-02 13:35:59,676 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 26, "Courses": 16, "Batches": 2, "Subjects": 0, "Enrollments": 18, "Payments": 39, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 0, "ActivityLogs": 70}
 2026-04-02 14:21:23,368 - NiT-SMS - INFO - Activity logged: [Unknown] Approve Student: Student CO0131225 (was CO0131225) and their enrollments were approved and activated
+2026-04-02 15:10:58,105 - NiT-SMS - INFO - Activity logged: [Unknown] Update User: User CO031426 updated
+2026-04-02 15:11:32,512 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User CO031426 deleted
+2026-04-02 15:21:10,706 - NiT-SMS - INFO - Activity logged: [Unknown] Create Staff: Created sales account 'Thin Htet' (SAL0005)

@@ -14,7 +14,7 @@ export default function AdminTeachersPage() {
   const { isAdmin } = useAuth();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
-  
+
   const { data: teachersResponse, isLoading: loading, refetch: refresh, error: fetchError } = useTeachers(page, limit);
   const rawTeachers = teachersResponse?.data || [];
   const pagination = teachersResponse?.pagination;
@@ -26,8 +26,8 @@ export default function AdminTeachersPage() {
   const displayedTeachers = useMemo(() => {
     if (!q) return rawTeachers;
     const s = q.toLowerCase();
-    return rawTeachers.filter(t => 
-      t.username.toLowerCase().includes(s) || 
+    return rawTeachers.filter(t =>
+      t.username.toLowerCase().includes(s) ||
       t.user_code.toLowerCase().includes(s) ||
       t.email.toLowerCase().includes(s)
     );
@@ -38,7 +38,7 @@ export default function AdminTeachersPage() {
   }, [isAdmin, page, refresh]);
 
   const handleDelete = (t: any) => setUserToDelete(t);
-  
+
   const executeDelete = async () => {
     if (!userToDelete) return;
     try {
@@ -158,7 +158,7 @@ export default function AdminTeachersPage() {
         )}
       </div>
 
-      <ConfirmModal 
+      <ConfirmModal
         open={!!userToDelete}
         onClose={() => setUserToDelete(null)}
         onConfirm={executeDelete}

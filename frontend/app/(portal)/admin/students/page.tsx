@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AdminService, AdminStudent, AdminStudentRelations, AdminCourse } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 
-import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus, CalendarClock, CreditCard, Users } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircle, ShieldCheck, Mail, Calendar, Key, UserPlus, CalendarClock, CreditCard, Users, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment, useBatches } from "@/hooks/useAdmin";
@@ -60,6 +60,9 @@ export default function AdminStudentsPage() {
 
   // Form states moved up to avoid ReferenceError
   const [q, setQ] = useState("");
+  const [sortKey, setSortKey] = useState<keyof AdminStudent | "">("user_code");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -211,16 +214,41 @@ export default function AdminStudentsPage() {
   }, [authLoading, isAdminOrSales, router]);
 
   const filtered = useMemo(() => {
+    let result = [...rows];
     const term = q.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter((s: AdminStudent) => {
-      return (
-        (s.user_code || "").toLowerCase().includes(term) ||
-        (s.username || "").toLowerCase().includes(term) ||
-        (s.email || "").toLowerCase().includes(term)
-      );
-    });
-  }, [q, rows]);
+    
+    if (term) {
+      result = result.filter((s: AdminStudent) => {
+        return (
+          (s.user_code || "").toLowerCase().includes(term) ||
+          (s.username || "").toLowerCase().includes(term) ||
+          (s.email || "").toLowerCase().includes(term)
+        );
+      });
+    }
+
+    if (sortKey) {
+      result.sort((a: any, b: any) => {
+        const valA = a[sortKey] || "";
+        const valB = b[sortKey] || "";
+        
+        if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+        if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [q, rows, sortKey, sortOrder]);
+
+  const requestSort = (key: keyof AdminStudent) => {
+    let order: "asc" | "desc" = "asc";
+    if (sortKey === key && sortOrder === "asc") {
+      order = "desc";
+    }
+    setSortKey(key);
+    setSortOrder(order);
+  };
 
   const load = async () => {
     await refetchStudents();
@@ -859,12 +887,48 @@ export default function AdminStudentsPage() {
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 whitespace-nowrap">Code</th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => requestSort("user_code")}>
+                  <div className="flex items-center gap-2">
+                    Code
+                    {sortKey === "user_code" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-brand-600" /> : <ChevronDown className="w-4 h-4 text-brand-600" />
+                    ) : (
+                      <ChevronsUpDown className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-4">Pic</th>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => requestSort("username")}>
+                  <div className="flex items-center gap-2">
+                    Name
+                    {sortKey === "username" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-brand-600" /> : <ChevronDown className="w-4 h-4 text-brand-600" />
+                    ) : (
+                      <ChevronsUpDown className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => requestSort("email")}>
+                  <div className="flex items-center gap-2">
+                    Email
+                    {sortKey === "email" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-brand-600" /> : <ChevronDown className="w-4 h-4 text-brand-600" />
+                    ) : (
+                      <ChevronsUpDown className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-4">DOB</th>
-                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group" onClick={() => requestSort("is_active")}>
+                  <div className="flex items-center gap-2">
+                    Status
+                    {sortKey === "is_active" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-brand-600" /> : <ChevronDown className="w-4 h-4 text-brand-600" />
+                    ) : (
+                      <ChevronsUpDown className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -1006,7 +1070,7 @@ export default function AdminStudentsPage() {
                           s.is_active ? "bg-emerald-500" : "bg-slate-300"
                         )} />
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 font-mono">{s.user_code}</div>
                         <h3 className="text-lg font-black text-slate-800 leading-tight truncate hover:text-brand-600 transition-colors" onClick={() => openView(s)}>
@@ -1015,16 +1079,16 @@ export default function AdminStudentsPage() {
                         <p className="text-xs font-medium text-slate-500 truncate">{s.email}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col items-end shrink-0 gap-2">
-                       <span className={clsx(
-                         "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border whitespace-nowrap",
-                         s.is_active 
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+                      <span className={clsx(
+                        "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border whitespace-nowrap",
+                        s.is_active
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                           : "bg-slate-50 text-slate-500 border-slate-200"
-                       )}>
-                         {s.is_active ? "Active" : "Inactive"}
-                       </span>
+                      )}>
+                        {s.is_active ? "Active" : "Inactive"}
+                      </span>
                     </div>
                   </div>
 
@@ -1049,7 +1113,7 @@ export default function AdminStudentsPage() {
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                     <div className="flex-1">
-                       <p className="font-premium text-[10px] text-slate-400 uppercase tracking-widest leading-none">Quick Actions</p>
+                      <p className="font-premium text-[10px] text-slate-400 uppercase tracking-widest leading-none">Quick Actions</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {isAdminOrSales && (
@@ -1085,7 +1149,7 @@ export default function AdminStudentsPage() {
                           )}
                         </div>
                       )}
-                      
+
                       {isAdmin && (
                         <button
                           onClick={() => openEdit(s)}
@@ -1094,7 +1158,7 @@ export default function AdminStudentsPage() {
                           <Pencil size={18} />
                         </button>
                       )}
-                      
+
                       {isAdmin && (
                         <button
                           onClick={() => doDelete(s)}
@@ -1109,8 +1173,8 @@ export default function AdminStudentsPage() {
               ))}
               {filtered.length === 0 && (
                 <div className="p-16 text-center text-slate-300">
-                   <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                   <p className="font-black text-xs uppercase tracking-widest">No results found</p>
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                  <p className="font-black text-xs uppercase tracking-widest">No results found</p>
                 </div>
               )}
             </>

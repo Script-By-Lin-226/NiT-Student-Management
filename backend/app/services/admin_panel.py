@@ -64,24 +64,44 @@ def _serialize_user(u: User) -> dict:
 
 async def _next_student_code(session: AsyncSession, department: str = "College", manual_prefix: str = None) -> str:
     """
-    Generate a student_code like CO001226 or IN001226 based on department or manual prefix.
+    Generate a student_code like CO0031426 (4-digit seq).
+    Supports 10000 students.
+    Month is unpadded (1-12).
     """
     prefix = manual_prefix if manual_prefix else ("IN" if department == "Institute" else "CO")
     
-    # Efficiently find the highest sequence number for this prefix using DB-level pattern matching
-    # Result will be like "CO005..." -> we want the "005" part
+    # Try finding the highest sequence in the new 9-10 character format first
+    # We look for codes >= 9 chars starting with prefix
     result = await session.execute(
-        select(func.max(func.cast(func.substr(User.user_code, 3, 3), Integer)))
-        .where(and_(User.role == "student", User.user_code.like(f"{prefix}%")))
+        select(func.max(func.cast(func.substr(User.user_code, 3, 4), Integer)))
+        .where(and_(
+            User.role == "student", 
+            User.user_code.like(f"{prefix}%"),
+            func.length(User.user_code) >= 9
+        ))
     )
-    max_seq = result.scalar() or 0
+    max_seq = result.scalar()
+
+    if max_seq is None:
+        # Fallback to old 8-9 character format (3-digit seq)
+        result = await session.execute(
+            select(func.max(func.cast(func.substr(User.user_code, 3, 3), Integer)))
+            .where(and_(
+                User.role == "student", 
+                User.user_code.like(f"{prefix}%"),
+                func.length(User.user_code) < 9
+            ))
+        )
+        max_seq = result.scalar() or 0
+
     seq = max_seq + 1
     
     now = get_now_local()
+    # Unpadded month as requested (e.g. 4 for April instead of 04)
     month_str = str(now.month)
     year_str = str(now.year)[-2:]
     
-    return f"{prefix}{seq:03d}{month_str}{year_str}"
+    return f"{prefix}{seq:04d}{month_str}{year_str}"
 
 async def _next_parent_code(session: AsyncSession) -> str:
     """

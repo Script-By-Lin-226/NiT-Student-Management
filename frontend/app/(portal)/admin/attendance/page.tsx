@@ -333,7 +333,7 @@ export default function AdminAttendancePage() {
               className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white font-semibold outline-none focus:ring-2 focus:ring-brand-500/20 text-sm sm:text-base"
             />
           )}
-          <button onClick={load} disabled={combinedLoading} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 transition-all active:scale-95 text-sm">
+          <button onClick={load} disabled={combinedLoading} className="btn-secondary btn-md">
             <RefreshCw className={`w-4 h-4 ${combinedLoading ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
@@ -369,7 +369,7 @@ export default function AdminAttendancePage() {
                 </div>
                 <button
                   onClick={() => openGroup(g)}
-                  className="px-6 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
+                  className="btn-primary btn-md"
                 >
                   Manage
                 </button>
@@ -574,34 +574,34 @@ export default function AdminAttendancePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  if (!selectedGroup) return;
-                  const dataToExport = selectedGroup.students.map(stu => {
-                    const row: any = {
-                      "Student Name": stu.student_name,
-                      "Student Code": stu.student_code
-                    };
-                    currentSlots.forEach(slot => {
-                      const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && (a.timetable_id === slot.id || a.slot === slot.text));
-                      row[slot.text] = record ? (record.check_today ? "Present" : "Absent") : "Not Marked";
+                <button
+                  onClick={() => {
+                    if (!selectedGroup) return;
+                    const dataToExport = selectedGroup.students.map(stu => {
+                      const row: any = {
+                        "Student Name": stu.student_name,
+                        "Student Code": stu.student_code
+                      };
+                      currentSlots.forEach(slot => {
+                        const record = attendance.find(a => a.user_code === stu.student_code && a.attendance_date.startsWith(targetDate) && (a.timetable_id === slot.id || a.slot === slot.text));
+                        row[slot.text] = record ? (record.check_today ? "Present" : "Absent") : "Not Marked";
+                      });
+                      return row;
                     });
-                    return row;
-                  });
-                  exportToExcel(dataToExport, `Attendance_${selectedGroup.course_code}_${selectedGroup.batch_no}_${targetDate}`, "Attendance");
-                }}
-                disabled={busy || !selectedGroup || selectedGroup.students.length === 0}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 shadow-sm transition-all active:scale-95 text-sm"
-              >
-                <Download className="w-4 h-4" />
-                Export Batch
-              </button>
-              <button
-                onClick={() => setGroupModalOpen(false)}
-                className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all active:scale-95 text-sm"
-              >
-                Close
-              </button>
+                    exportToExcel(dataToExport, `Attendance_${selectedGroup.course_code}_${selectedGroup.batch_no}_${targetDate}`, "Attendance");
+                  }}
+                  disabled={busy || !selectedGroup || selectedGroup.students.length === 0}
+                  className="btn-primary btn-md !bg-emerald-600 !hover:bg-emerald-700 !shadow-emerald-100 w-full sm:w-auto"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Batch
+                </button>
+                <button
+                  onClick={() => setGroupModalOpen(false)}
+                  className="btn-secondary btn-md w-full sm:w-auto"
+                >
+                  Close
+                </button>
             </div>
           </div>
         )}
@@ -665,7 +665,7 @@ export default function AdminAttendancePage() {
           <div className="flex justify-end pt-4">
             <button
               onClick={() => setStudentReportOpen(false)}
-              className="px-5 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-colors shadow-sm"
+              className="btn-primary btn-md w-full sm:w-auto"
             >
               Close Report
             </button>

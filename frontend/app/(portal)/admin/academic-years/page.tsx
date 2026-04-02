@@ -165,12 +165,12 @@ export default function AdminAcademicYearsPage() {
           <button
             onClick={load}
             disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60"
+            className="btn-secondary btn-md sm:w-auto w-full"
           >
             <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
             Refresh
           </button>
-          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm">
+          <button onClick={openCreate} className="btn-primary btn-md">
             <Plus className="w-4 h-4" />
             New Year
           </button>
@@ -210,15 +210,15 @@ export default function AdminAcademicYearsPage() {
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
                       {isAdmin && (
-                        <button onClick={() => openEdit(y)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">
-                          <Pencil className="w-4 h-4" />
-                          Edit
+                        <button onClick={() => openEdit(y)} className="btn-secondary btn-sm !border-b-0">
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline ml-1">Edit</span>
                         </button>
                       )}
                       {isAdmin && (
-                        <button onClick={() => doDelete(y)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50">
-                          <Trash2 className="w-4 h-4" />
-                          Delete
+                        <button onClick={() => doDelete(y)} className="btn-danger btn-sm">
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline ml-1">Delete</span>
                         </button>
                       )}
                     </div>
@@ -252,7 +252,7 @@ export default function AdminAcademicYearsPage() {
             <input value={cEnd} onChange={(e) => setCEnd(e.target.value)} type="date" className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">
-            <button onClick={submitCreate} disabled={busy || !cName.trim() || !cStart || !cEnd} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
+            <button onClick={submitCreate} disabled={busy || !cName.trim() || !cStart || !cEnd} className="btn-primary btn-md">
               Create
             </button>
           </div>
@@ -274,10 +274,10 @@ export default function AdminAcademicYearsPage() {
             <input value={eEnd} onChange={(e) => setEEnd(e.target.value)} type="date" className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-2">
-            <button onClick={() => setEditOpen(false)} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50">
+            <button onClick={() => setEditOpen(false)} className="btn-secondary btn-md">
               Cancel
             </button>
-            <button onClick={submitEdit} disabled={busy || !selected} className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60">
+            <button onClick={submitEdit} disabled={busy || !selected} className="btn-primary btn-md">
               Save changes
             </button>
           </div>
