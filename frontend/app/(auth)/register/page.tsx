@@ -111,7 +111,7 @@ export default function RegisterPage() {
         setError(
           err.response?.data?.message ||
           err.message ||
-          "Registration failed. Please check your inputs."
+          "Registration failed. Please check your internet connection and try again."
         );
       }
     } finally {
@@ -155,7 +155,7 @@ export default function RegisterPage() {
     if (step === 1) {
       if (!formData.username.trim()) return "Full name is required";
       if (!formData.phone.trim()) return "Phone number is required";
-      // Others are now optional for Interest Showcase
+      if (!formData.date_of_birth) return "Date of Birth is required";
     }
     if (step === 2) {
       if (!formData.course_code.trim()) return "Please select a course of interest";
@@ -360,7 +360,7 @@ export default function RegisterPage() {
                                         <input name="phone" value={formData.phone} onChange={handleChange} placeholder="+95 9..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Date of Birth (Optional)</label>
+                                        <label className="text-sm font-bold text-slate-700">Date of Birth <span className="text-red-500">*</span></label>
                                         <input name="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                 </div>

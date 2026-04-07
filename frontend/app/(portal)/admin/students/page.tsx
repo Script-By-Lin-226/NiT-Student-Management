@@ -287,6 +287,8 @@ export default function AdminStudentsPage() {
 
   const submitCreate = async () => {
     setError("");
+    if (!cUsername.trim()) { setError("Full name is required"); return; }
+    if (!cDob) { setError("Date of Birth is required"); return; }
     try {
       await createMutation.mutateAsync({
         user_code: cUserCode.trim() || undefined,
@@ -370,6 +372,8 @@ export default function AdminStudentsPage() {
   const submitEdit = async () => {
     if (!selected) return;
     setError("");
+    if (!eUsername.trim()) { setError("Full name is required"); return; }
+    if (!eDob) { setError("Date of Birth is required"); return; }
     try {
       await updateMutation.mutateAsync({
         code: selected.user_code,
@@ -1238,7 +1242,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name <span className="text-red-500">*</span></label>
             <input
               value={cUsername}
               onChange={(e) => setCUsername(e.target.value)}
@@ -1247,7 +1251,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email <span className="text-red-500">*</span></label>
             <input
               value={cEmail}
               onChange={(e) => setCEmail(e.target.value)}
@@ -1267,7 +1271,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date of birth</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date of birth <span className="text-red-500">*</span></label>
             <input
               value={cDob}
               onChange={(e) => setCDob(e.target.value)}
@@ -1561,7 +1565,7 @@ export default function AdminStudentsPage() {
             </div>
           )}
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name <span className="text-red-500">*</span></label>
             <input
               value={eUsername}
               onChange={(e) => setEUsername(e.target.value)}
@@ -1570,7 +1574,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address <span className="text-red-500">*</span></label>
             <input
               value={eEmail}
               onChange={(e) => setEEmail(e.target.value)}
@@ -1580,7 +1584,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date of birth</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date of birth <span className="text-red-500">*</span></label>
             <input
               value={eDob}
               onChange={(e) => setEDob(e.target.value)}

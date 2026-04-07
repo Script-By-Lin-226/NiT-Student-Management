@@ -80,5 +80,5 @@ This document outlines the logical processes and algorithms that drive the stude
 **Goal**: Automated, collision-free student identification.
 1.  Get current `Academic Year`.
 2.  Count existing student registrations for that year.
-3.  Format: `STD-[YEAR]-[INDEX]` (e.g., `STD-2026-0042`).
+3.  Format: `CO/IN[index][month][year]` (e.g., `CO0001226`).
 4.  Ensure uniqueness at the database level using `UniqueConstraint`.

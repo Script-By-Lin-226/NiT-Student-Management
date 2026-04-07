@@ -31,8 +31,9 @@ class AuthenticationService:
         hashed_password = await hash_password(raw_password)
         user_code = await _next_student_code(session, getattr(user, "department", "College"))
         
-        from datetime import time
-        dob_dt = datetime.combine(user.date_of_birth, time.min)
+        dob_dt = None
+        if user.date_of_birth:
+             dob_dt = datetime.combine(user.date_of_birth, time.min)
         
         new_user = User(
             user_code=user_code,
