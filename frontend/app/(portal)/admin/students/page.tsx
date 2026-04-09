@@ -1127,18 +1127,18 @@ export default function AdminStudentsPage() {
                               <button
                                 onClick={() => handleApprove(s)}
                                 disabled={busy}
-                                className="h-10 px-4 flex items-center justify-center gap-2 rounded-xl bg-brand-600 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand-200 active:scale-95 transition-all"
+                                className="btn-primary btn-xs gap-1.5 shadow-lg shadow-brand-200/50"
                               >
-                                <Check size={14} className="stroke-[3]" /> {user?.role === "sales" ? "Approve (Assign Code)" : "Approve"}
+                                <Check size={14} className="stroke-[3]" /> {user?.role === "sales" ? "Approve" : "Approve"}
                               </button>
                               {s.student_type !== "New Student" && (
                                 <button
                                   onClick={() => toggleStatus(s)}
                                   disabled={busy}
-                                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 active:scale-95 transition-all"
+                                  className="btn-icon-sm bg-emerald-50 text-emerald-600 border border-emerald-100"
                                   title="Quick Activate"
                                 >
-                                  <ShieldCheck size={18} />
+                                  <ShieldCheck size={16} />
                                 </button>
                               )}
                             </>
@@ -1146,7 +1146,7 @@ export default function AdminStudentsPage() {
                             <button
                               onClick={() => toggleStatus(s)}
                               disabled={busy}
-                              className="h-10 px-4 flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-600 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all border border-slate-200"
+                              className="btn-secondary btn-xs gap-1.5"
                             >
                               <ShieldCheck size={14} className="stroke-[3]" /> Leave
                             </button>
@@ -1157,18 +1157,18 @@ export default function AdminStudentsPage() {
                       {isAdmin && (
                         <button
                           onClick={() => openEdit(s)}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-200 active:scale-95 transition-all"
+                          className="btn-icon-sm bg-slate-50 text-slate-500 border border-slate-200"
                         >
-                          <Pencil size={18} />
+                          <Pencil size={14} />
                         </button>
                       )}
 
                       {isAdmin && (
                         <button
                           onClick={() => doDelete(s)}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100 active:scale-95 transition-all"
+                          className="btn-icon-sm bg-red-50 text-red-500 border border-red-100"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>

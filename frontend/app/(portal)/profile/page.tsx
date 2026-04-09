@@ -159,7 +159,7 @@ export default function ProfilePage() {
         </div>
         <button 
           onClick={logout}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition-all active:scale-95"
+          className="btn-secondary btn-sm inline-flex items-center gap-2"
         >
           <LogOut className="w-4 h-4" />
           Sign Out
@@ -175,7 +175,7 @@ export default function ProfilePage() {
               {!editMode && (
                 <button 
                   onClick={() => setEditMode(true)}
-                  className="text-xs font-bold text-brand-600 hover:text-brand-700 uppercase tracking-widest"
+                  className="text-xs font-bold text-brand-600 hover:text-brand-700 uppercase tracking-widest px-2 py-1 rounded hover:bg-brand-50 transition-colors"
                 >
                   Edit Profile
                 </button>
@@ -263,14 +263,14 @@ export default function ProfilePage() {
                     <button 
                       type="submit" 
                       disabled={busy}
-                      className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50"
+                      className="btn-primary btn-sm flex-1 sm:flex-none"
                     >
                       Save Changes
                     </button>
                     <button 
                       type="button" 
                       onClick={() => setEditMode(false)}
-                      className="px-4 py-2 bg-white text-slate-600 text-sm font-bold rounded-lg border border-slate-200 hover:bg-slate-50 outline-none"
+                      className="btn-secondary btn-sm flex-1 sm:flex-none"
                     >
                       Cancel
                     </button>
@@ -340,7 +340,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50"
+                  className="btn-primary btn-md w-full sm:w-auto"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   Update Security Credentials
