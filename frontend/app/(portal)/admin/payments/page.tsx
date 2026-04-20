@@ -752,7 +752,7 @@ export default function AdminPaymentsPage() {
                   value={pAmount}
                   onChange={(e) => setPAmount(e.target.value ? Number(e.target.value) : "")}
                   onFocus={(e) => pAmount === 0 && setPAmount("")}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 no-spin"
                   placeholder="0"
                 />
                 {pAmount !== "" && Number(pAmount) > 0 && (
@@ -791,7 +791,7 @@ export default function AdminPaymentsPage() {
                     value={pAmount2}
                     onChange={(e) => setPAmount2(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pAmount2 === 0 && setPAmount2("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 no-spin"
                     placeholder="0"
                   />
                   {pAmount2 !== "" && Number(pAmount2) > 0 && (
@@ -838,6 +838,7 @@ export default function AdminPaymentsPage() {
                 >
                   <option value="">Select Option</option>
                   <option value="Deposit">Deposit</option>
+                  <option value="Exam Fee">Exam Fee</option>
                   {selectedEnrollment?.payment_plan === 'installment' && (
                     <option value="Down Payment">Down Payment</option>
                   )}
@@ -873,7 +874,7 @@ export default function AdminPaymentsPage() {
                     value={pFine}
                     onChange={(e) => setPFine(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pFine === 0 && setPFine("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 no-spin"
                     placeholder="0"
                   />
                   {pFine !== "" && Number(pFine) > 0 && (
@@ -898,7 +899,7 @@ export default function AdminPaymentsPage() {
                     value={pExtraFee}
                     onChange={(e) => setPExtraFee(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pExtraFee === 0 && setPExtraFee("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 no-spin"
                     placeholder="0"
                   />
                   {pExtraFee !== "" && Number(pExtraFee) > 0 && (
@@ -923,7 +924,7 @@ export default function AdminPaymentsPage() {
                     value={pDiscountAmount}
                     onChange={(e) => setPDiscountAmount(e.target.value ? Number(e.target.value) : "")}
                     onFocus={(e) => pDiscountAmount === 0 && setPDiscountAmount("")}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 no-spin"
                     placeholder="0"
                   />
                   {pDiscountAmount !== "" && Number(pDiscountAmount) > 0 && (
@@ -946,7 +947,7 @@ export default function AdminPaymentsPage() {
                         }
                       }}
                       onFocus={(e) => pExamFeePaidGbp === 0 && setPExamFeePaidGbp("")}
-                      className="w-full px-3 py-2.5 rounded-xl bg-blue-50/50 border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                      className="w-full px-3 py-2.5 rounded-xl bg-blue-50/50 border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 no-spin"
                       placeholder="0"
                     />
                   </div>
@@ -963,7 +964,7 @@ export default function AdminPaymentsPage() {
                         }
                       }}
                       onFocus={(e) => pExchangeRate === 0 && setPExchangeRate("")}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 no-spin"
                       placeholder="e.g. 5000"
                     />
                   </div>
