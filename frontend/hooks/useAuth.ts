@@ -69,6 +69,7 @@ export function useAuth() {
     logout,
     isStudent: user?.role === "student",
     isParent: user?.role === "parent",
+    isTeacher: user?.role === "teacher",
     isStaff: ["hr", "manager", "sales", "teacher"].includes(user?.role || ""),
     isAdmin: user?.role === "admin",
     isAdminOrSales: user?.role === "admin" || user?.role === "sales",

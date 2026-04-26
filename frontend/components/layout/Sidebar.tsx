@@ -32,6 +32,12 @@ const staffNav = [
   { name: "Profile", href: "/profile", icon: User },
 ];
 
+const teacherNav = [
+  { name: "Dashboard", href: "/teacher/dashboard", icon: Home },
+  { name: "Class", href: "/teacher/classes", icon: BookOpen },
+  { name: "Profile", href: "/profile", icon: User },
+];
+
 const adminNav = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Students", href: "/admin/students", icon: Users },
@@ -57,6 +63,7 @@ export default function Sidebar() {
   if (isStudent) navigation = studentNav;
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
+  if (user?.role === "teacher") navigation = teacherNav;
   if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 

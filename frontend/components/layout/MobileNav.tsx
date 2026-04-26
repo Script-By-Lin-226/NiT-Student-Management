@@ -29,6 +29,12 @@ const staffNav = [
   { name: "Me", href: "/profile", icon: User },
 ];
 
+const teacherNav = [
+  { name: "Home", href: "/teacher/dashboard", icon: Home },
+  { name: "Class", href: "/teacher/classes", icon: BookOpen },
+  { name: "Me", href: "/profile", icon: User },
+];
+
 const adminNav = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Students", href: "/admin/students", icon: Users },
@@ -63,6 +69,7 @@ export default function MobileNav() {
   let navigation = studentNav;
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
+  if (user?.role === "teacher") navigation = teacherNav;
   if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 

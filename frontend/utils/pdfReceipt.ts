@@ -128,7 +128,7 @@ export const generateReceiptPDF = async (
         minute: '2-digit'
       }),
       p.month || "N/A",
-      p.amount_2 && p.amount_2 > 0 ? `${p.payment_method || "N/A"}\n${p.payment_method_2 || "N/A"}` : (p.payment_method || "N/A"),
+      (() => { const parts: string[] = []; if (p.payment_method) parts.push(p.payment_method); if (p.amount_2 && p.amount_2 > 0 && p.payment_method_2) parts.push(p.payment_method_2); if (p.exam_fee_payment_method && p.exam_fee_paid_gbp && p.exam_fee_paid_gbp > 0) parts.push(p.exam_fee_payment_method); return parts.length > 0 ? parts.join("\n") : "N/A"; })(),
       p.status || "Completed",
       p.amount_2 && p.amount_2 > 0 ? `${p.amount.toLocaleString()} MMK\n${p.amount_2.toLocaleString()} MMK` : `${(p.amount + (p.amount_2 || 0)).toLocaleString()} MMK`,
       (p.fine_amount && p.fine_amount > 0) ? `${p.fine_amount.toLocaleString()} MMK` : "-",

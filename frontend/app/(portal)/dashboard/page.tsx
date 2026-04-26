@@ -59,6 +59,13 @@ export default function DashboardPage() {
   const [childPage, setChildPage] = useState<number>(1);
   const { admin, parent, student } = useDashboardData(selectedChild, childPage);
 
+  // Redirect teachers to their dedicated dashboard
+  useEffect(() => {
+    if (user?.role === "teacher") {
+      window.location.href = "/teacher/dashboard";
+    }
+  }, [user]);
+
   // Sync selectedChild when parent data arrives
   useEffect(() => {
     if (isParent && parent.children.length > 0 && !selectedChild) {
@@ -584,7 +591,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-
+      
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -622,7 +629,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
+        
         {/* Main Chart */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 lg:col-span-2 flex flex-col min-h-[350px]">
           <div className="flex justify-between items-center mb-6">
@@ -636,15 +643,15 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={studentChartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={15} />
-                <Tooltip
+                <Tooltip 
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="pv"
-                  stroke="#4f46e5"
-                  strokeWidth={3}
+                <Line 
+                  type="monotone" 
+                  dataKey="pv" 
+                  stroke="#4f46e5" 
+                  strokeWidth={3} 
                   dot={{ r: 4, fill: '#fff', strokeWidth: 2, stroke: '#4f46e5' }}
                   activeDot={{ r: 6, fill: "#4f46e5", stroke: "#4f46e5", strokeWidth: 2 }}
                 />
@@ -675,7 +682,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-
+        
       </div>
 
       {/* Recent Enrollments Section */}

@@ -17,6 +17,7 @@ class PaymentCreate(BaseModel):
     exam_fee_paid_gbp: Optional[float] = None
     exam_fee_paid_mmk: Optional[float] = None
     exam_fee_currency: Optional[str] = "MMK"
+    exam_fee_payment_method: Optional[str] = None
     discount_amount: Optional[float] = 0.0
     payment_date: Optional[datetime] = None
 
@@ -34,5 +35,6 @@ class PaymentUpdate(BaseModel):
     exam_fee_paid_gbp: Optional[float] = None
     exam_fee_paid_mmk: Optional[float] = None
     exam_fee_currency: Optional[str] = "MMK"
+    exam_fee_payment_method: Optional[str] = None
     discount_amount: Optional[float] = None
     payment_date: Optional[datetime] = None

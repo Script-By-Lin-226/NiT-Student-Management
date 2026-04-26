@@ -74,6 +74,7 @@ export default function AdminPaymentsPage() {
   const [pExamFeePaidMmk, setPExamFeePaidMmk] = useState<number | "">(0);
   const [pExchangeRate, setPExchangeRate] = useState<number | "">(0);
   const [pExamFeeCurrency, setPExamFeeCurrency] = useState("MMK");
+  const [pExamFeeMethod, setPExamFeeMethod] = useState("");
   const [pMonth, setPMonth] = useState("");
   const [pYear, setPYear] = useState("");
   const [pMethod, setPMethod] = useState("");
@@ -131,6 +132,7 @@ export default function AdminPaymentsPage() {
     setPExamFeePaidMmk(0);
     setPExchangeRate(0);
     setPExamFeeCurrency("MMK");
+    setPExamFeeMethod("");
     setPAmount2(0);
     setPMethod2("");
 
@@ -166,6 +168,7 @@ export default function AdminPaymentsPage() {
     setPExamFeePaidGbp(pay.exam_fee_paid_gbp || 0);
     setPExamFeePaidMmk(pay.exam_fee_paid_mmk || 0);
     setPExamFeeCurrency(pay.exam_fee_currency || "MMK");
+    setPExamFeeMethod(pay.exam_fee_payment_method || "");
 
     // Split month/year
     const parts = pay.month.split(' ');
@@ -262,6 +265,7 @@ export default function AdminPaymentsPage() {
         exam_fee_paid_gbp: pExamFeePaidGbp !== "" ? Number(pExamFeePaidGbp) : undefined,
         exam_fee_paid_mmk: pExamFeePaidMmk !== "" ? Number(pExamFeePaidMmk) : undefined,
         exam_fee_currency: pExamFeeCurrency || "MMK",
+        exam_fee_payment_method: pExamFeeMethod || undefined,
         payment_date: pDate ? new Date(pDate).toISOString() : undefined,
       };
 
@@ -933,7 +937,7 @@ export default function AdminPaymentsPage() {
                     </div>
                   )}
                 </div>
-                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam GBP £</label>
                     <input
@@ -977,6 +981,21 @@ export default function AdminPaymentsPage() {
                       className="w-full px-3 py-2.5 rounded-xl bg-indigo-50/50 border border-indigo-200"
                       readOnly
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Exam Method</label>
+                    <select
+                      value={pExamFeeMethod}
+                      onChange={(e) => setPExamFeeMethod(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-blue-50/50 border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 text-slate-800"
+                    >
+                      <option value="">Select Option</option>
+                      <option value="KBZPay">KBZPay</option>
+                      <option value="AYA Pay">AYA Pay</option>
+                      <option value="Cash">Cash</option>
+                      <option value="MMQR">MMQR</option>
+                      <option value="Banking">Banking</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1106,6 +1125,7 @@ export default function AdminPaymentsPage() {
                             <div className="text-[10px] text-indigo-600 font-black bg-white border border-indigo-100 px-2.5 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
                               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                               Exam Fee: {p.exam_fee_paid_gbp} GBP
+                              {p.exam_fee_payment_method && ` (${p.exam_fee_payment_method})`}
                             </div>
                           )}
                         </div>

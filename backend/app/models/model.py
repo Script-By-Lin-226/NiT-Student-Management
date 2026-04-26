@@ -261,6 +261,7 @@ class Payment(Base):
     exam_fee_paid_gbp = Column(Float, nullable=True)
     exam_fee_paid_mmk = Column(Float, nullable=True)
     exam_fee_currency = Column(String, default="MMK") # MMK or GBP
+    exam_fee_payment_method = Column(String, nullable=True) # Cash, Bank Transfer, KPay, etc.
     discount_amount = Column(Float, nullable=True, default=0.0)
 
     created_at = Column(DateTime, default=func.now())

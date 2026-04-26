@@ -436,6 +436,7 @@ export interface AdminPayment {
   exam_fee_paid_gbp?: number;
   exam_fee_paid_mmk?: number;
   exam_fee_currency?: string;
+  exam_fee_payment_method?: string | null;
   discount_amount?: number;
 }
 
@@ -454,6 +455,7 @@ export interface AdminPaymentCreate {
   exam_fee_paid_gbp?: number | null;
   exam_fee_paid_mmk?: number | null;
   exam_fee_currency?: string | null;
+  exam_fee_payment_method?: string | null;
   discount_amount?: number | null;
   payment_date?: string | null;
 }

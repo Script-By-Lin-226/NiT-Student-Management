@@ -2294,7 +2294,8 @@ class AdminPanelService:
                 "fine_reason": getattr(p, "fine_reason", None),
                 "exam_fee_paid_gbp": getattr(p, "exam_fee_paid_gbp", 0) or 0,
                 "exam_fee_paid_mmk": getattr(p, "exam_fee_paid_mmk", 0) or 0,
-                "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK")
+                "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK"),
+                "exam_fee_payment_method": getattr(p, "exam_fee_payment_method", None)
             })
             
         return JSONResponse({
@@ -2377,6 +2378,7 @@ class AdminPanelService:
             exam_fee_paid_gbp=getattr(payload, "exam_fee_paid_gbp", None),
             exam_fee_paid_mmk=getattr(payload, "exam_fee_paid_mmk", None),
             exam_fee_currency=getattr(payload, "exam_fee_currency", "MMK"),
+            exam_fee_payment_method=getattr(payload, "exam_fee_payment_method", None),
             discount_amount=getattr(payload, "discount_amount", 0.0)
         )
         session.add(pay)

@@ -104,6 +104,47 @@ export interface StaffAttendanceData {
   };
 }
 
+// --------- Teacher Types ---------
+export interface TeacherClassInfo {
+  timetable_id: number | null;
+  teacher_name: string;
+  teacher_code: string;
+  course_id: number;
+  course_code: string;
+  course_name: string;
+  subject_id: number | null;
+  subject_code: string | null;
+  subject_name: string | null;
+  batch_id: number | null;
+  batch_no: string | null;
+  total_students: number;
+  room: string | null;
+  day_of_week: string | null;
+  start_time: string | null;
+  end_time: string | null;
+}
+
+export interface TeacherDailyHours {
+  day_of_week: string;
+  total_hours: number;
+  total_minutes: number;
+  total_slots: number;
+}
+
+export interface TeacherBatchStudents {
+  batch_id: number;
+  batch_no: string;
+  total_students: number;
+}
+
+export interface TeacherBatchAttendance {
+  batch_id: number;
+  batch_no: string;
+  total_records: number;
+  present_count: number;
+  attendance_rate: number;
+}
+
 export class PortalService {
   // --------- Student Routes ---------
   static async getStudentMe(): Promise<PortalUser> {
@@ -160,6 +201,37 @@ export class PortalService {
 
   static async getStaffMyAttendance(): Promise<StaffAttendanceData> {
     const res = await api.get("/staff/attendance/me");
+    return res.data.data;
+  }
+
+  // --------- Teacher Routes ---------
+  static async getTeacherAssignments(): Promise<TeacherClassInfo[]> {
+    const res = await api.get("/portal/teacher/assignments");
+    return res.data.data;
+  }
+
+  static async getTeacherTotalClasses(): Promise<number> {
+    const res = await api.get("/portal/teacher/total-classes");
+    return res.data.data;
+  }
+
+  static async getTeacherDailyHours(): Promise<TeacherDailyHours> {
+    const res = await api.get("/portal/teacher/daily-hours");
+    return res.data.data;
+  }
+
+  static async getTeacherStudentsPerBatch(): Promise<TeacherBatchStudents[]> {
+    const res = await api.get("/portal/teacher/students-per-batch");
+    return res.data.data;
+  }
+
+  static async getTeacherTotalSubjects(): Promise<number> {
+    const res = await api.get("/portal/teacher/total-subjects");
+    return res.data.data;
+  }
+
+  static async getTeacherAttendancePerBatch(): Promise<TeacherBatchAttendance[]> {
+    const res = await api.get("/portal/teacher/attendance-per-batch");
     return res.data.data;
   }
 }
