@@ -49,71 +49,59 @@ export const generateReceiptPDF = async (
     }
   };
 
-  let startY = 20;
-
+  let hasLogo = false;
   try {
     const logo = await loadImage("/icons/reciept.png");
-    doc.addImage(logo, "PNG", 100 - 22.5, 10, 55, 55);
-    startY = 65;
+    // Make logo slightly larger (28x28mm)
+    doc.addImage(logo, "PNG", 14, 10, 28, 28);
+    hasLogo = true;
   } catch (e) {
     console.warn("Could not load logo", e);
   }
 
-  // Header
-  setCorrectFont("Networking and Information Technology", 18, "bold");
-  doc.text("Networking and Information Technology", 105, startY, { align: "center" });
+  const headerX = hasLogo ? 48 : 14;
 
-  setCorrectFont("Payment Receipt", 14, "normal");
-  doc.text("Payment Receipt", 105, startY + 8, { align: "center" });
+  // Header (vertically centered with the 28mm high logo)
+  setCorrectFont("NiT College", 18, "bold");
+  doc.text("NiT College", headerX, 21);
 
-  doc.setLineWidth(0.5);
-  doc.line(14, startY + 14, 196, startY + 14);
+  setCorrectFont("Payment Receipt", 12, "normal");
+  doc.text("Payment Receipt", headerX, 29);
 
-  let contentY = startY + 24;
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(180, 180, 180);
+  doc.line(14, 43, 196, 43);
 
-  // Student & Course Info
-  setCorrectFont("Student Details", 10, "bold");
-  doc.text("Student Details", 14, contentY);
-  
-  const nameLine = `Name: ${enrollment.student_name || "N/A"}`;
-  setCorrectFont(nameLine, 10, "normal");
-  doc.text(nameLine, 14, contentY + 7);
-  
-  const codeLine = `Student Code: ${enrollment.student_code || "N/A"}`;
-  setCorrectFont(codeLine, 10, "normal");
-  doc.text(codeLine, 14, contentY + 14);
+  let contentY = 50;
 
-  setCorrectFont("Course Details", 10, "bold");
-  doc.text("Course Details", 120, contentY);
-  
-  const cNameLine = `Course Name: ${enrollment.course_name || "N/A"}`;
-  setCorrectFont(cNameLine, 10, "normal");
-  doc.text(cNameLine, 120, contentY + 7);
-  
-  const cCodeLine = `Course Code: ${enrollment.course_code || "N/A"}`;
-  setCorrectFont(cCodeLine, 10, "normal");
-  doc.text(cCodeLine, 120, contentY + 14);
-
-  contentY += 26;
-
-  // Payment Plan Info
-  setCorrectFont("Payment Plan Info", 10, "bold");
-  doc.text("Payment Plan Info", 14, contentY);
-  
+  // Student & Course Info (3-column layout)
   const planName = (enrollment.payment_plan === 'full' || enrollment.payment_plan === 'cash_down') ? 'Cash Down' : (enrollment.payment_plan === 'installment' ? 'Installment' : 'N/A');
-  setCorrectFont(`Plan: ${planName}`, 10, "normal");
-  doc.text(`Plan: ${planName}`, 14, contentY + 7);
-  doc.text(`Course Cost: ${enrollment.course_cost ? enrollment.course_cost.toLocaleString() + ' MMK' : 'N/A'}`, 14, contentY + 14);
   
-  if (enrollment.payment_plan === 'installment') {
-    doc.text(`Monthly Installment: ${enrollment.installment_amount ? enrollment.installment_amount.toLocaleString() + ' MMK' : '0 MMK'}`, 120, contentY + 7);
-  }
-  doc.text(`Remaining Balance: ${leftAmount.toLocaleString()} MMK`, 120, contentY + 14);
-  if (leftExamGbp > 0) {
-    doc.text(`Exam Fee Balance: ${leftExamGbp} GBP`, 120, contentY + 21);
+  setCorrectFont(`Name: ${enrollment.student_name || "N/A"}`, 9.5, "normal");
+  doc.text(`Name: ${enrollment.student_name || "N/A"}`, 14, contentY);
+  
+  setCorrectFont(`Course: ${enrollment.course_name || "N/A"}`, 9.5, "normal");
+  doc.text(`Course: ${enrollment.course_name || "N/A"}`, 80, contentY);
+  
+  setCorrectFont(`Course Cost: ${enrollment.course_cost ? enrollment.course_cost.toLocaleString() + ' MMK' : 'N/A'}`, 9.5, "normal");
+  doc.text(`Course Cost: ${enrollment.course_cost ? enrollment.course_cost.toLocaleString() + ' MMK' : 'N/A'}`, 145, contentY);
+
+  doc.text(`Student Code: ${enrollment.student_code || "N/A"}`, 14, contentY + 5.5);
+  doc.text(`Plan: ${planName}`, 80, contentY + 5.5);
+  doc.text(`Remaining Balance: ${leftAmount.toLocaleString()} MMK`, 145, contentY + 5.5);
+
+  let extraHeight = 0;
+  if (enrollment.payment_plan === 'installment' || leftExamGbp > 0) {
+    extraHeight = 5.5;
+    if (enrollment.payment_plan === 'installment') {
+      doc.text(`Monthly Inst: ${enrollment.installment_amount ? enrollment.installment_amount.toLocaleString() + ' MMK' : '0 MMK'}`, 80, contentY + 11);
+    }
+    if (leftExamGbp > 0) {
+      doc.text(`Exam Fee Bal: ${leftExamGbp} GBP`, 145, contentY + 11);
+    }
   }
 
-  contentY += 22;
+  contentY += 8 + extraHeight;
 
   // Table Data
   const tableData = payments
@@ -141,13 +129,26 @@ export const generateReceiptPDF = async (
   const tableStr = JSON.stringify(tableData);
   const tableFont = (containsMyanmar(tableStr) && hasMyanmarFont) ? "Pyidaungsu" : "helvetica";
 
+  // Dynamically calculate table styling based on number of payments to guarantee 1 page fitting
+  const paymentCount = payments.length;
+  let tableFontSize = 7.5;
+  let tablePadding = 1.8;
+  if (paymentCount > 8) {
+    tableFontSize = 7.0;
+    tablePadding = 1.3;
+  }
+  if (paymentCount > 15) {
+    tableFontSize = 6.5;
+    tablePadding = 0.8;
+  }
+
   autoTable(doc, {
-    startY: contentY,
+    startY: contentY + 3,
     head: [["#", "Date", "Month / For", "Method", "Status", "Amount", "Fine", "Extra", "Discount", "Exam"]],
     body: tableData,
     theme: "striped",
     headStyles: { fillColor: [63, 81, 181] },
-    styles: { font: tableFont, fontSize: 8 },
+    styles: { font: tableFont, fontSize: tableFontSize, cellPadding: tablePadding },
     columnStyles: {
       5: { halign: "right" },
       6: { halign: "right" },
@@ -172,23 +173,23 @@ export const generateReceiptPDF = async (
   const extraItemsDesc = payments.filter(p => p.extra_items && p.extra_items_fee && p.extra_items_fee > 0).map(p => p.extra_items).join(", ");
   if (extraItemsDesc) {
     setCorrectFont(`* Extra items: ${extraItemsDesc}`, 8, "italic");
-    doc.text(`* Extra items: ${extraItemsDesc}`, 14, finalY + 8);
-    finalY += 8;
+    doc.text(`* Extra items: ${extraItemsDesc}`, 14, finalY + 5);
+    finalY += 5;
   }
 
   const fineReasons = payments.filter(p => p.fine_amount && p.fine_amount > 0 && p.fine_reason).map(p => p.fine_reason).join(", ");
   if (fineReasons) {
     doc.setTextColor(220, 38, 38);
     setCorrectFont(`* Fine reason: ${fineReasons}`, 8, "bolditalic");
-    doc.text(`* Fine reason: ${fineReasons}`, 14, finalY + 8);
+    doc.text(`* Fine reason: ${fineReasons}`, 14, finalY + 5);
     doc.setTextColor(0, 0, 0);
-    finalY += 8;
+    finalY += 5;
   }
 
   if (isFirstPayment && enrollment.foc_items) {
     setCorrectFont(`* Includes complimentary items: ${enrollment.foc_items}`, 10, "italic");
-    doc.text(`* Includes complimentary items: ${enrollment.foc_items}`, 14, finalY + 10);
-    finalY += 10;
+    doc.text(`* Includes complimentary items: ${enrollment.foc_items}`, 14, finalY + 8);
+    finalY += 8;
   }
 
   // Summary
@@ -199,36 +200,84 @@ export const generateReceiptPDF = async (
   const totalExamMmk = payments.reduce((sum, p) => sum + (p.exam_fee_paid_mmk || 0), 0);
   const grandTotal = totalPaid + totalFine + totalExtra + totalExamMmk;
   
-  setCorrectFont(`Tuition Paid: ${totalPaid.toLocaleString()} MMK`, 10, "bold");
-  doc.text(`Tuition Paid: ${totalPaid.toLocaleString()} MMK`, 196, finalY + 10, { align: "right" });
-  if (totalDiscount > 0) doc.text(`Discount Applied: -${totalDiscount.toLocaleString()} MMK`, 196, finalY + 17, { align: "right" });
-  
-  let currentSummaryY = finalY + (totalDiscount > 0 ? 17 : 10);
-  if (totalFine > 0) {
-    currentSummaryY += 7;
-    doc.setTextColor(220, 38, 38);
-    doc.text(`Fine: ${totalFine.toLocaleString()} MMK`, 196, currentSummaryY, { align: "right" });
-    doc.setTextColor(0, 0, 0);
-  }
-  if (totalExtra > 0) doc.text(`Extra Items: ${totalExtra.toLocaleString()} MMK`, 196, finalY + (totalDiscount > 0 ? 28 : 22), { align: "right" });
-  
-  let examY = finalY + (totalDiscount > 0 ? 34 : 28);
-  if (totalExtra <= 0 && totalFine <= 0) examY = finalY + (totalDiscount > 0 ? 22 : 16);
-  else if (totalExtra <= 0 || totalFine <= 0) examY = finalY + (totalDiscount > 0 ? 28 : 22);
+  // Place summary near footer, upper of signature/footer
+  const summaryBaseY = Math.min(Math.max(finalY + 3, 195), 220);
 
+  // Styled Summary Block
+  const summaryRows: { label: string; value: string; isBold?: boolean; isRed?: boolean; isGreen?: boolean }[] = [];
+  
+  summaryRows.push({ label: "Tuition Paid:", value: `${totalPaid.toLocaleString()} MMK`, isBold: true });
+  if (totalDiscount > 0) {
+    summaryRows.push({ label: "Discount Applied:", value: `-${totalDiscount.toLocaleString()} MMK`, isGreen: true });
+  }
+  if (totalFine > 0) {
+    summaryRows.push({ label: "Fine:", value: `${totalFine.toLocaleString()} MMK`, isRed: true });
+  }
+  if (totalExtra > 0) {
+    summaryRows.push({ label: "Extra Items:", value: `${totalExtra.toLocaleString()} MMK` });
+  }
   if (totalExamMmk > 0) {
     const totalExamGbp = payments.reduce((sum, p) => sum + (p.exam_fee_paid_gbp || 0), 0);
-    doc.text(`Exam Fee Paid: ${totalExamGbp} GBP (${totalExamMmk.toLocaleString()} MMK)`, 196, examY, { align: "right" });
+    summaryRows.push({ label: "Exam Fee Paid:", value: `${totalExamGbp} GBP (${totalExamMmk.toLocaleString()} MMK)` });
   }
-  
-  const finalSummaryY = examY + (totalExamMmk > 0 ? 8 : 0);
-  doc.text(`Grand Total (Received): ${grandTotal.toLocaleString()} MMK`, 196, finalSummaryY, { align: "right" });
 
-  // Footer
+  let currentY = summaryBaseY + 5;
+
+  // Draw top border line for the summary block
+  doc.setLineWidth(0.2);
+  doc.setDrawColor(220, 220, 220);
+  doc.line(125, currentY, 196, currentY);
+  currentY += 6;
+
+  for (const row of summaryRows) {
+    // Label
+    setCorrectFont(row.label, 9, row.isBold ? "bold" : "normal");
+    if (row.isRed) doc.setTextColor(220, 38, 38);
+    else if (row.isGreen) doc.setTextColor(16, 124, 65); // Green for discount
+    else doc.setTextColor(80, 80, 80);
+    doc.text(row.label, 125, currentY);
+
+    // Value
+    setCorrectFont(row.value, 9, row.isBold ? "bold" : "normal");
+    doc.text(row.value, 196, currentY, { align: "right" });
+
+    // Reset colors
+    doc.setTextColor(0, 0, 0);
+    currentY += 5.5;
+  }
+
+  // Draw divider before Grand Total
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(180, 180, 180);
+  doc.line(125, currentY - 1, 196, currentY - 1);
+  currentY += 6;
+
+  // Grand Total Row
+  setCorrectFont("Grand Total (Received):", 10, "bold");
+  doc.setTextColor(63, 81, 181); // Indigo theme color
+  doc.text("Grand Total (Received):", 125, currentY);
+
+  setCorrectFont(`${grandTotal.toLocaleString()} MMK`, 10, "bold");
+  doc.text(`${grandTotal.toLocaleString()} MMK`, 196, currentY, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+
+  // Left Side: Signature & Generation details (side-by-side with summary)
+  setCorrectFont("Signature: ____________________", 9, "bold");
+  doc.text("Signature: ____________________", 14, summaryBaseY + 28);
+
   setCorrectFont("", 8, "normal");
-  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 280);
-  doc.text(`Generated by: ${generatedBy}`, 14, 285);
-  doc.text("Signature: ____________________", 175, 280, { align: "center" });
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, summaryBaseY + 34);
+  doc.text(`Generated by: ${generatedBy}`, 14, summaryBaseY + 39);
+
+  // Divider line above contact info (flows relative to summaryBaseY)
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(200, 200, 200);
+  doc.line(14, summaryBaseY + 48, 196, summaryBaseY + 48);
+
+  // Address and Contact Info (Single Line)
+  const contactText = "No.31, Thiri Mingalar 5 Str, Kamaryut   |   info@nit.com.mm   |   www.nit.com.mm   |   09780778797, 09779620605";
+  setCorrectFont(contactText, 8, "normal");
+  doc.text(contactText, 105, summaryBaseY + 54, { align: "center" });
 
   const filenameSuffix = payments.length === 1 && payments[0].month ? `_${payments[0].month.replace(/\s+/g, "_")}` : "";
   doc.save(`Receipt_${enrollment.student_code}_${(enrollment.course_name || "").replace(/\s+/g, "_")}${filenameSuffix}.pdf`);
