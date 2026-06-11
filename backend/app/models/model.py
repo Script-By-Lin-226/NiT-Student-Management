@@ -235,6 +235,7 @@ class Payment(Base):
     __tablename__ = "payments"
 
     payment_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    receipt_id = Column(String, unique=True, index=True, nullable=True)
     enrollment_id = Column(
         Integer,
         ForeignKey("enrollments.enrollment_id", ondelete="CASCADE"),

@@ -2,7 +2,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
-from app.models.model import User, Enrollment, Course, Grade, TimeTable, Attendance, ParentStudent
+from app.models.model import User, Enrollment, Course, Grade, TimeTable, Attendance, ParentStudent, Payment
 from app.services.rbac_portal import validating_student_role, validating_parent_role
 
 
@@ -320,3 +320,108 @@ class ParentPortalService:
             for g, c in rows
         ]
         return JSONResponse({"success": True, "data": data, "error": None})
+
+    async def get_child_payments(student_code: str, request: Request, session: AsyncSession):
+        parent = await ParentPortalService._resolve_parent(request, session)
+
+        link_q = (
+            select(ParentStudent)
+            .join(User, ParentStudent.student_id == User.user_id)
+            .where(and_(ParentStudent.parent_id == parent.user_id, User.user_code == student_code))
+        )
+        link_r = await session.execute(link_q)
+        if not link_r.scalars().first():
+            raise HTTPException(status_code=403, detail="Not your child")
+
+        student_q = select(User).where(User.user_code == student_code)
+        student_r = await session.execute(student_q)
+        student = student_r.scalars().first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        # Let's get enrollments and their courses
+        enroll_q = (
+            select(Enrollment, Course)
+            .join(Course, Enrollment.course_id == Course.course_id)
+            .where(Enrollment.student_id == student.user_id)
+        )
+        enroll_r = await session.execute(enroll_q)
+        enrollment_rows = enroll_r.all()
+
+        data = []
+        for e, c in enrollment_rows:
+            # Get payments for this enrollment
+            pay_q = select(Payment).where(Payment.enrollment_id == e.enrollment_id)
+            pay_r = await session.execute(pay_q)
+            payments = pay_r.scalars().all()
+
+            # Calculate total paid
+            total_paid = sum((p.amount or 0) + (p.amount_2 or 0) for p in payments)
+            total_discount = sum(p.discount_amount or 0 for p in payments)
+            
+            # Calculate total cost
+            total_cost = float(e.total_fee if e.total_fee is not None else (c.fee_full_payment if e.payment_plan == "full" else c.fee_installment) or 0.0)
+            
+            # Remaining balance
+            remaining_balance = max(0.0, total_cost - (total_paid + total_discount))
+
+            # How many payments left
+            payments_left = 0
+            if remaining_balance > 0:
+                if e.payment_plan == "full":
+                    payments_left = 1
+                else:  # installment
+                    inst_amount = e.installment_amount or c.fee_installment or 0.0
+                    if inst_amount > 0:
+                        import math
+                        payments_left = math.ceil(remaining_balance / inst_amount)
+                    else:
+                        payments_left = 1
+            
+            # Calculate exam fee details
+            exam_fee_total_gbp = float(e.exam_fee_gbp if e.exam_fee_gbp is not None else c.exam_fee_gbp or 0.0)
+            exam_fee_paid_gbp = sum(p.exam_fee_paid_gbp or 0.0 for p in payments)
+            exam_fee_paid_mmk = sum(p.exam_fee_paid_mmk or 0.0 for p in payments)
+            
+            payments_data = []
+            for p in payments:
+                payments_data.append({
+                    "payment_id": p.payment_id,
+                    "receipt_id": getattr(p, "receipt_id", None) or "N/A",
+                    "amount": p.amount,
+                    "payment_date": f"{p.payment_date.isoformat()}Z" if p.payment_date else None,
+                    "month": p.month,
+                    "status": p.status,
+                    "payment_method": p.payment_method,
+                    "amount_2": p.amount_2 or 0.0,
+                    "payment_method_2": p.payment_method_2,
+                    "fine_amount": p.fine_amount or 0.0,
+                    "fine_reason": p.fine_reason,
+                    "extra_items_fee": p.extra_items_fee or 0.0,
+                    "extra_items": p.extra_items,
+                    "exam_fee_paid_gbp": p.exam_fee_paid_gbp or 0.0,
+                    "exam_fee_paid_mmk": p.exam_fee_paid_mmk or 0.0,
+                    "exam_fee_currency": p.exam_fee_currency or "MMK",
+                    "discount_amount": p.discount_amount or 0.0
+                })
+
+            data.append({
+                "enrollment_code": e.enrollment_code,
+                "course_name": c.course_name,
+                "course_code": c.course_code,
+                "payment_plan": e.payment_plan or "full",
+                "total_fee": total_cost,
+                "total_paid": total_paid,
+                "total_discount": total_discount,
+                "remaining_balance": remaining_balance,
+                "installment_amount": e.installment_amount or 0.0,
+                "payments_left": payments_left,
+                "status": "Paid" if remaining_balance <= 0 else "Pending",
+                "exam_fee_total_gbp": exam_fee_total_gbp,
+                "exam_fee_paid_gbp": exam_fee_paid_gbp,
+                "exam_fee_paid_mmk": exam_fee_paid_mmk,
+                "payments": payments_data
+            })
+
+        return JSONResponse({"success": True, "data": data, "error": None})
+

@@ -19,22 +19,24 @@ async def log_activity(request: Request, session: AsyncSession, action: str, det
             if hasattr(request.state, "user_id_cache"):
                 user_id = request.state.user_id_cache
             else:
-                result = await session.execute(
-                    select(User.user_id).where(User.user_code == user_info["user_code"])
-                )
-                user_id = result.scalar_one_or_none()
+                async with session.begin_nested():
+                    result = await session.execute(
+                        select(User.user_id).where(User.user_code == user_info["user_code"])
+                    )
+                    user_id = result.scalar_one_or_none()
                 request.state.user_id_cache = user_id
 
         if user_id:
-            al = ActivityLog(
-                user_id=user_id,
-                action=action,
-                details=details
-            )
-            session.add(al)
-            # Try a partial flush, but usually we rely on the caller's commit
-            # Unless we want independent logging persistence
-            await session.flush()
+            async with session.begin_nested():
+                al = ActivityLog(
+                    user_id=user_id,
+                    action=action,
+                    details=details
+                )
+                session.add(al)
+                # Try a partial flush, but usually we rely on the caller's commit
+                # Unless we want independent logging persistence
+                await session.flush()
             
             # Also log to system file
             logger.info(f"Activity logged: [{user_info.get('username', 'Unknown')}] {action}: {details}")

@@ -63,6 +63,10 @@ export const generateReceiptPDF = async (
     console.warn("Could not load logo", e);
   }
 
+  // Get receipt ID from the latest payment
+  const sortedPayments = [...payments].sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
+  const receiptId = sortedPayments[0]?.receipt_id || "N/A";
+
   // Header text "Payment Receipt" centered under the logo (or top-left if no logo loaded)
   const textY = hasLogo ? (10 + logoHeight + 2) : 24;
   setCorrectFont("Payment Receipt", 10, "bold");
@@ -73,7 +77,18 @@ export const generateReceiptPDF = async (
     doc.text("Payment Receipt", 14, textY);
   }
 
-  const dividerY = hasLogo ? (textY + 6) : 34;
+  // Receipt ID centered under "Payment Receipt"
+  const receiptIdY = textY + 5;
+  setCorrectFont(`Receipt ID: ${receiptId}`, 8.5, "normal");
+  doc.setTextColor(100, 100, 100);
+  if (hasLogo) {
+    doc.text(`Receipt ID: ${receiptId}`, pageCenter, receiptIdY, { align: "center" });
+  } else {
+    doc.text(`Receipt ID: ${receiptId}`, 14, receiptIdY);
+  }
+  doc.setTextColor(0, 0, 0); // Reset color
+
+  const dividerY = hasLogo ? (receiptIdY + 6) : 39;
 
   doc.setLineWidth(0.4);
   doc.setDrawColor(180, 180, 180);

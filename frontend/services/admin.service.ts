@@ -411,6 +411,7 @@ export interface AdminParentLinkChild {
 
 export interface AdminPayment {
   payment_id: number;
+  receipt_id?: string | null;
   enrollment_id: number;
   enrollment_code: string;
   amount: number;

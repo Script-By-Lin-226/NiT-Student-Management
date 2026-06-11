@@ -11,7 +11,30 @@
 - [x] Center the logo horizontally on the PDF page (`x = 82.5`).
 - [x] Position the "Payment Receipt" title directly under the logo, horizontally centered (`x = 105`, `{ align: "center" }`).
 - [x] Adjust the divider line and student info layout (`contentY`) relative to the new centered header height.
-- [x] Increase logo size further to 50x50mm.
-- [x] Keep "Payment Receipt" text size at 12pt (styled bold for emphasis) rather than making it larger.
+- [ ] Increase logo size further to 50x50mm.
+- [ ] Keep "Payment Receipt" text size at 12pt (styled bold for emphasis) rather than making it larger.
 
+# Parent Portal Payment Details
+- [x] Backend: Add `get_child_payments` to `ParentPortalService` in `portal_service.py`
+- [x] Backend: Add route `GET /portal/parent/children/{student_code}/payments` in `portal_route.py`
+- [x] Frontend: Add `ChildPayment` interface and `getChildPayments` method to `portal.service.ts`
+- [x] Frontend: Update `useDashboardData` hook to fetch child payments
+- [x] Frontend: Update `DashboardPage` parent view to display payment KPI cards and detailed fees summary
 
+# Parent Portal Individual Payment Records
+- [x] Backend: Add nested payment transaction records in `get_child_payments` response
+- [x] Frontend: Update `ChildPayment` interface in `portal.service.ts` to include `payments` list
+- [x] Frontend: Add collapsible sub-table in parent dashboard fees summary to view individual transactions
+
+# Parent Portal Exam Fee Display
+- [x] Backend: Expose exam fee summary fields in `get_child_payments` response
+- [x] Frontend: Update `ChildPayment` interface in `portal.service.ts` to include exam fee fields
+- [x] Frontend: Display Exam Fee column in Tuition & Fees Summary table on parent dashboard
+- [x] Frontend: Display Exam Fee column in Transactions modal on parent dashboard
+
+# Payment Receipt ID
+- [x] Add `receipt_id` column to `Payment` model and DB schema via Alembic migrations.
+- [x] Create function to generate unique `receipt_id` with format `nit-daymonthyear-0000001` (daily sequencing) when registering payments.
+- [x] Expose `receipt_id` in serialization of payments for admin panel and portal endpoints.
+- [x] Render `receipt_id` centered directly under the header on the PDF receipt.
+- [x] Backfill all existing payments using the daily sequential receipt ID format chronologically.

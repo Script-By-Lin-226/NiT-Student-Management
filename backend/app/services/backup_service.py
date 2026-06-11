@@ -43,27 +43,32 @@ class BackupService:
             (ActivityLog, "ActivityLogs")
         ]
 
+        # Fetch and prepare all data first to avoid database queries inside the ExcelWriter block,
+        # which would trigger openpyxl IndexErrors upon exception cleanup.
+        exported_sheets = {}
+        for model, sheet_name in models:
+            result = await session.execute(select(model))
+            items = result.scalars().all()
+            
+            # Convert to list of dicts
+            data = []
+            for item in items:
+                d = {c.name: getattr(item, c.name) for c in model.__table__.columns}
+                # Convert datetimes and dates to strings
+                from datetime import date as py_date
+                for k, v in d.items():
+                    if isinstance(v, datetime):
+                        d[k] = v.strftime("%Y-%m-%d %H:%M:%S")
+                    elif isinstance(v, py_date):
+                        d[k] = v.strftime("%Y-%m-%d")
+                    elif isinstance(v, (pd.Timestamp, pd.Timedelta)):
+                        d[k] = str(v)
+                data.append(d)
+            exported_sheets[sheet_name] = data
+
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            for model, sheet_name in models:
-                result = await session.execute(select(model))
-                items = result.scalars().all()
-                
-                # Convert to list of dicts
-                data = []
-                for item in items:
-                    d = {c.name: getattr(item, c.name) for c in model.__table__.columns}
-                    # Convert datetimes and dates to strings
-                    from datetime import date as py_date
-                    for k, v in d.items():
-                        if isinstance(v, datetime):
-                            d[k] = v.strftime("%Y-%m-%d %H:%M:%S")
-                        elif isinstance(v, py_date):
-                            d[k] = v.strftime("%Y-%m-%d")
-                        elif isinstance(v, (pd.Timestamp, pd.Timedelta)):
-                            d[k] = str(v)
-                    data.append(d)
-                
+            for sheet_name, data in exported_sheets.items():
                 df = pd.DataFrame(data)
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
@@ -343,13 +348,22 @@ class BackupService:
             # Reset Sequences
             for table, pk in sequence_maps:
                 try:
-                    await session.execute(text(f"""
-                        SELECT setval(
-                            pg_get_serial_sequence('"{table}"', '{pk}'), 
-                            COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) + 1, 
-                            false
-                        )
-                    """))
+                    dialect_name = session.bind.dialect.name
+                    if "postgresql" in dialect_name:
+                        await session.execute(text(f"""
+                            SELECT setval(
+                                pg_get_serial_sequence('"{table}"', '{pk}'), 
+                                COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) + 1, 
+                                false
+                            )
+                        """))
+                    elif "sqlite" in dialect_name:
+                        # Reset SQLite autoincrement sequence
+                        await session.execute(text(f"""
+                            UPDATE sqlite_sequence 
+                            SET seq = COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) 
+                            WHERE name = '{table}'
+                        """))
                 except Exception as e:
                     logger.error(f"Skipping sequence reset for {table}: {str(e)}")
             

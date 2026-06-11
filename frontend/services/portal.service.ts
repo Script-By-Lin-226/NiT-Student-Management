@@ -86,6 +86,43 @@ export interface Child {
   relationship: string;
 }
 
+export interface PaymentRecord {
+  payment_id: number;
+  amount: number;
+  payment_date: string | null;
+  month: string | null;
+  status: string;
+  payment_method: string | null;
+  amount_2: number;
+  payment_method_2: string | null;
+  fine_amount: number;
+  fine_reason: string | null;
+  extra_items_fee: number;
+  extra_items: string | null;
+  exam_fee_paid_gbp: number;
+  exam_fee_paid_mmk: number;
+  exam_fee_currency: string;
+  discount_amount: number;
+}
+
+export interface ChildPayment {
+  enrollment_code: string;
+  course_name: string;
+  course_code: string;
+  payment_plan: string;
+  total_fee: number;
+  total_paid: number;
+  total_discount: number;
+  remaining_balance: number;
+  installment_amount: number;
+  payments_left: number;
+  status: string;
+  exam_fee_total_gbp: number;
+  exam_fee_paid_gbp: number;
+  exam_fee_paid_mmk: number;
+  payments: PaymentRecord[];
+}
+
 export interface StaffAttendanceRecord {
   attendance_id: number;
   date: string;
@@ -185,6 +222,11 @@ export class PortalService {
 
   static async getChildGrades(code: string): Promise<StudentGrade[]> {
     const res = await api.get(`/portal/parent/children/${code}/grades`);
+    return res.data.data;
+  }
+
+  static async getChildPayments(code: string): Promise<ChildPayment[]> {
+    const res = await api.get(`/portal/parent/children/${code}/payments`);
     return res.data.data;
   }
 

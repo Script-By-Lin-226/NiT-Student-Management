@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { Child, PortalService, StudentCourse, StudentAttendance } from "@/services/portal.service";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminCourse, AdminEnrollment, AdminRoom, AdminService, AdminStudent } from "@/services/admin.service";
-import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound, ChevronLeft, ChevronRight, X, Eye } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const { isStudent, isParent, isAdminOrSales, isAdmin, user } = useAuth();
   const [selectedChild, setSelectedChild] = useState<string>("");
   const [childPage, setChildPage] = useState<number>(1);
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<any | null>(null);
   const { admin, parent, student } = useDashboardData(selectedChild, childPage);
 
   // Redirect teachers to their dedicated dashboard
@@ -76,6 +77,7 @@ export default function DashboardPage() {
   // Reset page when child changes
   useEffect(() => {
     setChildPage(1);
+    setSelectedPaymentDetails(null);
   }, [selectedChild]);
 
   const dashboardLoading = (typeof admin.isLoading === 'boolean' ? admin.isLoading : admin.isLoading.overall) || parent.isLoading || student.isLoading;
@@ -350,6 +352,11 @@ export default function DashboardPage() {
       { name: "Absent", value: summary.total - summary.present, color: "#ef4444" },
     ];
 
+    const childPayments = parent.childPayments || [];
+    const totalPaid = childPayments.reduce((acc: number, p: any) => acc + (p.total_paid || 0), 0);
+    const remainingBalance = childPayments.reduce((acc: number, p: any) => acc + (p.remaining_balance || 0), 0);
+    const totalPaymentsLeft = childPayments.reduce((acc: number, p: any) => acc + (p.payments_left || 0), 0);
+
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -400,7 +407,7 @@ export default function DashboardPage() {
           </>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
             <div className="relative">
@@ -436,18 +443,45 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/30 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600">
-                  <Award className="w-6 h-6" />
+                <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600">
+                  <span className="text-lg font-black font-outfit">Ks</span>
                 </div>
+                <div className="text-xs font-black bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg uppercase">Paid</div>
               </div>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Records</p>
-              <h3 className="text-2xl font-black text-slate-800 mt-1">{summary.total}</h3>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Paid</p>
+              <h3 className="text-2xl font-black text-slate-800 mt-1">{totalPaid.toLocaleString()} MMK</h3>
               <p className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
-                Across all registered courses
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                Tuition fees settled
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100/50 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-amber-50 text-amber-600">
+                  <span className="text-lg font-black font-outfit">Ks</span>
+                </div>
+                {totalPaymentsLeft > 0 ? (
+                  <div className="text-xs font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-lg uppercase">
+                    {totalPaymentsLeft} {totalPaymentsLeft === 1 ? "Payment" : "Payments"} Left
+                  </div>
+                ) : (
+                  <div className="text-xs font-black bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg uppercase">
+                    Fully Paid
+                  </div>
+                )}
+              </div>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Remaining Balance</p>
+              <h3 className="text-2xl font-black text-slate-800 mt-1">{remainingBalance.toLocaleString()} MMK</h3>
+              <p className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                Remaining tuition liability
               </p>
             </div>
           </div>
@@ -579,12 +613,246 @@ export default function DashboardPage() {
                 <p className="text-xl font-black text-emerald-700">{summary.present}</p>
               </div>
               <div className="bg-rose-50 rounded-2xl p-4 text-center">
-                <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Absent</p>
+              <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Absent</p>
                 <p className="text-xl font-black text-rose-700">{summary.total - summary.present}</p>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Tuition & Fees Summary Section */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100/50 p-8 mt-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="font-black text-slate-900 text-xl tracking-tight">Tuition & Fees Summary</h3>
+              <p className="text-sm text-slate-500 font-medium mt-1">Payment plans, fees details, and remaining installments per course. Click on any row to view transaction receipts.</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th className="px-6 py-4">Course Details</th>
+                  <th className="px-6 py-4">Payment Plan</th>
+                  <th className="px-6 py-4">Total Course Fee</th>
+                  <th className="px-6 py-4">Total Paid (MMK)</th>
+                  <th className="px-6 py-4">Total Discount</th>
+                  <th className="px-6 py-4">Remaining Balance</th>
+                  <th className="px-6 py-4">Payments Left</th>
+                  <th className="px-6 py-4">Exam Fee</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {childPayments?.map((p: any, i: number) => (
+                  <tr 
+                    key={i} 
+                    className="hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
+                    onClick={() => setSelectedPaymentDetails(p)}
+                  >
+                    <td className="px-6 py-4 font-semibold text-slate-800">
+                      <div>{p.course_name}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{p.course_code} • {p.enrollment_code}</div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 font-bold capitalize">
+                      {p.payment_plan}
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 font-bold">
+                      {p.total_fee.toLocaleString()} MMK
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 font-bold">
+                      {p.total_paid.toLocaleString()} MMK
+                    </td>
+                    <td className="px-6 py-4 text-slate-500">
+                      {p.total_discount > 0 ? `${p.total_discount.toLocaleString()} MMK` : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 font-bold">
+                      {p.remaining_balance.toLocaleString()} MMK
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 font-bold">
+                      {p.payment_plan === "installment" && p.remaining_balance > 0 ? (
+                        <span>
+                          {p.payments_left} {p.payments_left === 1 ? "payment" : "payments"} left
+                          <div className="text-[10px] text-slate-400 font-medium">({p.installment_amount.toLocaleString()} MMK / installment)</div>
+                        </span>
+                      ) : p.remaining_balance > 0 ? (
+                        <span>1 payment left</span>
+                      ) : (
+                        <span>0</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {p.exam_fee_total_gbp > 0 ? (
+                        <div>
+                          <div className="font-bold text-slate-700">{p.exam_fee_total_gbp} GBP</div>
+                          <div className="text-[10px] font-semibold mt-0.5">
+                            {p.exam_fee_paid_gbp > 0 || p.exam_fee_paid_mmk > 0 ? (
+                              <span className="text-emerald-600">
+                                Paid: {p.exam_fee_paid_gbp} GBP
+                                {p.exam_fee_paid_mmk > 0 && ` + ${p.exam_fee_paid_mmk.toLocaleString()} MMK`}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">Unpaid</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        p.status === "Paid" 
+                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
+                          : "bg-amber-50 text-amber-600 border border-amber-100"
+                      }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPaymentDetails(p);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black text-brand-600 hover:bg-brand-50 border border-brand-100 transition-colors uppercase tracking-wider"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Receipts
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {(!childPayments || childPayments.length === 0) && (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-8 text-center text-slate-400 font-medium">
+                      No payment records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      {selectedPaymentDetails && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setSelectedPaymentDetails(null)} />
+          <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight font-outfit uppercase">
+                  Payment Transactions
+                </h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">
+                  {selectedPaymentDetails.course_name} ({selectedPaymentDetails.course_code}) • {selectedPaymentDetails.enrollment_code}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedPaymentDetails(null)}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
+              {(!selectedPaymentDetails.payments || selectedPaymentDetails.payments.length === 0) ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-3">
+                  <Fingerprint className="w-12 h-12 text-slate-300" />
+                  <p className="font-bold">No payment transactions found</p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-slate-100">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-xs">
+                      <tr>
+                        <th className="px-6 py-4">Receipt No.</th>
+                        <th className="px-6 py-4">Paid Date</th>
+                        <th className="px-6 py-4">For Month</th>
+                        <th className="px-6 py-4">Amount Paid</th>
+                        <th className="px-6 py-4">Exam Fee Paid</th>
+                        <th className="px-6 py-4">Discount</th>
+                        <th className="px-6 py-4">Fine/Extra Fee</th>
+                        <th className="px-6 py-4">Payment Method</th>
+                        <th className="px-6 py-4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {selectedPaymentDetails.payments.map((rec: any, idx: number) => {
+                        const totalAmt = (rec.amount || 0) + (rec.amount_2 || 0);
+                        const fineExtra = (rec.fine_amount || 0) + (rec.extra_items_fee || 0);
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 font-semibold text-slate-700">
+                              #{rec.payment_id}
+                            </td>
+                            <td className="px-6 py-4 text-slate-500 font-medium">
+                              {rec.payment_date ? rec.payment_date.split("T")[0] : "—"}
+                            </td>
+                            <td className="px-6 py-4 text-slate-500 font-medium capitalize">
+                              {rec.month || "—"}
+                            </td>
+                            <td className="px-6 py-4 text-slate-800 font-bold">
+                              {totalAmt.toLocaleString()} MMK
+                            </td>
+                            <td className="px-6 py-4 font-semibold text-slate-700">
+                              {rec.exam_fee_paid_gbp > 0 || rec.exam_fee_paid_mmk > 0 ? (
+                                <span className="text-emerald-600">
+                                  {rec.exam_fee_paid_gbp > 0 ? `+${rec.exam_fee_paid_gbp} GBP` : ""}
+                                  {rec.exam_fee_paid_mmk > 0 ? ` +${rec.exam_fee_paid_mmk.toLocaleString()} MMK` : ""}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-slate-500">
+                              {rec.discount_amount > 0 ? `${rec.discount_amount.toLocaleString()} MMK` : "—"}
+                            </td>
+                            <td className="px-6 py-4 text-slate-500">
+                              {fineExtra > 0 ? (
+                                <span className="text-rose-600 font-semibold">
+                                  +{fineExtra.toLocaleString()} MMK
+                                  {rec.fine_reason && <div className="text-[10px] text-slate-400 font-normal">({rec.fine_reason})</div>}
+                                </span>
+                              ) : "—"}
+                            </td>
+                            <td className="px-6 py-4 text-slate-500 font-semibold">
+                              {rec.payment_method}
+                              {rec.payment_method_2 && ` + ${rec.payment_method_2}`}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                rec.status === "Paid" 
+                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
+                                  : "bg-amber-50 text-amber-600 border border-amber-100"
+                              }`}>
+                                {rec.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+              <button
+                onClick={() => setSelectedPaymentDetails(null)}
+                className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors text-sm shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
     );
   }

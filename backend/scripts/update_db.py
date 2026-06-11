@@ -1,62 +1,60 @@
-
 import asyncio
-import asyncpg
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.core.database_initialization import engine
+from sqlalchemy import text
+import random
 
 async def update_db():
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        print("DATABASE_URL not found in .env")
-        return
-    
-    # Pre-process asyncpg-compatible URL (usually strip +asyncpg for the lower-level driver or handle it accordingly)
-    # asyncpg.connect expects a simple postgresql:// prefix
-    url = database_url.replace("postgresql+asyncpg://", "postgresql://")
-    
-    try:
-        conn = await asyncpg.connect(url)
-        print("Connected to DB")
-        
-        # Check and alter courses table
-        # Rename exam_fee to exam_fee_gbp if it exists, otherwise add it.
-        # But user previously has 'exam_fee' which is MMK. Renaming might be safer but maybe they want to keep it?
-        # Let's just add the columns and drop the old one if it exists or just use new ones.
-        
-        # Adding columns if they don't exist
-        print("Adding columns to courses...")
-        await conn.execute("ALTER TABLE courses ADD COLUMN IF NOT EXISTS exam_fee_gbp FLOAT")
-        # Optional: try to drop exam_fee if it exists
-        # await conn.execute("ALTER TABLE courses DROP COLUMN IF EXISTS exam_fee")
-        
-        print("Adding columns to payments...")
-        await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_gbp FLOAT")
-        await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_mmk FLOAT")
-        await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_currency VARCHAR DEFAULT 'MMK'")
-        await conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS fine_reason TEXT")
-        
-        print("Adding teacher_id to timetables...")
-        await conn.execute("ALTER TABLE timetables ADD COLUMN IF NOT EXISTS teacher_id INTEGER")
-        # Add foreign key if it doesn't exist (using a try-except in SQL or just ignoring if it fails, or just the column is enough for now)
+    print("Connecting to database...")
+    async with engine.begin() as conn:
+        print("Connected! Adding columns...")
         try:
-             await conn.execute("ALTER TABLE timetables ADD CONSTRAINT fk_teacher FOREIGN KEY (teacher_id) REFERENCES users(user_id) ON DELETE SET NULL")
-        except:
-             pass
-
-        print("Adding timetable_id to attendances...")
-        await conn.execute("ALTER TABLE attendances ADD COLUMN IF NOT EXISTS timetable_id INTEGER")
+            await conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS exam_fee_gbp DOUBLE PRECISION"))
+        except Exception as e:
+            print(f"courses alter skipped: {e}")
+            
         try:
-             await conn.execute("ALTER TABLE attendances ADD CONSTRAINT fk_attendance_timetable FOREIGN KEY (timetable_id) REFERENCES timetables(timetable_id) ON DELETE SET NULL")
-        except:
-             pass
+            await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_gbp DOUBLE PRECISION"))
+            await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_mmk DOUBLE PRECISION"))
+            await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_currency VARCHAR DEFAULT 'MMK'"))
+            await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS fine_reason TEXT"))
+        except Exception as e:
+            print(f"payments alter skipped: {e}")
+            
+        try:
+            await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_id VARCHAR UNIQUE"))
+        except Exception as e:
+            print(f"payments receipt_id UNIQUE alter skipped: {e}")
+            try:
+                await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_id VARCHAR"))
+            except Exception as e2:
+                print(f"payments receipt_id basic alter failed: {e2}")
 
-        await conn.close()
-        print("Database updated successfully")
-        
-    except Exception as e:
-        print(f"Error: {e}")
+    # Backfill existing payments that do not have receipt_id
+    from app.core.database_initialization import AsyncSessionLocal
+    from app.models.model import Payment
+    from sqlalchemy import select
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Payment).where(Payment.receipt_id == None))
+        payments_to_backfill = result.scalars().all()
+        if payments_to_backfill:
+            print(f"Found {len(payments_to_backfill)} payments to backfill receipt_id...")
+            for p in payments_to_backfill:
+                while True:
+                    rnd = random.randint(100000, 999999)
+                    receipt_id = f"nit-1A-{rnd}"
+                    # Check uniqueness
+                    exists_r = await session.execute(select(Payment).where(Payment.receipt_id == receipt_id))
+                    if not exists_r.scalars().first():
+                        p.receipt_id = receipt_id
+                        print(f"Backfilled payment {p.payment_id} with receipt_id {receipt_id}")
+                        break
+            await session.commit()
+            print("Backfill completed successfully.")
+        else:
+            print("No payments required backfilling.")
+
+    print("Database update finished.")
 
 if __name__ == "__main__":
     asyncio.run(update_db())

@@ -496,6 +496,7 @@ class AdminPanelService:
             for p, e, c in pay_r.all():
                 payments.append({
                     "payment_id": p.payment_id,
+                    "receipt_id": getattr(p, "receipt_id", None) or "N/A",
                     "enrollment_id": p.enrollment_id,
                     "enrollment_code": e.enrollment_code,
                     "amount": p.amount,
@@ -2271,6 +2272,7 @@ class AdminPanelService:
         for p, e, u, c in rows:
             data.append({
                 "payment_id": p.payment_id,
+                "receipt_id": getattr(p, "receipt_id", None) or "N/A",
                 "enrollment_id": p.enrollment_id,
                 "student_code": u.user_code,
                 "student_name": u.username,
@@ -2362,7 +2364,34 @@ class AdminPanelService:
         if pay_date and pay_date.tzinfo:
             pay_date = pay_date.replace(tzinfo=None)
 
+        # Generate unique receipt_id in format nit-daymonthyear(of paid date)-0000001
+        receipt_date = pay_date if pay_date else get_now_local()
+        if receipt_date.tzinfo:
+            receipt_date = receipt_date.replace(tzinfo=None)
+            
+        date_str = receipt_date.strftime("%d%m%Y")
+        prefix = f"nit-{date_str}-"
+        result_seq = await session.execute(
+            select(Payment.receipt_id)
+            .where(Payment.receipt_id.like(f"{prefix}%"))
+        )
+        receipt_ids = result_seq.scalars().all()
+        max_seq = 0
+        for rid in receipt_ids:
+            if rid:
+                parts = rid.split("-")
+                if len(parts) >= 3:
+                    try:
+                        seq = int(parts[-1])
+                        if seq > max_seq:
+                            max_seq = seq
+                    except ValueError:
+                        pass
+        next_seq = max_seq + 1
+        receipt_id = f"{prefix}{next_seq:07d}"
+
         pay = Payment(
+            receipt_id=receipt_id,
             enrollment_id=payload.enrollment_id,
             amount=payload.amount,
             month=payload.month,

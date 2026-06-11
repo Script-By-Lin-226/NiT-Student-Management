@@ -48,6 +48,12 @@ export function useDashboardData(selectedChildCode?: string, childAttendancePage
     enabled: !!isParent && !!selectedChildCode,
   });
 
+  const childPayments = useQuery({
+    queryKey: ["parent", "childPayments", selectedChildCode],
+    queryFn: () => PortalService.getChildPayments(selectedChildCode!),
+    enabled: !!isParent && !!selectedChildCode,
+  });
+
   // Student Data
   const studentCourses = useQuery({
     queryKey: ["student", "courses"],
@@ -92,9 +98,10 @@ export function useDashboardData(selectedChildCode?: string, childAttendancePage
     parent: {
       children: children.data || [],
       childAttendance: childAttendance.data || { records: [], summary: { total: 0, present: 0, rate: 0 }, pagination: { total_count: 0, total_pages: 0, current_page: 1, limit: 10 } },
-      isLoading: children.isLoading || childAttendance.isLoading,
-      isFetching: children.isFetching || childAttendance.isFetching,
-      error: children.error || childAttendance.error,
+      childPayments: childPayments.data || [],
+      isLoading: children.isLoading || childAttendance.isLoading || childPayments.isLoading,
+      isFetching: children.isFetching || childAttendance.isFetching || childPayments.isFetching,
+      error: children.error || childAttendance.error || childPayments.error,
     },
     student: {
       courses: studentCourses.data || [],

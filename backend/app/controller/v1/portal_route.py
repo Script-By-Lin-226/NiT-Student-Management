@@ -42,6 +42,11 @@ async def child_attendance(student_code: str, request: Request, page: int = 1, l
 async def child_grades(student_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await ParentPortalService.get_child_grades(student_code, request, session)
 
+@router.get("/parent/children/{student_code}/payments")
+async def child_payments(student_code: str, request: Request, session: AsyncSession = Depends(get_db)):
+    return await ParentPortalService.get_child_payments(student_code, request, session)
+
+
 # ── Teacher endpoints ─────────────────────────────────────────────────────────
 
 @router.get("/teacher/assignments")

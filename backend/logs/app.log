@@ -255,3 +255,23 @@ DETAIL:  Key (log_id)=(1) already exists.
 2026-04-02 15:11:32,512 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User CO031426 deleted
 2026-04-02 15:21:10,706 - NiT-SMS - INFO - Activity logged: [Unknown] Create Staff: Created sales account 'Thin Htet' (SAL0005)
 2026-04-26 14:41:44,921 - NiT-SMS - INFO - Activity logged: [Unknown] Update Payment: Payment ID 126 updated
+2026-06-11 16:44:49,136 - NiT-SMS - INFO - Activity logged: [Unknown] Create Parent: Parent PAR0001 (U Nay Myo Aung) created
+2026-06-11 16:44:57,920 - NiT-SMS - INFO - Activity logged: [Unknown] Link Parent-Student: Parent PAR0001 linked to student CO00371125
+2026-06-11 17:16:24,460 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-11 17:16:24,465 - NiT-SMS - INFO - Starting Excel export...
+2026-06-11 17:19:05,268 - NiT-SMS - ERROR - log_activity error: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.ConnectionDoesNotExistError'>: connection was closed in the middle of operation
+[SQL: SELECT users.user_id 
+FROM users 
+WHERE users.user_code = $1::VARCHAR]
+[parameters: ('ADMIN001',)]
+(Background on this error at: https://sqlalche.me/e/20/dbapi)
+2026-06-11 17:19:05,268 - NiT-SMS - INFO - Starting Excel export...
+2026-06-11 17:22:48,324 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-11 17:22:48,326 - NiT-SMS - INFO - Starting Excel export...
+2026-06-11 17:25:21,422 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-11 17:25:21,422 - NiT-SMS - INFO - Starting Excel export...
+2026-06-11 17:25:35,622 - NiT-SMS - INFO - Excel export completed: backup_20260611_172535.xlsx
+2026-06-11 17:29:30,941 - NiT-SMS - INFO - Starting Excel import from file: backup_2026-06-11T10-55-36.xlsx...
+2026-06-11 17:32:05,190 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 152, "Courses": 17, "Batches": 9, "Subjects": 2, "Enrollments": 47, "Payments": 194, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 1, "ActivityLogs": 74}
+2026-06-11 17:33:15,709 - NiT-SMS - INFO - Activity logged: [Unknown] Create Payment: Payment of 500000.0 recorded for enrollment 40 (2026-06-11 11:03:00)
+2026-06-11 17:33:36,669 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Payment: Payment ID 196 (Amount: 500000.0) deleted
