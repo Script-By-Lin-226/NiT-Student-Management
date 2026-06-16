@@ -38,3 +38,17 @@
 - [x] Expose `receipt_id` in serialization of payments for admin panel and portal endpoints.
 - [x] Render `receipt_id` centered directly under the header on the PDF receipt.
 - [x] Backfill all existing payments using the daily sequential receipt ID format chronologically.
+
+# Mobile UI Fixes
+- [x] Fix Modal bottom navigation overlap issue on mobile by changing z-index from 50 to 70 in:
+  - [x] Timetables Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/timetables/page.tsx)
+  - [x] Users (Staff) Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/users/page.tsx)
+  - [x] Parents Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/parents/page.tsx)
+  - [x] Students Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/students/page.tsx)
+  - [x] Rooms Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/rooms/page.tsx)
+  - [x] Payments Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/payments/page.tsx)
+  - [x] Enrollments Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/enrollments/page.tsx)
+  - [x] Courses Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/courses/page.tsx)
+  - [x] Attendance Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/attendance/page.tsx)
+  - [x] Academic Years Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/academic-years/page.tsx)
+
