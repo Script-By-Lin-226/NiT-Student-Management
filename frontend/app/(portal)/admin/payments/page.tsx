@@ -94,10 +94,10 @@ export default function AdminPaymentsPage() {
     if (!q) return true;
     const s = q.toLowerCase();
     return (
-      e.student_name?.toLowerCase().includes(s) ||
-      e.student_code?.toLowerCase().includes(s) ||
-      e.course_code?.toLowerCase().includes(s) ||
-      e.course_name?.toLowerCase().includes(s)
+      (e.student_name || "").toLowerCase().includes(s) ||
+      (e.student_code || "").toLowerCase().includes(s) ||
+      (e.course_code || "").toLowerCase().includes(s) ||
+      (e.course_name || "").toLowerCase().includes(s)
     );
   });
 

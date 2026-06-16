@@ -85,15 +85,20 @@ export default function ActivityLogsPage() {
 
     // Search user and action
     const matchesSearch =
-      log.username.toLowerCase().includes(term) ||
-      log.action.toLowerCase().includes(term) ||
-      log.details?.toLowerCase().includes(term) ||
-      log.role.toLowerCase().includes(term);
+      (log.username || "").toLowerCase().includes(term) ||
+      (log.action || "").toLowerCase().includes(term) ||
+      (log.details || "").toLowerCase().includes(term) ||
+      (log.role || "").toLowerCase().includes(term);
 
     // Search date
-    const logDate = new Date(log.timestamp);
-    const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
-    const matchesDate = !dateTerm || logDateStr === dateTerm;
+    let matchesDate = !dateTerm;
+    if (log.timestamp) {
+      const logDate = new Date(log.timestamp);
+      if (!isNaN(logDate.getTime())) {
+        const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
+        matchesDate = !dateTerm || logDateStr === dateTerm;
+      }
+    }
 
     return matchesSearch && matchesDate;
   });
