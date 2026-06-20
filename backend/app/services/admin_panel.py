@@ -1981,7 +1981,7 @@ class AdminPanelService:
             room.is_active = payload.is_active
 
         await session.commit()
-        await log_activity(request, session, "Update Room", f"Room ID {room_id} updated")
+        await log_activity(request, session, "Update Room", f"Room ID {payload.room_name} updated")
         return JSONResponse({"status_code": 200, "message": "Room updated successfully", "data": _serialize_room(room)})
 
     async def delete_room(request: Request, session: AsyncSession, room_id: int):
@@ -1995,7 +1995,7 @@ class AdminPanelService:
 
         await session.delete(room)
         await session.commit()
-        await log_activity(request, session, "Delete Room", f"Room ID {room_id} deleted")
+        await log_activity(request, session, "Delete Room", f"Room ID {Room.room_name} deleted")
         return JSONResponse({"status_code": 200, "message": "Room deleted successfully"})
 
     @staticmethod

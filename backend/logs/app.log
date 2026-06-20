@@ -279,3 +279,4 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-20 10:57:33,039 - NiT-SMS - INFO - Starting Excel export...
 2026-06-20 10:59:05,348 - NiT-SMS - INFO - Excel export completed: backup_20260620_105905.xlsx
 2026-06-20 11:09:38,094 - NiT-SMS - INFO - Activity logged: [Unknown] Create Room: Room 'Room 8' created with capacity 30
+2026-06-20 11:31:22,624 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Room: Room ID 8 deleted
