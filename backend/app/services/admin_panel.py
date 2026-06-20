@@ -1995,7 +1995,7 @@ class AdminPanelService:
 
         await session.delete(room)
         await session.commit()
-        await log_activity(request, session, "Delete Room", f"{Room.room_name} deleted")
+        await log_activity(request, session, "Delete Room", f"Room ID: {room_id} deleted")
         return JSONResponse({"status_code": 200, "message": "Room deleted successfully"})
 
     @staticmethod
