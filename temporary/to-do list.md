@@ -52,3 +52,8 @@
   - [x] Attendance Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/attendance/page.tsx)
   - [x] Academic Years Page: [page.tsx](file:///c:/Users/Script-Kid/Desktop/NiT-Student-Management/frontend/app/(portal)/admin/academic-years/page.tsx)
 
+# Activity Logs Auto-Refresh
+- [x] Add `refetchInterval` to `useActivityLogs` in `frontend/hooks/useAdmin.ts` for automatic background refreshing (polling) of logs without manual page reload.
+- [x] Update `frontend/app/(portal)/admin/activity/page.tsx` to handle manual refetch spinner state without showing annoying spinner animations during background polling, and ensure that new logs display automatically.
+
+

@@ -2,9 +2,20 @@ import axios from "axios";
 
 const getBaseUrl = () => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  // If explicitly set to something other than localhost, use it (e.g., prod URL)
-  if (envUrl && !envUrl.includes("localhost")) {
-    return envUrl;
+  if (envUrl) {
+    if (envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+      if (typeof window !== "undefined") {
+        try {
+          const urlObj = new URL(envUrl);
+          const port = urlObj.port || "8000";
+          return `${window.location.protocol}//${window.location.hostname}:${port}`;
+        } catch {
+          // Fallback
+        }
+      }
+    } else {
+      return envUrl;
+    }
   }
   // Client-side: use the current hostname but with port 8000
   if (typeof window !== "undefined") {

@@ -275,3 +275,7 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-11 17:32:05,190 - NiT-SMS - INFO - Activity logged: [Unknown] Import Backup: Database restore completed. Stats: {"Rooms": 7, "AcademicYears": 1, "Users": 152, "Courses": 17, "Batches": 9, "Subjects": 2, "Enrollments": 47, "Payments": 194, "Timetables": 0, "Grades": 0, "Attendances": 0, "StaffAttendances": 0, "ParentStudentLinks": 1, "ActivityLogs": 74}
 2026-06-11 17:33:15,709 - NiT-SMS - INFO - Activity logged: [Unknown] Create Payment: Payment of 500000.0 recorded for enrollment 40 (2026-06-11 11:03:00)
 2026-06-11 17:33:36,669 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Payment: Payment ID 196 (Amount: 500000.0) deleted
+2026-06-20 10:57:33,038 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-20 10:57:33,039 - NiT-SMS - INFO - Starting Excel export...
+2026-06-20 10:59:05,348 - NiT-SMS - INFO - Excel export completed: backup_20260620_105905.xlsx
+2026-06-20 11:09:38,094 - NiT-SMS - INFO - Activity logged: [Unknown] Create Room: Room 'Room 8' created with capacity 30

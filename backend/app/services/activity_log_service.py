@@ -27,17 +27,15 @@ async def log_activity(request: Request, session: AsyncSession, action: str, det
                 request.state.user_id_cache = user_id
 
         if user_id:
-            async with session.begin_nested():
-                al = ActivityLog(
-                    user_id=user_id,
-                    action=action,
-                    details=details
-                )
-                session.add(al)
-                # Try a partial flush, but usually we rely on the caller's commit
-                # Unless we want independent logging persistence
-                await session.flush()
-            
+            al = ActivityLog(
+                user_id=user_id,
+                action=action,
+                details=details
+            )
+            session.add(al)
+            await session.flush()
+            await session.commit()
+
             # Also log to system file
             logger.info(f"Activity logged: [{user_info.get('username', 'Unknown')}] {action}: {details}")
     except Exception as e:

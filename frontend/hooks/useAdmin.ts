@@ -56,6 +56,7 @@ export function useActivityLogs(page: number = 1, limit: number = 50) {
   return useQuery({
     queryKey: [...adminKeys.activityLogs(), page, limit],
     queryFn: () => AdminService.getActivityLogs(page, limit),
+    refetchInterval: 5000, // Auto-refresh every 5 seconds to display logs without page reload
   });
 }
 

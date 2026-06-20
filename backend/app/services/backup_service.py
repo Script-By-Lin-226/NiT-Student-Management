@@ -24,6 +24,7 @@ class BackupService:
             return JSONResponse({"status_code": 403, "message": "Unauthorized"}, status_code=403)
 
         await log_activity(request, session, "Export Backup", "Administrator started database export to Excel")
+        await session.commit()
         logger.info("Starting Excel export...")
         # Tables to export
         models = [

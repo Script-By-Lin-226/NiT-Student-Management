@@ -1,76 +1,57 @@
 import asyncio
-import logging
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
-from app.core.config import settings
+from app.core.database_initialization import AsyncSessionLocal
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+sequence_maps = [
+    ("users", "user_id"),
+    ("academic_years", "academic_year_id"),
+    ("courses", "course_id"),
+    ("rooms", "room_id"),
+    ("enrollments", "enrollment_id"),
+    ("payments", "payment_id"),
+    ("batches", "batch_id"),
+    ("subjects", "subject_id"),
+    ("timetables", "timetable_id"),
+    ("grades", "grade_id"),
+    ("attendances", "attendance_id"),
+    ("staff_attendance", "id"),
+    ("parent_student", "id"),
+    ("activity_logs", "log_id"),
+    ("refresh_tokens", "id")
+]
 
-async def fix_database_sequences():
-    """
-    Identifies all tables with serial/sequence columns in a PostgreSQL database 
-    and resets their sequences to the current MAX(id) + 1. 
-    This prevents 'duplicate key value violates unique constraint' errors.
-    """
-    
-    # We use the configured DATABASE_URL from settings
-    database_url = settings.DATABASE_URL
-    if "postgresql" not in database_url:
-        logger.warning("Database is not PostgreSQL. Skipping sequence reset.")
-        return
-
-    logger.info(f"Connecting to database to fix sequences...")
-    engine = create_async_engine(database_url)
-
-    try:
-        async with engine.begin() as conn:
-            # Query to get all tables and their serial columns
-            query = text("""
-                SELECT 
-                    t.table_name, 
-                    c.column_name, 
-                    pg_get_serial_sequence(t.table_name, c.column_name) as seq_name
-                FROM 
-                    information_schema.tables t
-                JOIN 
-                    information_schema.columns c ON t.table_name = c.table_name
-                WHERE 
-                    t.table_schema = 'public' 
-                    AND pg_get_serial_sequence(t.table_name, c.column_name) IS NOT NULL;
-            """)
-            
-            result = await conn.execute(query)
-            rows = result.fetchall()
-            
-            if not rows:
-                logger.info("No sequences found to reset.")
-                return
-
-            for table_name, column_name, seq_name in rows:
-                logger.info(f"Resetting sequence '{seq_name}' for table '{table_name}.{column_name}'...")
+async def fix_sequences():
+    async with AsyncSessionLocal() as session:
+        dialect_name = session.bind.dialect.name
+        print(f"Database dialect: {dialect_name}")
+        for table, pk in sequence_maps:
+            try:
+                # Find max ID
+                res = await session.execute(text(f'SELECT COALESCE(MAX("{pk}"), 0) FROM "{table}"'))
+                max_id = res.scalar()
                 
-                # Get the max ID from the table
-                max_id_query = text(f'SELECT COALESCE(MAX("{column_name}"), 0) FROM "{table_name}";')
-                max_id_result = await conn.execute(max_id_query)
-                max_id = max_id_result.scalar() or 0
-                
-                # Set the sequence to max_id + 1
-                # The 'false' flag means the next nextval() will return max_id + 1 if max_id > 0
-                # If max_id is 0, we set it to 1.
-                new_val = max(1, max_id)
-                reset_query = text(f"SELECT setval('{seq_name}', {new_val}, true)")
-                await conn.execute(reset_query)
-                
-            logger.info("✅ All primary key sequences have been successfully synchronized with existing data.")
-
-    except Exception as e:
-        logger.error(f"❌ Failed to fix sequences: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        await engine.dispose()
+                if "postgresql" in dialect_name:
+                    # Get sequence name
+                    seq_res = await session.execute(text(f"SELECT pg_get_serial_sequence('\"{table}\"', '{pk}')"))
+                    seq_name = seq_res.scalar()
+                    
+                    if not seq_name:
+                        seq_name = f'"{table}_{pk}_seq"'
+                    else:
+                        seq_name = f"'{seq_name}'"
+                        
+                    if max_id > 0:
+                        await session.execute(text(f"SELECT setval({seq_name}, {max_id}, true)"))
+                    else:
+                        await session.execute(text(f"SELECT setval({seq_name}, 1, false)"))
+                    print(f"Reset sequence {seq_name} for '{table}' to max_id={max_id}")
+                elif "sqlite" in dialect_name:
+                    await session.execute(text(f"INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('{table}', {max_id})"))
+                    print(f"Reset SQLite sequence for '{table}' to {max_id}")
+            except Exception as e:
+                print(f"Error resetting sequence for {table}: {e}")
+        await session.commit()
+    print("Sequence fixing completed successfully!")
 
 if __name__ == "__main__":
-    asyncio.run(fix_database_sequences())
+    asyncio.run(fix_sequences())

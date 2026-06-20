@@ -40,9 +40,19 @@ export default function ActivityLogsPage() {
   const [dateQ, setDateQ] = useState("");
   const [logToDelete, setLogToDelete] = useState<number | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [isManualRefetching, setIsManualRefetching] = useState(false);
 
   const busy = logsLoading || deleteMutation.isPending || clearMutation.isPending;
   const error = (queryError as any)?.response?.data?.message || (queryError as any)?.message || "";
+
+  const handleRefresh = async () => {
+    setIsManualRefetching(true);
+    try {
+      await refetch();
+    } finally {
+      setIsManualRefetching(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace("/dashboard");
@@ -117,11 +127,11 @@ export default function ActivityLogsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => refetch()}
-            disabled={busy}
+            onClick={handleRefresh}
+            disabled={busy || isManualRefetching}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 disabled:opacity-60 text-sm transition-all active:scale-95"
           >
-            <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${busy || isManualRefetching ? "animate-spin" : ""}`} />
             <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
