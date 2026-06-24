@@ -277,6 +277,10 @@ async def delete_enrollment(enrollment_code: str, request: Request, session: Asy
 async def list_payments(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db), enrollment_id: int = None):
     return await AdminPanelService.list_payments(request, session, page, limit, enrollment_id)
 
+@router.get("/payments/income-report")
+async def get_income_report(request: Request, session: AsyncSession = Depends(get_db), start_date: str | None = None, end_date: str | None = None):
+    return await AdminPanelService.get_income_report(request, session, start_date, end_date)
+
 @router.post("/payments")
 async def create_payment(payload: PaymentCreate, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.create_payment(request, session, payload)

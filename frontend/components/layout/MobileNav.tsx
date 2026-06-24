@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation";
 import { 
   Home, BookOpen, Clock, CalendarDays, Award, User, Users, 
   DoorOpen, CalendarClock, LogOut, LayoutGrid, X, 
-  Shield, CreditCard, Database, Activity 
+  Shield, CreditCard, Database, Activity, BarChart
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 
-const studentNav = [
+const studentNav = [ 
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Courses", href: "/courses", icon: BookOpen },
   { name: "Attend", href: "/attendance", icon: Clock },
@@ -32,6 +32,12 @@ const staffNav = [
 const teacherNav = [
   { name: "Home", href: "/teacher/dashboard", icon: Home },
   { name: "Class", href: "/teacher/classes", icon: BookOpen },
+  { name: "Me", href: "/profile", icon: User },
+];
+
+const accountantNav = [
+  { name: "Home", href: "/dashboard", icon: Home },
+  { name: "Finance", href: "/admin/finance", icon: BarChart },
   { name: "Me", href: "/profile", icon: User },
 ];
 
@@ -70,6 +76,7 @@ export default function MobileNav() {
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
   if (user?.role === "teacher") navigation = teacherNav;
+  if (user?.role === "accountant") navigation = accountantNav;
   if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 
@@ -134,7 +141,7 @@ export default function MobileNav() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-4">Operations & Finance</h4>
                 <div className="bg-slate-50/50 rounded-[2rem] p-2 space-y-1">
-                  {secondaryNav.filter(n => ["Payments", "Rooms", "Parents", "Staff"].includes(n.name)).map((item) => {
+                  {secondaryNav.filter(n => ["Payments", "Finance", "Rooms", "Parents", "Staff"].includes(n.name)).map((item) => {
                     const isActive = pathname === item.href;
                     return (
                       <Link

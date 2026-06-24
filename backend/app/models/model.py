@@ -257,6 +257,7 @@ class Payment(Base):
     fine_reason = Column(String, nullable=True)
     extra_items_fee = Column(Float, nullable=True)
     extra_items = Column(String, nullable=True)
+    extra_items_payment_method = Column(String, nullable=True)
     
     # Exam fee fields
     exam_fee_paid_gbp = Column(Float, nullable=True)
@@ -464,3 +465,77 @@ class RefreshToken(Base):
 
     # Relationships
     user = relationship("User")
+
+
+# ==============================
+# Accounting & Expense Models
+# ==============================
+
+class Account(Base):
+    __tablename__ = "accounts"
+
+    account_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    account_name = Column(String, unique=True, index=True, nullable=False)
+    account_type = Column(String, nullable=False)  # Asset | Liability | Equity | Revenue | Expense
+    currency = Column(String, nullable=False, default="MMK")  # MMK or GBP
+    is_active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class JournalEntry(Base):
+    __tablename__ = "journal_entries"
+
+    entry_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    entry_date = Column(Date, nullable=False, default=date.today)
+    description = Column(String, nullable=False)
+    reference = Column(String, nullable=True)  # e.g., receipt_id or expense_id
+    entry_type = Column(String, nullable=False, default="journal")  # journal | payment | expense | contra
+    student_id = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    lines = relationship("JournalEntryLine", back_populates="entry", cascade="all, delete-orphan")
+    student = relationship("User")
+
+
+class JournalEntryLine(Base):
+    __tablename__ = "journal_entry_lines"
+
+    line_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    entry_id = Column(Integer, ForeignKey("journal_entries.entry_id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(Integer, ForeignKey("accounts.account_id", ondelete="CASCADE"), nullable=False)
+    
+    debit_mmk = Column(Float, default=0.0)
+    credit_mmk = Column(Float, default=0.0)
+    debit_gbp = Column(Float, default=0.0)
+    credit_gbp = Column(Float, default=0.0)
+
+    # Relationships
+    entry = relationship("JournalEntry", back_populates="lines")
+    account = relationship("Account")
+
+
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    expense_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    amount_mmk = Column(Float, nullable=False)
+    category = Column(String, nullable=False)  # utilities | maintenance | salaries | petty_cash | others
+    expense_date = Column(Date, nullable=False, default=date.today)
+    status = Column(String, default="Pending")  # Pending | Approved | Rejected
+    approved_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    department = Column(String, nullable=True)
+    budget_amount = Column(Float, nullable=True)
+    payment_method = Column(String, nullable=True)  # Cash | Bank | Petty Cash
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    approver = relationship("User")
+

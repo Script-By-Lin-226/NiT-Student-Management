@@ -9,7 +9,7 @@ from app.services.rbac_portal import validating_staff_role, validating_admin_rol
 from app.schemas.attendance import AttendanceMarkRequest
 
 
-STAFF_ROLES = {"hr", "manager", "sales", "teacher"}
+STAFF_ROLES = {"hr", "manager", "sales", "teacher", "accountant"}
 
 
 def _user_from_request(request: Request) -> dict:

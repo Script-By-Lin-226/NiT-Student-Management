@@ -120,8 +120,8 @@ class AdminStaffCreate(BaseModel):
         
     @validator('role')
     def validate_role(cls, v):
-        if v not in ['sales', 'hr', 'manager', 'teacher']:
-            raise ValueError('Role must be sales, hr, manager, or teacher')
+        if v not in ['sales', 'hr', 'manager', 'teacher', 'accountant']:
+            raise ValueError('Role must be sales, hr, manager, teacher, or accountant')
         return v
 
 

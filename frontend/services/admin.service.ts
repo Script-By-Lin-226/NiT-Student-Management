@@ -434,11 +434,241 @@ export interface AdminPayment {
   fine_reason?: string | null;
   extra_items_fee?: number;
   extra_items?: string | null;
+  extra_items_payment_method?: string | null;
   exam_fee_paid_gbp?: number;
   exam_fee_paid_mmk?: number;
   exam_fee_currency?: string;
   exam_fee_payment_method?: string | null;
   discount_amount?: number;
+}
+
+export interface WeeklyIncomeStat {
+  week_starting: string;
+  label: string;
+  total_mmk: number;
+  total_gbp: number;
+  payment_count: number;
+  fine_mmk: number;
+  extra_mmk: number;
+  tuition_mmk: number;
+  exam_mmk: number;
+}
+
+export interface MonthlyIncomeStat {
+  month: string;
+  label: string;
+  total_mmk: number;
+  total_gbp: number;
+  payment_count: number;
+  fine_mmk: number;
+  extra_mmk: number;
+  tuition_mmk: number;
+  exam_mmk: number;
+}
+
+export interface DailyIncomeStat {
+  day: string;
+  label: string;
+  total_mmk: number;
+  total_gbp: number;
+  payment_count: number;
+  fine_mmk: number;
+  extra_mmk: number;
+  tuition_mmk: number;
+  exam_mmk: number;
+}
+
+export interface IncomeReportData {
+  daily_stats: DailyIncomeStat[];
+  weekly_stats: WeeklyIncomeStat[];
+  monthly_stats: MonthlyIncomeStat[];
+  payment_records: AdminPayment[];
+}
+
+export interface Account {
+  account_id: number;
+  account_name: string;
+  account_type: string;
+  currency: string;
+  is_active: boolean;
+  balance_mmk: number;
+  balance_gbp: number;
+  debit_mmk: number;
+  credit_mmk: number;
+  debit_gbp: number;
+  credit_gbp: number;
+}
+
+export interface AccountCreate {
+  account_name: string;
+  account_type: string;
+  currency?: string;
+}
+
+export interface JournalEntryLine {
+  line_id?: number;
+  account_id: number;
+  account_name?: string;
+  debit_mmk?: number;
+  credit_mmk?: number;
+  debit_gbp?: number;
+  credit_gbp?: number;
+}
+
+export interface JournalEntry {
+  entry_id: number;
+  entry_date: string;
+  description: string;
+  reference?: string | null;
+  entry_type: string;
+  student_id?: number | null;
+  student_name?: string | null;
+  lines: JournalEntryLine[];
+}
+
+export interface JournalEntryCreate {
+  entry_date?: string | null;
+  description: string;
+  reference?: string | null;
+  entry_type?: string;
+  student_id?: number | null;
+  lines: {
+    account_id: number;
+    debit_mmk?: number;
+    credit_mmk?: number;
+    debit_gbp?: number;
+    credit_gbp?: number;
+  }[];
+}
+
+export interface BookLogEntry {
+  line_id: number;
+  entry_id: number;
+  entry_date: string;
+  description: string;
+  reference?: string | null;
+  account_name: string;
+  debit_mmk: number;
+  credit_mmk: number;
+  debit_gbp: number;
+  credit_gbp: number;
+  balance_mmk: number;
+  balance_gbp: number;
+}
+
+export interface StudentLedgerEntry {
+  entry_id: number;
+  entry_date: string;
+  description: string;
+  reference?: string | null;
+  entry_type: string;
+  account_name: string;
+  debit_mmk: number;
+  credit_mmk: number;
+  debit_gbp: number;
+  credit_gbp: number;
+}
+
+export interface TrialBalance {
+  lines: {
+    account_id: number;
+    account_name: string;
+    account_type: string;
+    debit_mmk: number;
+    credit_mmk: number;
+    debit_gbp: number;
+    credit_gbp: number;
+  }[];
+  totals: {
+    debit_mmk: number;
+    credit_mmk: number;
+    debit_gbp: number;
+    credit_gbp: number;
+    is_balanced: boolean;
+  };
+}
+
+export interface IncomeStatement {
+  revenues: {
+    account_name: string;
+    amount_mmk: number;
+    amount_gbp: number;
+  }[];
+  expenses: {
+    account_name: string;
+    amount_mmk: number;
+    amount_gbp: number;
+  }[];
+  summary: {
+    total_revenue_mmk: number;
+    total_revenue_gbp: number;
+    total_expense_mmk: number;
+    total_expense_gbp: number;
+    net_income_mmk: number;
+    net_income_gbp: number;
+  };
+}
+
+export interface BalanceSheet {
+  assets: {
+    account_name: string;
+    amount_mmk: number;
+    amount_gbp: number;
+  }[];
+  liabilities: {
+    account_name: string;
+    amount_mmk: number;
+    amount_gbp: number;
+  }[];
+  equity: {
+    account_name: string;
+    amount_mmk: number;
+    amount_gbp: number;
+  }[];
+  summary: {
+    total_assets_mmk: number;
+    total_assets_gbp: number;
+    total_liabilities_mmk: number;
+    total_liabilities_gbp: number;
+    total_equity_mmk: number;
+    total_equity_gbp: number;
+    total_liabilities_equity_mmk: number;
+    total_liabilities_equity_gbp: number;
+  };
+}
+
+export interface Expense {
+  expense_id: number;
+  title: string;
+  description?: string | null;
+  amount_mmk: number;
+  category: string;
+  expense_date: string;
+  status: string;
+  approved_by?: number | null;
+  approver_name?: string | null;
+  department?: string | null;
+  budget_amount?: number | null;
+  payment_method: string;
+  created_at: string;
+}
+
+export interface ExpenseCreate {
+  title: string;
+  description?: string | null;
+  amount_mmk: number;
+  category: string;
+  expense_date?: string | null;
+  department?: string | null;
+  budget_amount?: number | null;
+  payment_method?: string;
+}
+
+export interface BudgetVsActual {
+  category: string;
+  actual_mmk: number;
+  budget_mmk: number;
+  variance_mmk: number;
 }
 
 export interface AdminPaymentCreate {
@@ -453,6 +683,7 @@ export interface AdminPaymentCreate {
   fine_reason?: string | null;
   extra_items_fee?: number | null;
   extra_items?: string | null;
+  extra_items_payment_method?: string | null;
   exam_fee_paid_gbp?: number | null;
   exam_fee_paid_mmk?: number | null;
   exam_fee_currency?: string | null;
@@ -664,6 +895,13 @@ export class AdminService {
     return res.data;
   }
 
+  static async getIncomeReport(startDate?: string, endDate?: string): Promise<IncomeReportData> {
+    const res = await api.get<{ data: IncomeReportData }>("/admin/payments/income-report", {
+      params: { start_date: startDate, end_date: endDate }
+    });
+    return res.data.data;
+  }
+
   static async createPayment(payload: AdminPaymentCreate): Promise<void> {
     await api.post("/admin/payments", payload);
   }
@@ -753,6 +991,84 @@ export class AdminService {
 
   static async deleteSubject(id: number): Promise<void> {
     await api.delete(`/admin/subjects/${id}`);
+  }
+
+  // Accounting & Ledgers
+  static async listAccounts(): Promise<Account[]> {
+    const res = await api.get<{ data: Account[] }>("/admin/accounting/accounts");
+    return res.data.data;
+  }
+
+  static async createAccount(payload: AccountCreate): Promise<{ account_id: number; account_name: string }> {
+    const res = await api.post<{ data: { account_id: number; account_name: string } }>("/admin/accounting/accounts", payload);
+    return res.data.data;
+  }
+
+  static async listJournalEntries(startDate?: string, endDate?: string): Promise<JournalEntry[]> {
+    const res = await api.get<{ data: JournalEntry[] }>("/admin/accounting/journal-entries", {
+      params: { start_date: startDate, end_date: endDate }
+    });
+    return res.data.data;
+  }
+
+  static async createJournalEntry(payload: JournalEntryCreate): Promise<{ entry_id: number; description: string }> {
+    const res = await api.post<{ data: { entry_id: number; description: string } }>("/admin/accounting/journal-entries", payload);
+    return res.data.data;
+  }
+
+  static async getCashBook(): Promise<BookLogEntry[]> {
+    const res = await api.get<{ data: BookLogEntry[] }>("/admin/accounting/cash-book");
+    return res.data.data;
+  }
+
+  static async getBankBook(): Promise<BookLogEntry[]> {
+    const res = await api.get<{ data: BookLogEntry[] }>("/admin/accounting/bank-book");
+    return res.data.data;
+  }
+
+  static async getStudentLedger(studentId: number): Promise<StudentLedgerEntry[]> {
+    const res = await api.get<{ data: StudentLedgerEntry[] }>(`/admin/accounting/student-ledger/${studentId}`);
+    return res.data.data;
+  }
+
+  static async getTrialBalance(): Promise<TrialBalance> {
+    const res = await api.get<{ data: TrialBalance }>("/admin/accounting/trial-balance");
+    return res.data.data;
+  }
+
+  static async getIncomeStatement(): Promise<IncomeStatement> {
+    const res = await api.get<{ data: IncomeStatement }>("/admin/accounting/income-statement");
+    return res.data.data;
+  }
+
+  static async getBalanceSheet(): Promise<BalanceSheet> {
+    const res = await api.get<{ data: BalanceSheet }>("/admin/accounting/balance-sheet");
+    return res.data.data;
+  }
+
+  static async listExpenses(filters?: { start_date?: string; end_date?: string; category?: string; status?: string; department?: string }): Promise<Expense[]> {
+    const res = await api.get<{ data: Expense[] }>("/admin/accounting/expenses", { params: filters });
+    return res.data.data;
+  }
+
+  static async createExpense(payload: ExpenseCreate): Promise<{ expense_id: number; title: string }> {
+    const res = await api.post<{ data: { expense_id: number; title: string } }>("/admin/accounting/expenses", payload);
+    return res.data.data;
+  }
+
+  static async approveExpense(expenseId: number): Promise<{ expense_id: number; status: string }> {
+    const res = await api.post<{ data: { expense_id: number; status: string } }>(`/admin/accounting/expenses/${expenseId}/approve`);
+    return res.data.data;
+  }
+
+  static async rejectExpense(expenseId: number): Promise<{ expense_id: number; status: string }> {
+    const res = await api.post<{ data: { expense_id: number; status: string } }>(`/admin/accounting/expenses/${expenseId}/reject`);
+    return res.data.data;
+  }
+
+  static async getBudgetVsActual(): Promise<BudgetVsActual[]> {
+    const res = await api.get<{ data: BudgetVsActual[] }>("/admin/accounting/budget-vs-actual");
+    return res.data.data;
   }
 }
 

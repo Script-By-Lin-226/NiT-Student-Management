@@ -338,6 +338,7 @@ export default function AdminStaffPage() {
               <option value="teacher">Teacher</option>
               <option value="hr">HR</option>
               <option value="manager">Manager</option>
+              <option value="accountant">Accountant</option>
             </select>
           </div>
           <div className="flex justify-end mt-4">

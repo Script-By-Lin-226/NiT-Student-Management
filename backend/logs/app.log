@@ -280,3 +280,15 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-20 10:59:05,348 - NiT-SMS - INFO - Excel export completed: backup_20260620_105905.xlsx
 2026-06-20 11:09:38,094 - NiT-SMS - INFO - Activity logged: [Unknown] Create Room: Room 'Room 8' created with capacity 30
 2026-06-20 11:31:22,624 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Room: Room ID 8 deleted
+2026-06-24 18:11:14,460 - NiT-SMS - INFO - Activity logged: [Unknown] Update Payment: Payment ID 19 updated
+2026-06-24 18:23:27,111 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-24 18:23:27,112 - NiT-SMS - INFO - Starting Excel export...
+2026-06-24 18:24:40,942 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-24 18:24:40,945 - NiT-SMS - INFO - Starting Excel export...
+2026-06-24 18:25:41,517 - NiT-SMS - INFO - Excel export completed: backup_20260624_182541.xlsx
+2026-06-24 18:25:54,256 - NiT-SMS - INFO - Excel export completed: backup_20260624_182554.xlsx
+2026-06-24 18:26:28,269 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-24 18:26:28,269 - NiT-SMS - INFO - Starting Excel export...
+2026-06-24 18:27:24,796 - NiT-SMS - INFO - Excel export completed: backup_20260624_182724.xlsx
+2026-06-24 18:28:27,059 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User PAR0001 deleted
+2026-06-24 23:37:59,137 - NiT-SMS - INFO - Activity logged: [Unknown] Create Staff: Created accountant account 'Nyein Chan' (ACC0001)

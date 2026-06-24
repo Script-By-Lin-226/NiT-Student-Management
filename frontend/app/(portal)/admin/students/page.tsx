@@ -10,7 +10,7 @@ import { Plus, Search, Trash2, Pencil, RefreshCw, X, Download, Check, AlertCircl
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 import { useStudents, useCourses, useCreateStudent, useDeleteUser, useUpdateUser, useApproveStudent, useCreateEnrollment, useBatches } from "@/hooks/useAdmin";
-import { formatAmount } from "@/utils/format";
+import { formatAmount, parseExtraItems } from "@/utils/format";
 import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "sonner";
 import { Pagination } from "@/components/ui/Pagination";
@@ -632,7 +632,7 @@ export default function AdminStudentsPage() {
           "Amount Paid (MMK)": p.amount,
           "Fine Amount (MMK)": p.fine_amount || 0,
           "Extra Items Fee (MMK)": p.extra_items_fee || 0,
-          "Extra Items": p.extra_items || "-",
+          "Extra Items": parseExtraItems(p.extra_items) || "-",
           "Exam Fee Paid (GBP)": p.exam_fee_paid_gbp || 0,
           "Exam Fee Paid (MMK)": p.exam_fee_paid_mmk || 0,
           "Total Paid for Enrollment (MMK)": totalPaidForEnrollment,
@@ -743,7 +743,7 @@ export default function AdminStudentsPage() {
           "Discount (MMK)": p.discount_amount || 0,
           "Fine Amount (MMK)": p.fine_amount || 0,
           "Extra Items Fee (MMK)": p.extra_items_fee || 0,
-          "Extra Items": p.extra_items || "-",
+          "Extra Items": parseExtraItems(p.extra_items) || "-",
           "Exam Fee Paid (GBP)": p.exam_fee_paid_gbp || 0,
           "Exam Fee Paid (MMK)": p.exam_fee_paid_mmk || 0,
           "Total Paid (MMK)": totalPaidForEnroll,

@@ -12,7 +12,7 @@ def _get_user(request: Request) -> dict:
 
 # ── Role validators ───────────────────────────────────────────────────────────
 
-async def validating_admin_role(request: Request, allow_sales: bool = False) -> bool:
+async def validating_admin_role(request: Request, allow_sales: bool = False, allow_accountant: bool = False) -> bool:
     user = _get_user(request)
     role = user.get("role")
     if role == "admin":
@@ -22,6 +22,8 @@ async def validating_admin_role(request: Request, allow_sales: bool = False) -> 
             return True
         else:
             raise HTTPException(status_code=403, detail="Sales account can only read, create, and update (GET, POST, PUT)")
+    if role == "accountant" and allow_accountant:
+        return True
     raise HTTPException(status_code=403, detail="Admin access required")
 
 
@@ -47,12 +49,13 @@ async def validating_parent_role(request: Request) -> bool:
 
 
 async def validating_staff_role(request: Request) -> bool:
-    """Accepts hr | manager | sales | teacher roles."""
+    """Accepts hr | manager | sales | teacher | accountant roles."""
     user = _get_user(request)
-    STAFF_ROLES = {"hr", "manager", "sales", "teacher"}
+    STAFF_ROLES = {"hr", "manager", "sales", "teacher", "accountant"}
     if user.get("role") not in STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Staff access required")
     return True
+
 
 
 async def validating_portal_access(request: Request) -> bool:

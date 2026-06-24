@@ -1,18 +1,21 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.controller.v1.authentication_route import router as auth_router
 from app.controller.v1.admin_route import router as admin_router
 from app.controller.v1.portal_route import router as portal_router
 from app.controller.v1.staff_route import router as staff_router
+from app.controller.v1.accounting_route import router as accounting_router
 from app.middleware.authentication_middleware import AuthMiddleware
 from app.middleware.latency_middleware import LatencyLoggingMiddleware
 from starlette.middleware.cors import CORSMiddleware
-from app.core.database_initialization import init_db
+from app.core.database_initialization import init_db, is_transient_db_error
 from app.core.config import settings
 from app.security.rate_limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.services.uptime_service import keep_alive_task
+from sqlalchemy.exc import DBAPIError
 import os
 import asyncio
 
@@ -41,6 +44,8 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(portal_router)
 app.include_router(staff_router)
+app.include_router(accounting_router)
+
 
 # Basic Middlewares
 app.add_middleware(LatencyLoggingMiddleware)
@@ -66,6 +71,18 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["x-new-token"],
 )
+
+@app.exception_handler(DBAPIError)
+async def dbapi_exception_handler(request, exc: DBAPIError):
+    if is_transient_db_error(exc):
+        return JSONResponse(
+            status_code=503,
+            content={"status_code": 503, "message": "Database temporarily unavailable. Please try again in a moment."},
+        )
+    return JSONResponse(
+        status_code=500,
+        content={"status_code": 500, "message": "An unexpected database error occurred."},
+    )
 
 @app.get("/")
 async def root():

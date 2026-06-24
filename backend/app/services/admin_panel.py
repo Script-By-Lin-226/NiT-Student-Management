@@ -9,7 +9,7 @@ from sqlalchemy.orm import defer
 from fastapi.responses import JSONResponse
 from fastapi import Request
 from app.schemas.user import UserUpdate, AdminStudentCreate, AdminParentCreate, AdminParentLinkChild, AdminStaffCreate, AdminStudentApprove, UserPasswordChange, AdminUserPasswordChange
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from app.security.password_hashing import hash_password
 from sqlalchemy import func
 from app.schemas.course import AdminCourseCreate, AdminCourseUpdate
@@ -21,7 +21,152 @@ from app.schemas.payment import PaymentCreate, PaymentUpdate
 from app.schemas.batch import AdminBatchCreate, AdminBatchUpdate
 from app.schemas.subject import AdminSubjectCreate, AdminSubjectUpdate
 from app.core.timezone_utils import get_now_local
+from app.core.config import settings
 from app.services.activity_log_service import log_activity
+from app.models.model import Account, JournalEntry, JournalEntryLine
+
+async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment):
+    from app.models.model import Account, JournalEntry, JournalEntryLine, Enrollment
+    
+    # Get enrollment and student ID
+    enroll_q = select(Enrollment).where(Enrollment.enrollment_id == pay.enrollment_id)
+    enroll_res = await session.execute(enroll_q)
+    enroll = enroll_res.scalars().first()
+    student_id = enroll.student_id if enroll else None
+
+    # Get accounts helper
+    async def get_acc(name: str, acc_type: str, cur: str = "MMK"):
+        q = select(Account).where(Account.account_name == name)
+        res = await session.execute(q)
+        acc = res.scalars().first()
+        if not acc:
+            acc = Account(account_name=name, account_type=acc_type, currency=cur)
+            session.add(acc)
+            await session.flush()
+        return acc
+
+    # Create journal entry
+    entry = JournalEntry(
+        entry_date=pay.payment_date.date() if isinstance(pay.payment_date, datetime) else pay.payment_date,
+        description=f"Student Payment: {pay.receipt_id}",
+        reference=pay.receipt_id,
+        entry_type="payment",
+        student_id=student_id
+    )
+    session.add(entry)
+    await session.flush()
+
+    # Determine asset debit accounts
+    pay_method = pay.payment_method or "Cash"
+    deb_acc_name = "CB Bank (MMK)" if pay_method == "Bank Transfer" else ("Petty Cash (MMK)" if pay_method == "Petty Cash" else ("KBZ Bank (MMK)" if pay_method == "KPay" else "Cash in Hand (MMK)"))
+    deb_acc = await get_acc(deb_acc_name, "Asset")
+
+    # Debit lines
+    if pay.amount > 0:
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=deb_acc.account_id,
+            debit_mmk=pay.amount,
+            credit_mmk=0.0
+        ))
+
+    # Split payment
+    if pay.amount_2 and pay.amount_2 > 0:
+        pay_method_2 = pay.payment_method_2 or "Cash"
+        deb_acc_2_name = "CB Bank (MMK)" if pay_method_2 == "Bank Transfer" else ("Petty Cash (MMK)" if pay_method_2 == "Petty Cash" else ("KBZ Bank (MMK)" if pay_method_2 == "KPay" else "Cash in Hand (MMK)"))
+        deb_acc_2 = await get_acc(deb_acc_2_name, "Asset")
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=deb_acc_2.account_id,
+            debit_mmk=pay.amount_2,
+            credit_mmk=0.0
+        ))
+
+    # Tuition credit
+    total_tuition = (pay.amount or 0.0) + (pay.amount_2 or 0.0)
+    if total_tuition > 0:
+        rev_acc = await get_acc("Tuition Revenue (MMK)", "Revenue")
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=rev_acc.account_id,
+            debit_mmk=0.0,
+            credit_mmk=total_tuition
+        ))
+
+    # Fine Amount
+    if pay.fine_amount and pay.fine_amount > 0:
+        fine_acc = await get_acc("Fine Revenue (MMK)", "Revenue")
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=deb_acc.account_id,
+            debit_mmk=pay.fine_amount,
+            credit_mmk=0.0
+        ))
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=fine_acc.account_id,
+            debit_mmk=0.0,
+            credit_mmk=pay.fine_amount
+        ))
+
+    # Extra Items Fee
+    if pay.extra_items_fee and pay.extra_items_fee > 0:
+        extra_method = pay.extra_items_payment_method or pay.payment_method or "Cash"
+        deb_extra_name = "CB Bank (MMK)" if extra_method == "Bank Transfer" else ("Petty Cash (MMK)" if extra_method == "Petty Cash" else ("KBZ Bank (MMK)" if extra_method == "KPay" else "Cash in Hand (MMK)"))
+        deb_extra_acc = await get_acc(deb_extra_name, "Asset")
+        extra_rev_acc = await get_acc("Extra Items Revenue (MMK)", "Revenue")
+        
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=deb_extra_acc.account_id,
+            debit_mmk=pay.extra_items_fee,
+            credit_mmk=0.0
+        ))
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=extra_rev_acc.account_id,
+            debit_mmk=0.0,
+            credit_mmk=pay.extra_items_fee
+        ))
+
+    # Exam Fee Paid GBP
+    if pay.exam_fee_paid_gbp and pay.exam_fee_paid_gbp > 0:
+        deb_gbp_acc = await get_acc("Cash/Bank (GBP)", "Asset", "GBP")
+        rev_gbp_acc = await get_acc("Exam Fees Revenue (GBP)", "Revenue", "GBP")
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=deb_gbp_acc.account_id,
+            debit_gbp=pay.exam_fee_paid_gbp,
+            credit_gbp=0.0
+        ))
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=rev_gbp_acc.account_id,
+            debit_gbp=0.0,
+            credit_gbp=pay.exam_fee_paid_gbp
+        ))
+
+    # Exam Fee Paid MMK
+    if pay.exam_fee_paid_mmk and pay.exam_fee_paid_mmk > 0:
+        exam_method = pay.exam_fee_payment_method or pay.payment_method or "Cash"
+        deb_exam_mmk_name = "CB Bank (MMK)" if exam_method == "Bank Transfer" else ("Petty Cash (MMK)" if exam_method == "Petty Cash" else ("KBZ Bank (MMK)" if exam_method == "KPay" else "Cash in Hand (MMK)"))
+        deb_exam_mmk_acc = await get_acc(deb_exam_mmk_name, "Asset")
+        rev_exam_mmk_acc = await get_acc("Exam Fees Revenue (MMK)", "Revenue")
+        
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=deb_exam_mmk_acc.account_id,
+            debit_mmk=pay.exam_fee_paid_mmk,
+            credit_mmk=0.0
+        ))
+        session.add(JournalEntryLine(
+            entry_id=entry.entry_id,
+            account_id=rev_exam_mmk_acc.account_id,
+            debit_mmk=0.0,
+            credit_mmk=pay.exam_fee_paid_mmk
+        ))
+
+    await session.flush()
 
 
 def _serialize_user_lite(u: User) -> dict:
@@ -123,7 +268,8 @@ async def _next_staff_code(session: AsyncSession, role: str) -> str:
         "sales": "SAL",
         "teacher": "TCH",
         "hr": "HRX",
-        "manager": "MGR"
+        "manager": "MGR",
+        "accountant": "ACC"
     }
     prefix = prefix_map.get(role, "STF")
     
@@ -2242,15 +2388,257 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Timetable deleted successfully"})
 
     # --- Payments CRUD ---
+    async def get_income_report(request: Request, session: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        base_q = select(
+            Payment.payment_id,
+            Payment.receipt_id,
+            Payment.enrollment_id,
+            Payment.amount,
+            Payment.payment_date,
+            Payment.month,
+            Payment.status,
+            Payment.payment_method,
+            Payment.amount_2,
+            Payment.payment_method_2,
+            Payment.fine_amount,
+            Payment.fine_reason,
+            Payment.extra_items_fee,
+            Payment.extra_items,
+            Payment.extra_items_payment_method,
+            Payment.exam_fee_paid_gbp,
+            Payment.exam_fee_paid_mmk,
+            Payment.exam_fee_currency,
+            Payment.exam_fee_payment_method,
+            Payment.discount_amount,
+            Payment.created_at,
+            User.user_code,
+            User.username,
+            Course.course_name,
+            Course.course_code
+        ).join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)\
+         .join(User, Enrollment.student_id == User.user_id)\
+         .join(Course, Enrollment.course_id == Course.course_id)
+
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, "%Y-%m-%d")
+                sd_utc = sd - timedelta(hours=settings.TZ_OFFSET)
+                base_q = base_q.where(Payment.payment_date >= sd_utc)
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, "%Y-%m-%d")
+                ed = ed.replace(hour=23, minute=59, second=59, microsecond=999999)
+                ed_utc = ed - timedelta(hours=settings.TZ_OFFSET)
+                base_q = base_q.where(Payment.payment_date <= ed_utc)
+            except ValueError:
+                pass
+
+        base_q = base_q.order_by(Payment.payment_date.desc(), Payment.payment_id.desc())
+        r = await session.execute(base_q)
+        rows = r.all()
+
+        weekly_map = defaultdict(lambda: {"total_mmk": 0.0, "total_gbp": 0.0, "fine_mmk": 0.0, "extra_mmk": 0.0, "tuition_mmk": 0.0, "exam_mmk": 0.0, "payment_count": 0})
+        monthly_map = defaultdict(lambda: {"total_mmk": 0.0, "total_gbp": 0.0, "fine_mmk": 0.0, "extra_mmk": 0.0, "tuition_mmk": 0.0, "exam_mmk": 0.0, "payment_count": 0})
+        daily_map = defaultdict(lambda: {"total_mmk": 0.0, "total_gbp": 0.0, "fine_mmk": 0.0, "extra_mmk": 0.0, "tuition_mmk": 0.0, "exam_mmk": 0.0, "payment_count": 0})
+        payment_records = []
+
+        for row in rows:
+            p_date = row.payment_date or row.created_at or datetime.now()
+            # Convert naive UTC datetime to local datetime
+            if p_date.tzinfo is not None:
+                local_p_date = p_date.astimezone(timezone(timedelta(hours=settings.TZ_OFFSET))).replace(tzinfo=None)
+            else:
+                local_p_date = p_date + timedelta(hours=settings.TZ_OFFSET)
+
+            # Daily: YYYY-MM-DD
+            day_key = local_p_date.strftime("%Y-%m-%d")
+            
+            # Weekly: Monday of that week
+            monday = local_p_date - timedelta(days=local_p_date.weekday())
+            week_key = monday.strftime("%Y-%m-%d")
+
+            # Monthly: YYYY-MM
+            month_key = local_p_date.strftime("%Y-%m")
+
+            paid_mmk = (row.amount or 0.0) + (row.amount_2 or 0.0) + (row.fine_amount or 0.0) + (row.extra_items_fee or 0.0) + (row.exam_fee_paid_mmk or 0.0)
+            paid_gbp = row.exam_fee_paid_gbp or 0.0
+            
+            fine_val = row.fine_amount or 0.0
+            extra_val = row.extra_items_fee or 0.0
+            tuition_val = (row.amount or 0.0) + (row.amount_2 or 0.0)
+            exam_mmk_val = row.exam_fee_paid_mmk or 0.0
+
+            # Daily mapping
+            daily_map[day_key]["total_mmk"] += paid_mmk
+            daily_map[day_key]["total_gbp"] += paid_gbp
+            daily_map[day_key]["fine_mmk"] += fine_val
+            daily_map[day_key]["extra_mmk"] += extra_val
+            daily_map[day_key]["tuition_mmk"] += tuition_val
+            daily_map[day_key]["exam_mmk"] += exam_mmk_val
+            daily_map[day_key]["payment_count"] += 1
+
+            # Weekly mapping
+            weekly_map[week_key]["total_mmk"] += paid_mmk
+            weekly_map[week_key]["total_gbp"] += paid_gbp
+            weekly_map[week_key]["fine_mmk"] += fine_val
+            weekly_map[week_key]["extra_mmk"] += extra_val
+            weekly_map[week_key]["tuition_mmk"] += tuition_val
+            weekly_map[week_key]["exam_mmk"] += exam_mmk_val
+            weekly_map[week_key]["payment_count"] += 1
+
+            # Monthly mapping
+            monthly_map[month_key]["total_mmk"] += paid_mmk
+            monthly_map[month_key]["total_gbp"] += paid_gbp
+            monthly_map[month_key]["fine_mmk"] += fine_val
+            monthly_map[month_key]["extra_mmk"] += extra_val
+            monthly_map[month_key]["tuition_mmk"] += tuition_val
+            monthly_map[month_key]["exam_mmk"] += exam_mmk_val
+            monthly_map[month_key]["payment_count"] += 1
+
+            payment_records.append({
+                "payment_id": row.payment_id,
+                "receipt_id": row.receipt_id or "N/A",
+                "enrollment_id": row.enrollment_id,
+                "student_code": row.user_code,
+                "student_name": row.username,
+                "course_name": row.course_name,
+                "course_code": row.course_code,
+                "amount": row.amount,
+                "payment_date": f"{row.payment_date.isoformat()}Z" if row.payment_date else None,
+                "month": row.month,
+                "status": row.status,
+                "payment_method": row.payment_method,
+                "amount_2": row.amount_2 or 0.0,
+                "payment_method_2": row.payment_method_2,
+                "fine_amount": row.fine_amount or 0,
+                "fine_reason": row.fine_reason,
+                "extra_items_fee": row.extra_items_fee or 0,
+                "extra_items": row.extra_items,
+                "extra_items_payment_method": row.extra_items_payment_method,
+                "exam_fee_paid_gbp": row.exam_fee_paid_gbp or 0,
+                "exam_fee_paid_mmk": row.exam_fee_paid_mmk or 0,
+                "exam_fee_currency": row.exam_fee_currency or "MMK",
+                "exam_fee_payment_method": row.exam_fee_payment_method,
+                "discount_amount": row.discount_amount or 0.0,
+                "total_paid_mmk": paid_mmk,
+                "total_paid_gbp": paid_gbp
+            })
+
+        daily_stats = []
+        for dk, val in sorted(daily_map.items(), key=lambda x: x[0], reverse=True):
+            try:
+                dk_date = datetime.strptime(dk, "%Y-%m-%d")
+                range_str = dk_date.strftime("%b %d, %Y")
+            except Exception:
+                range_str = dk
+            daily_stats.append({
+                "day": dk,
+                "label": range_str,
+                "total_mmk": val["total_mmk"],
+                "total_gbp": val["total_gbp"],
+                "fine_mmk": val["fine_mmk"],
+                "extra_mmk": val["extra_mmk"],
+                "tuition_mmk": val["tuition_mmk"],
+                "exam_mmk": val["exam_mmk"],
+                "payment_count": val["payment_count"]
+            })
+
+        weekly_stats = []
+        for wk, val in sorted(weekly_map.items(), key=lambda x: x[0], reverse=True):
+            try:
+                wk_date = datetime.strptime(wk, "%Y-%m-%d")
+                sunday = wk_date + timedelta(days=6)
+                range_str = f"{wk_date.strftime('%b %d')} - {sunday.strftime('%b %d, %Y')}"
+            except Exception:
+                range_str = f"Week of {wk}"
+            weekly_stats.append({
+                "week_starting": wk,
+                "label": range_str,
+                "total_mmk": val["total_mmk"],
+                "total_gbp": val["total_gbp"],
+                "fine_mmk": val["fine_mmk"],
+                "extra_mmk": val["extra_mmk"],
+                "tuition_mmk": val["tuition_mmk"],
+                "exam_mmk": val["exam_mmk"],
+                "payment_count": val["payment_count"]
+            })
+
+        monthly_stats = []
+        for mk, val in sorted(monthly_map.items(), key=lambda x: x[0], reverse=True):
+            try:
+                mk_date = datetime.strptime(mk, "%Y-%m")
+                range_str = mk_date.strftime("%B %Y")
+            except Exception:
+                range_str = mk
+            monthly_stats.append({
+                "month": mk,
+                "label": range_str,
+                "total_mmk": val["total_mmk"],
+                "total_gbp": val["total_gbp"],
+                "fine_mmk": val["fine_mmk"],
+                "extra_mmk": val["extra_mmk"],
+                "tuition_mmk": val["tuition_mmk"],
+                "exam_mmk": val["exam_mmk"],
+                "payment_count": val["payment_count"]
+            })
+
+        return JSONResponse({
+            "status_code": 200,
+            "message": "Income report fetched successfully",
+            "data": {
+                "daily_stats": daily_stats,
+                "weekly_stats": weekly_stats,
+                "monthly_stats": monthly_stats,
+                "payment_records": payment_records
+            }
+        })
+
     async def list_payments(request: Request, session: AsyncSession, page: int = 1, limit: int = 50, enrollment_id: Optional[int] = None):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
-        base_q = select(Payment, Enrollment, User, Course)\
-            .join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)\
-            .join(User, Enrollment.student_id == User.user_id)\
-            .join(Course, Enrollment.course_id == Course.course_id)
+        base_q = select(
+            Payment.payment_id,
+            Payment.receipt_id,
+            Payment.enrollment_id,
+            Payment.amount,
+            Payment.payment_date,
+            Payment.month,
+            Payment.status,
+            Payment.payment_method,
+            Payment.amount_2,
+            Payment.payment_method_2,
+            Payment.discount_amount,
+            Payment.fine_amount,
+            Payment.extra_items_fee,
+            Payment.extra_items,
+            Payment.extra_items_payment_method,
+            Payment.fine_reason,
+            Payment.exam_fee_paid_gbp,
+            Payment.exam_fee_paid_mmk,
+            Payment.exam_fee_currency,
+            Payment.exam_fee_payment_method,
+            Enrollment.total_fee,
+            Enrollment.payment_plan,
+            Enrollment.downpayment,
+            Enrollment.installment_amount,
+            User.user_code,
+            User.username,
+            Course.course_name,
+            Course.course_code,
+            Course.fee_full_payment,
+            Course.fee_installment,
+            Course.foc_items,
+            Course.foc_items_installment
+        ).join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id)\
+         .join(User, Enrollment.student_id == User.user_id)\
+         .join(Course, Enrollment.course_id == Course.course_id)
             
         if enrollment_id:
             base_q = base_q.where(Payment.enrollment_id == enrollment_id)
@@ -2269,35 +2657,36 @@ class AdminPanelService:
         rows = r.all()
         
         data = []
-        for p, e, u, c in rows:
+        for row in rows:
             data.append({
-                "payment_id": p.payment_id,
-                "receipt_id": getattr(p, "receipt_id", None) or "N/A",
-                "enrollment_id": p.enrollment_id,
-                "student_code": u.user_code,
-                "student_name": u.username,
-                "course_name": c.course_name,
-                "course_code": c.course_code,
-                "amount": p.amount,
-                "payment_date": f"{p.payment_date.isoformat()}Z" if p.payment_date else None,
-                "month": p.month,
-                "status": p.status,
-                "payment_method": getattr(p, "payment_method", None),
-                "amount_2": getattr(p, "amount_2", 0.0) or 0.0,
-                "payment_method_2": getattr(p, "payment_method_2", None),
-                "course_cost": float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if getattr(e, "payment_plan", None) == "full" else (c.fee_installment if getattr(e, "payment_plan", None) == "installment" else 0.0)) or 0.0),
-                "discount_amount": getattr(p, "discount_amount", 0.0) or 0.0,
-                "foc_items": (c.foc_items_installment if getattr(e, "payment_plan", None) == "installment" else c.foc_items),
-                "downpayment": getattr(e, "downpayment", 0) or 0,
-                "installment_amount": getattr(e, "installment_amount", 0) or 0,
-                "fine_amount": getattr(p, "fine_amount", 0) or 0,
-                "extra_items_fee": getattr(p, "extra_items_fee", 0) or 0,
-                "extra_items": getattr(p, "extra_items", None),
-                "fine_reason": getattr(p, "fine_reason", None),
-                "exam_fee_paid_gbp": getattr(p, "exam_fee_paid_gbp", 0) or 0,
-                "exam_fee_paid_mmk": getattr(p, "exam_fee_paid_mmk", 0) or 0,
-                "exam_fee_currency": getattr(p, "exam_fee_currency", "MMK"),
-                "exam_fee_payment_method": getattr(p, "exam_fee_payment_method", None)
+                "payment_id": row.payment_id,
+                "receipt_id": row.receipt_id or "N/A",
+                "enrollment_id": row.enrollment_id,
+                "student_code": row.user_code,
+                "student_name": row.username,
+                "course_name": row.course_name,
+                "course_code": row.course_code,
+                "amount": row.amount,
+                "payment_date": f"{row.payment_date.isoformat()}Z" if row.payment_date else None,
+                "month": row.month,
+                "status": row.status,
+                "payment_method": row.payment_method,
+                "amount_2": row.amount_2 or 0.0,
+                "payment_method_2": row.payment_method_2,
+                "course_cost": float(row.total_fee or (row.fee_full_payment if row.payment_plan == "full" else (row.fee_installment if row.payment_plan == "installment" else 0.0)) or 0.0),
+                "discount_amount": row.discount_amount or 0.0,
+                "foc_items": (row.foc_items_installment if row.payment_plan == "installment" else row.foc_items),
+                "downpayment": row.downpayment or 0,
+                "installment_amount": row.installment_amount or 0,
+                "fine_amount": row.fine_amount or 0,
+                "extra_items_fee": row.extra_items_fee or 0,
+                "extra_items": row.extra_items,
+                "extra_items_payment_method": row.extra_items_payment_method,
+                "fine_reason": row.fine_reason,
+                "exam_fee_paid_gbp": row.exam_fee_paid_gbp or 0,
+                "exam_fee_paid_mmk": row.exam_fee_paid_mmk or 0,
+                "exam_fee_currency": row.exam_fee_currency or "MMK",
+                "exam_fee_payment_method": row.exam_fee_payment_method
             })
             
         return JSONResponse({
@@ -2372,8 +2761,7 @@ class AdminPanelService:
         date_str = receipt_date.strftime("%d%m%Y")
         prefix = f"nit-{date_str}-"
         result_seq = await session.execute(
-            select(Payment.receipt_id)
-            .where(Payment.receipt_id.like(f"{prefix}%"))
+            select(Payment.receipt_id).where(Payment.receipt_id.isnot(None))
         )
         receipt_ids = result_seq.scalars().all()
         max_seq = 0
@@ -2404,6 +2792,7 @@ class AdminPanelService:
             fine_reason=getattr(payload, "fine_reason", None),
             extra_items_fee=getattr(payload, "extra_items_fee", None),
             extra_items=getattr(payload, "extra_items", None),
+            extra_items_payment_method=getattr(payload, "extra_items_payment_method", None),
             exam_fee_paid_gbp=getattr(payload, "exam_fee_paid_gbp", None),
             exam_fee_paid_mmk=getattr(payload, "exam_fee_paid_mmk", None),
             exam_fee_currency=getattr(payload, "exam_fee_currency", "MMK"),
@@ -2411,6 +2800,8 @@ class AdminPanelService:
             discount_amount=getattr(payload, "discount_amount", 0.0)
         )
         session.add(pay)
+        await session.flush()
+        await _create_journal_entry_for_payment(session, pay)
         await session.commit()
         await session.refresh(pay)
         log_date = str(pay.payment_date) if pay.payment_date else payload.month
@@ -2478,6 +2869,14 @@ class AdminPanelService:
             return JSONResponse({"status_code": 404, "message": "Payment record not found"}, status_code=404)
 
         amount = pay.amount or 0
+        # Delete associated JournalEntry first
+        if pay.receipt_id:
+            from app.models.model import JournalEntry
+            je_q = select(JournalEntry).where(JournalEntry.reference == pay.receipt_id)
+            je_res = await session.execute(je_q)
+            je = je_res.scalars().first()
+            if je:
+                await session.delete(je)
         await session.delete(pay)
         await session.commit()
         await log_activity(request, session, "Delete Payment", f"Payment ID {payment_id} (Amount: {amount}) deleted")

@@ -8,7 +8,8 @@ from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boo
 from app.models.model import (
     User, AcademicYear, Course, Enrollment, Payment, 
     Room, TimeTable, Grade, Attendance, StaffAttendance, 
-    ParentStudent, ActivityLog, Batch, Subject
+    ParentStudent, ActivityLog, Batch, Subject,
+    Account, JournalEntry, JournalEntryLine, Expense
 )
 from app.services.rbac_portal import validating_admin_role
 from app.core.timezone_utils import get_now_local
@@ -41,7 +42,10 @@ class BackupService:
             (Attendance, "Attendances"),
             (StaffAttendance, "StaffAttendances"),
             (ParentStudent, "ParentStudentLinks"),
-            (ActivityLog, "ActivityLogs")
+            (Account, "Accounts"),
+            (Expense, "Expenses"),
+            (JournalEntry, "JournalEntries"),
+            (JournalEntryLine, "JournalEntryLines")
         ]
 
         # Fetch and prepare all data first to avoid database queries inside the ExcelWriter block,
@@ -99,12 +103,16 @@ class BackupService:
             import_order = [
                 ("Rooms", Room),
                 ("AcademicYears", AcademicYear),
+                ("Accounts", Account),
                 ("Users", User),
                 ("Courses", Course),
                 ("Batches", Batch),
                 ("Subjects", Subject),
                 ("Enrollments", Enrollment),
                 ("Payments", Payment),
+                ("Expenses", Expense),
+                ("JournalEntries", JournalEntry),
+                ("JournalEntryLines", JournalEntryLine),
                 ("Timetables", TimeTable),
                 ("Grades", Grade),
                 ("Attendances", Attendance),
@@ -343,7 +351,11 @@ class BackupService:
                 ("staff_attendance", "id"),
                 ("parent_student", "id"),
                 ("activity_logs", "log_id"),
-                ("refresh_tokens", "id")
+                ("refresh_tokens", "id"),
+                ("accounts", "account_id"),
+                ("journal_entries", "entry_id"),
+                ("journal_entry_lines", "line_id"),
+                ("expenses", "expense_id")
             ]
             
             # Reset Sequences

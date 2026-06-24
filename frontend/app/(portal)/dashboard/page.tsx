@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, Fragment } from "react";
 import { Child, PortalService, StudentCourse, StudentAttendance } from "@/services/portal.service";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminCourse, AdminEnrollment, AdminRoom, AdminService, AdminStudent } from "@/services/admin.service";
-import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound, ChevronLeft, ChevronRight, X, Eye } from "lucide-react";
+import { Users, BookOpen, Fingerprint, Award, TrendingUp, CheckCircle2, DoorOpen, UserRound, ChevronLeft, ChevronRight, X, Eye, Landmark, Loader2, Download, CreditCard } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -24,6 +24,9 @@ import {
 } from "recharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { StatisticSkeleton, ChartSkeleton } from "@/components/ui/Skeleton";
+import { formatAmount } from "@/utils/format";
+import { exportToExcel } from "@/utils/excelExport";
+import clsx from "clsx";
 
 const studentChartData = [
   { name: "Jan", pv: 2400 },
@@ -59,6 +62,98 @@ export default function DashboardPage() {
   const [childPage, setChildPage] = useState<number>(1);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<any | null>(null);
   const { admin, parent, student } = useDashboardData(selectedChild, childPage);
+
+  // Accountant dashboard state
+  const isAccountant = user?.role === "accountant";
+  const [activeFilter, setActiveFilter] = useState<"day" | "week" | "month" | "all">("all");
+  const [accStartDate, setAccStartDate] = useState("");
+  const [accEndDate, setAccEndDate] = useState("");
+  const [accIncomeReport, setAccIncomeReport] = useState<any>(null);
+  const [accLoading, setAccLoading] = useState(false);
+  const [accTrendType, setAccTrendType] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [accIncomeCurrency, setAccIncomeCurrency] = useState<"MMK" | "GBP">("MMK");
+
+  const getDateRangeForFilter = (filter: "day" | "week" | "month" | "all") => {
+    const today = new Date();
+    let start = "";
+    let end = "";
+    
+    const formatLocalYmd = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    if (filter === "day") {
+      start = formatLocalYmd(today);
+      end = formatLocalYmd(today);
+    } else if (filter === "week") {
+      const currentDay = today.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + distanceToMonday);
+      start = formatLocalYmd(monday);
+      end = formatLocalYmd(today);
+    } else if (filter === "month") {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      start = formatLocalYmd(firstDay);
+      end = formatLocalYmd(today);
+    }
+    return { start, end };
+  };
+
+  const handleAccFilterSelect = (filter: "day" | "week" | "month" | "all") => {
+    setActiveFilter(filter);
+    const { start, end } = getDateRangeForFilter(filter);
+    setAccStartDate(start);
+    setAccEndDate(end);
+  };
+
+  const fetchAccDashboardData = async () => {
+    if (!isAccountant) return;
+    setAccLoading(true);
+    try {
+      const report = await AdminService.getIncomeReport(accStartDate || undefined, accEndDate || undefined);
+      setAccIncomeReport(report);
+    } catch (err) {
+      console.error("Failed to load accountant dashboard data", err);
+    } finally {
+      setAccLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAccountant) {
+      fetchAccDashboardData();
+    }
+  }, [isAccountant, accStartDate, accEndDate]);
+
+  const accIncomeTrendData = useMemo(() => {
+    if (!accIncomeReport) return [];
+    if (accTrendType === "daily") return accIncomeReport.daily_stats;
+    if (accTrendType === "monthly") return accIncomeReport.monthly_stats;
+    return accIncomeReport.weekly_stats;
+  }, [accIncomeReport, accTrendType]);
+
+  const handleExportIncomeReport = () => {
+    if (!accIncomeReport) return;
+    const formattedRecords = accIncomeReport.payment_records.map((r: any) => ({
+      ID: r.payment_id,
+      Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+      Student_Name: r.student_name || "N/A",
+      Course_Name: r.course_name || "N/A",
+      Amount_MMK: r.amount,
+      Extra_Fee_MMK: r.extra_items_fee || 0,
+      Fine_MMK: r.fine_amount || 0,
+      Discount_MMK: r.discount_amount || 0,
+      ExamFee_GBP: r.exam_fee_paid_gbp || 0,
+      ExamFee_MMK: r.exam_fee_paid_mmk || 0,
+      Method: r.payment_method,
+      Status: r.status
+    }));
+    exportToExcel(formattedRecords, "Accountant_Income_Report", "Payments");
+  };
 
   // Redirect teachers to their dedicated dashboard
   useEffect(() => {
@@ -160,6 +255,286 @@ export default function DashboardPage() {
         capacity: r.capacity,
       }));
   }, [adminRooms]);
+
+  if (isAccountant) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+        {/* Header section */}
+        <div className="bg-white rounded-3xl border border-slate-100/50 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <Landmark className="w-7 h-7 text-brand-600" />
+              Accountant Dashboard
+            </h1>
+            <p className="text-slate-500 font-medium text-sm mt-1">
+              Welcome back, {user?.user_code || "Accountant"}
+            </p>
+          </div>
+
+          {/* Quick Date Range Filters for the Accountant Dashboard */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Preset Date Filters */}
+            <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+              {(["day", "week", "month", "all"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => handleAccFilterSelect(filter)}
+                  className={clsx(
+                    "px-3 py-1 rounded-lg text-xs font-bold transition-all capitalize cursor-pointer",
+                    activeFilter === filter
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  )}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+              <input 
+                type="date" 
+                value={accStartDate} 
+                onChange={(e) => { setAccStartDate(e.target.value); setActiveFilter("all"); }}
+                className="bg-transparent text-xs font-semibold px-2 py-1 focus:outline-none text-slate-700" 
+              />
+              <span className="text-xs text-slate-400 font-bold px-1">to</span>
+              <input 
+                type="date" 
+                value={accEndDate} 
+                onChange={(e) => { setAccEndDate(e.target.value); setActiveFilter("all"); }}
+                className="bg-transparent text-xs font-semibold px-2 py-1 focus:outline-none text-slate-700" 
+              />
+              {(accStartDate || accEndDate) && (
+                <button 
+                  onClick={() => { setAccStartDate(""); setAccEndDate(""); setActiveFilter("all"); }}
+                  className="p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {accLoading && (
+          <div className="flex justify-center py-12 bg-white rounded-3xl border border-slate-100/50">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          </div>
+        )}
+
+        {!accLoading && (
+          <>
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Income (MMK)</span>
+                <div className="text-xl font-black text-slate-800 mt-1">
+                  {formatAmount(accIncomeReport?.payment_records?.reduce((sum: number, r: any) => sum + (r.amount || 0) + (r.extra_items_fee || 0) + (r.fine_amount || 0), 0) || 0)}
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-500 flex items-center gap-0.5 mt-2">
+                  <TrendingUp className="w-3.5 h-3.5" /> Tuition + Extras
+                </span>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Exam Fees (GBP)</span>
+                <div className="text-xl font-black text-slate-800 mt-1">
+                  £{(accIncomeReport?.payment_records?.reduce((sum: number, r: any) => sum + (r.exam_fee_paid_gbp || 0), 0) || 0).toFixed(2)}
+                </div>
+                <span className="text-[10px] font-semibold text-indigo-500 flex items-center gap-0.5 mt-2">
+                  <TrendingUp className="w-3.5 h-3.5" /> Exam registration
+                </span>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Fines Collected (MMK)</span>
+                <div className="text-xl font-black text-amber-600 mt-1">
+                  {formatAmount(accIncomeReport?.payment_records?.reduce((sum: number, r: any) => sum + (r.fine_amount || 0), 0) || 0)}
+                </div>
+                <span className="text-[10px] font-semibold text-slate-400 mt-2 block">Late payment penalties</span>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Extra Fee Received</span>
+                <div className="text-xl font-black text-slate-800 mt-1">
+                  {formatAmount(accIncomeReport?.payment_records?.reduce((sum: number, r: any) => sum + (r.extra_items_fee || 0), 0) || 0)} <span className="text-xs font-normal">MMK</span>
+                </div>
+                <span className="text-[10px] font-semibold text-slate-400 mt-2 block">Uniforms, books, badges</span>
+              </div>
+            </div>
+
+            {/* Income charts & trends */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Income Trend</h3>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={accTrendType}
+                      onChange={(e: any) => setAccTrendType(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-2 py-1.5 focus:outline-none"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                    <select
+                      value={accIncomeCurrency}
+                      onChange={(e: any) => setAccIncomeCurrency(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-2 py-1.5 focus:outline-none"
+                    >
+                      <option value="MMK">MMK</option>
+                      <option value="GBP">GBP</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="w-full">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={accIncomeTrendData}>
+                      <defs>
+                        <linearGradient id="colorAccInc" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={accIncomeCurrency === "MMK" ? "#4f46e5" : "#0d9488"} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={accIncomeCurrency === "MMK" ? "#4f46e5" : "#0d9488"} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} />
+                      <YAxis stroke="#94a3b8" fontSize={10} />
+                      <Tooltip />
+                      <Area 
+                        type="monotone" 
+                        dataKey={accIncomeCurrency === "MMK" ? "total_mmk" : "total_gbp"} 
+                        name={accIncomeCurrency === "MMK" ? "MMK Income" : "GBP Income"} 
+                        stroke={accIncomeCurrency === "MMK" ? "#4f46e5" : "#0d9488"} 
+                        fillOpacity={1} 
+                        fill="url(#colorAccInc)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Fee category breakdown card */}
+              <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6">Fee category breakdown (MMK)</h3>
+                
+                {accIncomeReport && (
+                  <div className="space-y-4">
+                    {[
+                      { 
+                        name: "Tuition Fees", 
+                        val: accIncomeReport.payment_records?.reduce((sum: number, r: any) => sum + (r.amount || 0), 0) || 0,
+                        color: "bg-indigo-600"
+                      },
+                      { 
+                        name: "Exam Fees (MMK equivalent)", 
+                        val: accIncomeReport.payment_records?.reduce((sum: number, r: any) => sum + (r.exam_fee_paid_mmk || 0), 0) || 0,
+                        color: "bg-teal-600"
+                      },
+                      { 
+                        name: "Fines & Penalties", 
+                        val: accIncomeReport.payment_records?.reduce((sum: number, r: any) => sum + (r.fine_amount || 0), 0) || 0,
+                        color: "bg-amber-600"
+                      },
+                      { 
+                        name: "Extra Items & Materials", 
+                        val: accIncomeReport.payment_records?.reduce((sum: number, r: any) => sum + (r.extra_items_fee || 0), 0) || 0,
+                        color: "bg-pink-600"
+                      }
+                    ].map((item, idx) => {
+                      const totalMmk = accIncomeReport.payment_records?.reduce((sum: number, r: any) => sum + (r.amount || 0) + (r.extra_items_fee || 0) + (r.fine_amount || 0) + (r.exam_fee_paid_mmk || 0), 0) || 1;
+                      const percentage = Math.round((item.val / totalMmk) * 100) || 0;
+                      return (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex justify-between items-center text-xs font-semibold">
+                            <span className="text-slate-600">{item.name}</span>
+                            <span className="text-slate-800">{formatAmount(item.val)} MMK ({percentage}%)</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div className={clsx("h-2 rounded-full", item.color)} style={{ width: `${percentage}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Income Transactions Table */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-indigo-500" />
+                  Payments Transaction Audit Log
+                </h3>
+                {accIncomeReport?.payment_records?.length > 0 && (
+                  <button
+                    onClick={handleExportIncomeReport}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
+                  >
+                    <Download className="w-4 h-4" /> Export Excel
+                  </button>
+                )}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-[10px] uppercase font-black tracking-widest text-slate-400 border-b border-slate-100">
+                      <th className="px-6 py-3">ID</th>
+                      <th className="px-6 py-3">Date</th>
+                      <th className="px-6 py-3">Student / Course</th>
+                      <th className="px-6 py-3 text-right">Tuition (MMK)</th>
+                      <th className="px-6 py-3 text-right">Extra Items (MMK)</th>
+                      <th className="px-6 py-3 text-right">Fines (MMK)</th>
+                      <th className="px-6 py-3 text-right">Exam Paid (GBP)</th>
+                      <th className="px-6 py-3 text-right">Exam Paid (MMK)</th>
+                      <th className="px-6 py-3">Method</th>
+                      <th className="px-6 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700 text-xs">
+                    {!accIncomeReport?.payment_records || accIncomeReport.payment_records.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-6 py-8 text-center text-slate-400 font-medium">
+                          No payments recorded in the selected period.
+                        </td>
+                      </tr>
+                    ) : (
+                      accIncomeReport.payment_records.map((payment: any) => (
+                        <tr key={payment.payment_id} className="hover:bg-slate-50/50">
+                          <td className="px-6 py-3 font-bold text-slate-800">#P{payment.payment_id}</td>
+                          <td className="px-6 py-3">{payment.payment_date ? payment.payment_date.split("T")[0] + " " + payment.payment_date.split("T")[1]?.slice(0, 8) : "—"}</td>
+                          <td className="px-6 py-3 font-semibold text-slate-600">
+                            <div className="font-bold text-slate-800">{payment.student_name || "N/A"}</div>
+                            <div className="text-[10px] text-slate-400 font-medium mt-0.5">{payment.course_name || "N/A"}</div>
+                          </td>
+                          <td className="px-6 py-3 text-right font-semibold text-slate-900">{formatAmount(payment.amount)}</td>
+                          <td className="px-6 py-3 text-right font-semibold text-slate-900">{formatAmount(payment.extra_items_fee || 0)}</td>
+                          <td className="px-6 py-3 text-right font-semibold text-rose-600">+{formatAmount(payment.fine_amount || 0)}</td>
+                          <td className="px-6 py-3 text-right font-semibold text-indigo-700">£{(payment.exam_fee_paid_gbp || 0).toFixed(2)}</td>
+                          <td className="px-6 py-3 text-right font-semibold text-slate-900">{formatAmount(payment.exam_fee_paid_mmk || 0)}</td>
+                          <td className="px-6 py-3 font-bold text-slate-500">{payment.payment_method}</td>
+                          <td className="px-6 py-3">
+                            <span className={clsx(
+                              "px-2 py-0.5 rounded-md font-bold text-[10px] tracking-wide",
+                              payment.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-slate-100 text-slate-700"
+                            )}>
+                              {payment.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   if (isAdminOrSales) {
     return (

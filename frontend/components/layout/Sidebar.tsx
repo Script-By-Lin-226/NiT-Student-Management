@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Clock, CalendarDays, Award, User, LogOut, Users, Shield, DoorOpen, CalendarClock, CreditCard, Database } from "lucide-react";
+import { Home, BookOpen, Clock, CalendarDays, Award, User, LogOut, Users, Shield, DoorOpen, CalendarClock, CreditCard, Database, BarChart } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 import BrandLogo from "@/components/BrandLogo";
@@ -38,6 +38,12 @@ const teacherNav = [
   { name: "Profile", href: "/profile", icon: User },
 ];
 
+const accountantNav = [
+  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Finance", href: "/admin/finance", icon: BarChart },
+  { name: "Profile", href: "/profile", icon: User },
+];
+
 const adminNav = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Students", href: "/admin/students", icon: Users },
@@ -64,6 +70,7 @@ export default function Sidebar() {
   if (isParent) navigation = parentNav;
   if (isStaff) navigation = staffNav;
   if (user?.role === "teacher") navigation = teacherNav;
+  if (user?.role === "accountant") navigation = accountantNav;
   if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 

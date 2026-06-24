@@ -17,6 +17,7 @@ async def update_db():
             await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_paid_mmk DOUBLE PRECISION"))
             await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS exam_fee_currency VARCHAR DEFAULT 'MMK'"))
             await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS fine_reason TEXT"))
+            await conn.execute(text("ALTER TABLE payments ADD COLUMN IF NOT EXISTS extra_items_payment_method VARCHAR"))
         except Exception as e:
             print(f"payments alter skipped: {e}")
             
