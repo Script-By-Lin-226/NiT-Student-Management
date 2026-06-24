@@ -292,3 +292,14 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-24 18:27:24,796 - NiT-SMS - INFO - Excel export completed: backup_20260624_182724.xlsx
 2026-06-24 18:28:27,059 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User PAR0001 deleted
 2026-06-24 23:37:59,137 - NiT-SMS - INFO - Activity logged: [Unknown] Create Staff: Created accountant account 'Nyein Chan' (ACC0001)
+2026-06-25 01:25:16,699 - NiT-SMS - INFO - Activity logged: [Unknown] Create Payment: Payment of 100000.0 recorded for enrollment 18 (2026-06-24 18:55:00)
+2026-06-25 01:25:28,619 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Payment: Payment ID 20 (Amount: 100000.0) deleted
+2026-06-25 01:56:06,001 - NiT-SMS - INFO - Activity logged: [Unknown] Create Payment: Payment of 0.0 recorded for enrollment 18 (2026-06-24 19:25:00)
+2026-06-25 01:59:20,063 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Payment: Payment ID 21 (Amount: 0) deleted
+2026-06-25 02:00:00,875 - NiT-SMS - INFO - Activity logged: [Unknown] Update Payment: Payment ID 19 updated
+2026-06-25 02:01:30,704 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-25 02:01:30,704 - NiT-SMS - INFO - Starting Excel export...
+2026-06-25 02:02:02,880 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-25 02:02:02,882 - NiT-SMS - INFO - Starting Excel export...
+2026-06-25 02:02:23,345 - NiT-SMS - INFO - Excel export completed: backup_20260625_020223.xlsx
+2026-06-25 02:02:40,811 - NiT-SMS - INFO - Excel export completed: backup_20260625_020240.xlsx

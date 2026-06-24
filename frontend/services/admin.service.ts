@@ -890,8 +890,16 @@ export class AdminService {
   }
 
   // Payments
-  static async listPayments(page: number = 1, limit: number = 50, enrollmentId?: number): Promise<PaginatedResponse<AdminPayment>> {
-    const res = await api.get<PaginatedResponse<AdminPayment>>("/admin/payments", { params: { page, limit, enrollment_id: enrollmentId } });
+  static async listPayments(page: number = 1, limit: number = 50, enrollmentId?: number, studentId?: number, receiptId?: string): Promise<PaginatedResponse<AdminPayment>> {
+    const res = await api.get<PaginatedResponse<AdminPayment>>("/admin/payments", { 
+      params: { 
+        page, 
+        limit, 
+        enrollment_id: enrollmentId,
+        student_id: studentId,
+        receipt_id: receiptId
+      } 
+    });
     return res.data;
   }
 

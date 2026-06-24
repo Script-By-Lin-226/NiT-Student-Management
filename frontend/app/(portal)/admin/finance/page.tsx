@@ -6,7 +6,7 @@ import {
   BarChart as BarChartIcon, Landmark, BookOpen, FileSpreadsheet, Wallet, 
   ArrowDownRight, ArrowUpRight, Search, Plus, Filter, 
   Check, X, Download, FileText, Loader2, ArrowLeftRight, 
-  CreditCard, ChevronRight, User, Trash2, Calendar, AlertCircle
+  CreditCard, ChevronRight, User, Trash2, Calendar, AlertCircle, Receipt
 } from "lucide-react";
 import { 
   AdminService, Account, JournalEntry, BookLogEntry, 
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { exportToExcel } from "@/utils/excelExport";
 import { toast } from "sonner";
 import { formatAmount } from "@/utils/format";
+import { generateReceiptPDF } from "@/utils/pdfReceipt";
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
   Tooltip, BarChart, Bar, Legend, CartesianGrid 
@@ -124,6 +125,7 @@ export default function FinancePage() {
   const [studentLedger, setStudentLedger] = useState<StudentLedgerEntry[]>([]);
   const [studentSearch, setStudentSearch] = useState("");
   const [studentLedgerLoading, setStudentLedgerLoading] = useState(false);
+  const [studentPayments, setStudentPayments] = useState<any[]>([]);
 
   // Drilldown states
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
@@ -235,12 +237,71 @@ export default function FinancePage() {
   const loadStudentLedger = async (studentId: number) => {
     setStudentLedgerLoading(true);
     try {
-      const data = await AdminService.getStudentLedger(studentId);
-      setStudentLedger(data || []);
+      const [ledgerData, paymentsData] = await Promise.all([
+        AdminService.getStudentLedger(studentId),
+        AdminService.listPayments(1, 100, undefined, studentId)
+      ]);
+      setStudentLedger(ledgerData || []);
+      setStudentPayments(paymentsData.data || []);
     } catch (err: any) {
       toast.error("Failed to load student transaction ledger");
     } finally {
       setStudentLedgerLoading(false);
+    }
+  };
+
+  const handleDownloadReceipt = async (receiptId: string | null | undefined) => {
+    if (!receiptId) return;
+    const payment = studentPayments.find(p => p.receipt_id === receiptId);
+    if (!payment) {
+      toast.error("Corresponding payment record not found for this transaction reference.");
+      return;
+    }
+
+    const studentPaymentsForEnrollment = studentPayments.filter(p => p.enrollment_id === payment.enrollment_id);
+    const sorted = [...studentPaymentsForEnrollment].sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime());
+    const payIdx = sorted.findIndex(p => p.payment_id === payment.payment_id);
+    const paymentsUpToNow = sorted.slice(0, payIdx + 1);
+    
+    const totalCost = payment.course_cost || 0;
+    const totalPaidAndDiscount = paymentsUpToNow.reduce((sum, p) => sum + p.amount + (p.amount_2 || 0) + (p.discount_amount || 0), 0);
+    const leftAmount = Math.max(0, totalCost - totalPaidAndDiscount);
+    
+    const isFirstPayment = payIdx === 0;
+
+    const mockEnrollment: any = {
+      enrollment_id: payment.enrollment_id,
+      enrollment_code: payment.enrollment_code || "",
+      student_id: selectedStudent?.user_id || 0,
+      student_name: payment.student_name,
+      student_code: payment.student_code,
+      course_id: 0,
+      course_code: payment.course_code,
+      course_name: payment.course_name,
+      course_cost: payment.course_cost || 0,
+      payment_plan: payment.payment_plan || "full",
+      downpayment: payment.downpayment || 0,
+      installment_amount: payment.installment_amount || 0,
+      foc_items: payment.foc_items || null,
+      status: true,
+      enrollment_date: payment.payment_date,
+    };
+
+    try {
+      toast.info("Generating PDF receipt...");
+      await generateReceiptPDF(
+        mockEnrollment,
+        [payment],
+        leftAmount,
+        0,
+        user?.username || "Admin",
+        isFirstPayment,
+        "a4"
+      );
+      toast.success("Receipt downloaded successfully!");
+    } catch (err) {
+      console.error("Failed to generate receipt PDF", err);
+      toast.error("Failed to generate receipt PDF");
     }
   };
 
@@ -1872,6 +1933,7 @@ export default function FinancePage() {
                             <th className="px-6 py-3 text-right">Debit (+)</th>
                             <th className="px-6 py-3 text-right">Credit (-)</th>
                             <th className="px-6 py-3">Type</th>
+                            <th className="px-6 py-3 text-center">Receipt</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-slate-700 text-xs">
@@ -1896,6 +1958,20 @@ export default function FinancePage() {
                                 <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold text-[9px] uppercase text-slate-500">
                                   {post.entry_type}
                                 </span>
+                              </td>
+                              <td className="px-6 py-3 text-center">
+                                {post.reference && studentPayments.some(p => p.receipt_id === post.reference) ? (
+                                  <button
+                                    onClick={() => handleDownloadReceipt(post.reference)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-brand-50 border border-brand-100 hover:bg-brand-100 text-brand-700 text-[10px] font-bold cursor-pointer transition-all active:scale-95"
+                                    title="Download Receipt"
+                                  >
+                                    <Receipt className="w-3 h-3" />
+                                    View
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
+                                )}
                               </td>
                             </tr>
                           ))}

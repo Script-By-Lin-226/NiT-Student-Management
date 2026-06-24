@@ -1,6 +1,26 @@
-# Accountant Panel Enhancements To-Do List
+# Payments & Receipts Enhancements To-Do List
 
-1. Delete the sample expenses from the database.
-2. Add preset day, week, month, and all filters on the Finance page dashboard tab and Payments Transaction Audit Log.
-3. Enhance the accountant dashboard at `/dashboard` with specific KPI summary cards, trends, and transaction logs.
-4. Verify the changes.
+- [x] Support printing receipt in A4 and A5 sizes
+  - [x] Add state `openReceiptDropdown` in `payments/page.tsx`
+  - [x] Update "Receipt" button in Payments Table to display A4/A5 choice dropdown
+  - [x] Update "Receipt" button in Enrollment Card view to display A4/A5 choice dropdown
+  - [x] Update "Receipt" button in Payment History Modal to display A4/A5 choice dropdown
+  - [x] Pass chosen layout size to `generateReceiptPDF` function call
+- [x] Add Income Dashboard in Payments page
+  - [x] Add `activeTab` state (`"tracker"` or `"dashboard"`) in `payments/page.tsx`
+  - [x] Add tab navigation buttons at the top of Payments page
+  - [x] Add date range filter states and fetch logic (`fetchIncomeDashboardData`)
+  - [x] Render KPI summary cards, AreaChart trend, category breakdown, and Audit Log table under "dashboard" tab
+- [x] Complete Extra Items details in Payment forms
+  - [x] Add `pExtraItemsMethod` state for extra items payment method
+  - [x] Add input/select elements for name, price, and payment method in Record Payment form
+  - [x] Add input/select elements for name, price, and payment method in Edit Payment form
+  - [x] Save and submit `extra_items_payment_method` in payment payload
+  - [x] Add validation to ensure name and method are entered when extra items fee is non-zero
+- [/] Support multiple extra items with specific name, price, and method
+  - [x] Update backend to parse multiple extra items and create separate journal entries
+  - [x] Update frontend payments page to support adding/removing multiple extra items in Record/Edit forms
+  - [ ] Verify functionality via manual/browser tests
+- [ ] Verification
+  - [x] Run typescript & lint compile checks
+  - [ ] Verify receipt downloading, dashboard rendering, and extra item fee submission

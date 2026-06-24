@@ -111,23 +111,55 @@ async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment)
 
     # Extra Items Fee
     if pay.extra_items_fee and pay.extra_items_fee > 0:
-        extra_method = pay.extra_items_payment_method or pay.payment_method or "Cash"
-        deb_extra_name = "CB Bank (MMK)" if extra_method == "Bank Transfer" else ("Petty Cash (MMK)" if extra_method == "Petty Cash" else ("KBZ Bank (MMK)" if extra_method == "KPay" else "Cash in Hand (MMK)"))
-        deb_extra_acc = await get_acc(deb_extra_name, "Asset")
-        extra_rev_acc = await get_acc("Extra Items Revenue (MMK)", "Revenue")
+        import json
+        items = []
+        if pay.extra_items:
+            try:
+                items = json.loads(pay.extra_items)
+            except Exception:
+                pass
         
-        session.add(JournalEntryLine(
-            entry_id=entry.entry_id,
-            account_id=deb_extra_acc.account_id,
-            debit_mmk=pay.extra_items_fee,
-            credit_mmk=0.0
-        ))
-        session.add(JournalEntryLine(
-            entry_id=entry.entry_id,
-            account_id=extra_rev_acc.account_id,
-            debit_mmk=0.0,
-            credit_mmk=pay.extra_items_fee
-        ))
+        # Check if it's a valid list of dicts with price
+        if isinstance(items, list) and len(items) > 0 and all(isinstance(it, dict) and "price" in it for it in items):
+            extra_rev_acc = await get_acc("Extra Items Revenue (MMK)", "Revenue")
+            for it in items:
+                price = float(it.get("price") or 0)
+                if price <= 0:
+                    continue
+                item_method = it.get("method") or pay.extra_items_payment_method or pay.payment_method or "Cash"
+                deb_extra_name = "CB Bank (MMK)" if item_method == "Bank Transfer" else ("Petty Cash (MMK)" if item_method == "Petty Cash" else ("KBZ Bank (MMK)" if item_method in ["KPay", "KBZPay"] else "Cash in Hand (MMK)"))
+                deb_extra_acc = await get_acc(deb_extra_name, "Asset")
+                
+                session.add(JournalEntryLine(
+                    entry_id=entry.entry_id,
+                    account_id=deb_extra_acc.account_id,
+                    debit_mmk=price,
+                    credit_mmk=0.0
+                ))
+                session.add(JournalEntryLine(
+                    entry_id=entry.entry_id,
+                    account_id=extra_rev_acc.account_id,
+                    debit_mmk=0.0,
+                    credit_mmk=price
+                ))
+        else:
+            extra_method = pay.extra_items_payment_method or pay.payment_method or "Cash"
+            deb_extra_name = "CB Bank (MMK)" if extra_method == "Bank Transfer" else ("Petty Cash (MMK)" if extra_method == "Petty Cash" else ("KBZ Bank (MMK)" if extra_method in ["KPay", "KBZPay"] else "Cash in Hand (MMK)"))
+            deb_extra_acc = await get_acc(deb_extra_name, "Asset")
+            extra_rev_acc = await get_acc("Extra Items Revenue (MMK)", "Revenue")
+            
+            session.add(JournalEntryLine(
+                entry_id=entry.entry_id,
+                account_id=deb_extra_acc.account_id,
+                debit_mmk=pay.extra_items_fee,
+                credit_mmk=0.0
+            ))
+            session.add(JournalEntryLine(
+                entry_id=entry.entry_id,
+                account_id=extra_rev_acc.account_id,
+                debit_mmk=0.0,
+                credit_mmk=pay.extra_items_fee
+            ))
 
     # Exam Fee Paid GBP
     if pay.exam_fee_paid_gbp and pay.exam_fee_paid_gbp > 0:
@@ -2598,7 +2630,7 @@ class AdminPanelService:
             }
         })
 
-    async def list_payments(request: Request, session: AsyncSession, page: int = 1, limit: int = 50, enrollment_id: Optional[int] = None):
+    async def list_payments(request: Request, session: AsyncSession, page: int = 1, limit: int = 50, enrollment_id: Optional[int] = None, student_id: Optional[int] = None, receipt_id: Optional[str] = None):
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
@@ -2642,12 +2674,20 @@ class AdminPanelService:
             
         if enrollment_id:
             base_q = base_q.where(Payment.enrollment_id == enrollment_id)
+        if student_id:
+            base_q = base_q.where(Enrollment.student_id == student_id)
+        if receipt_id:
+            base_q = base_q.where(Payment.receipt_id == receipt_id)
             
         base_q = base_q.order_by(Payment.payment_date.desc(), Payment.payment_id.desc())
             
         count_q = select(func.count(Payment.payment_id))
         if enrollment_id:
             count_q = count_q.where(Payment.enrollment_id == enrollment_id)
+        if student_id:
+            count_q = count_q.join(Enrollment, Payment.enrollment_id == Enrollment.enrollment_id).where(Enrollment.student_id == student_id)
+        if receipt_id:
+            count_q = count_q.where(Payment.receipt_id == receipt_id)
             
         res_count = await session.execute(count_q)
         total_count = res_count.scalar() or 0
@@ -2854,6 +2894,21 @@ class AdminPanelService:
         for key, value in update_data.items():
             if hasattr(pay, key):
                 setattr(pay, key, value)
+
+        await session.flush()
+        
+        # Delete old journal entry if exists
+        if pay.receipt_id:
+            from app.models.model import JournalEntry
+            je_q = select(JournalEntry).where(JournalEntry.reference == pay.receipt_id)
+            je_res = await session.execute(je_q)
+            je = je_res.scalars().first()
+            if je:
+                await session.delete(je)
+                await session.flush()
+        
+        # Recreate new journal entry
+        await _create_journal_entry_for_payment(session, pay)
 
         await session.commit()
         await log_activity(request, session, "Update Payment", f"Payment ID {payment_id} updated")
