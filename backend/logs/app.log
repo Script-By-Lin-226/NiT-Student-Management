@@ -303,3 +303,6 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-25 02:02:02,882 - NiT-SMS - INFO - Starting Excel export...
 2026-06-25 02:02:23,345 - NiT-SMS - INFO - Excel export completed: backup_20260625_020223.xlsx
 2026-06-25 02:02:40,811 - NiT-SMS - INFO - Excel export completed: backup_20260625_020240.xlsx
+2026-06-25 02:14:46,412 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-25 02:14:46,417 - NiT-SMS - INFO - Starting Excel export...
+2026-06-25 02:14:50,858 - NiT-SMS - INFO - Excel export completed: backup_20260625_021450.xlsx
