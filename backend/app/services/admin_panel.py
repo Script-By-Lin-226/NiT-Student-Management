@@ -230,6 +230,7 @@ def _serialize_user(u: User) -> dict:
         "parent_phone": getattr(u, "parent_phone", None),
         "address": getattr(u, "address", None),
         "profile_picture": getattr(u, "profile_picture", None),
+        "signature": getattr(u, "signature", None),
         "data_of_birth": u.data_of_birth.isoformat() if getattr(u, "data_of_birth", None) else None,
         "how_did_you_hear": getattr(u, "how_did_you_hear", None),
         "student_type": getattr(u, "student_type", None),
@@ -1667,6 +1668,7 @@ class AdminPanelService:
             
             d["foc_items"] = (c.foc_items_installment if plan == "installment" else c.foc_items)
             d["profile_picture"] = u.profile_picture
+            d["signature"] = getattr(u, "signature", None)
             data.append(d)
         return JSONResponse({
             "status_code": 200, 
@@ -2662,6 +2664,7 @@ class AdminPanelService:
             Enrollment.installment_amount,
             User.user_code,
             User.username,
+            User.signature,
             Course.course_name,
             Course.course_code,
             Course.fee_full_payment,
@@ -2704,6 +2707,7 @@ class AdminPanelService:
                 "enrollment_id": row.enrollment_id,
                 "student_code": row.user_code,
                 "student_name": row.username,
+                "signature": row.signature,
                 "course_name": row.course_name,
                 "course_code": row.course_code,
                 "amount": row.amount,

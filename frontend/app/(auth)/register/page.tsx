@@ -13,11 +13,130 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function SignaturePad({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.strokeStyle = "#0d4d4d"; // Brand color
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Adjust canvas resolution for crisp rendering
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+
+    if (!value) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [value]);
+
+  const getCoordinates = (e: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e: any) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = getCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: any) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = getCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = (e: any) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      onChange(canvas.toDataURL("image/png"));
+    }
+  };
+
+  const handleClear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange("");
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="relative border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden bg-slate-50 h-52 group hover:border-[#0d4d4d]/30 transition-all">
+        <canvas
+          ref={canvasRef}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          className="w-full h-full cursor-crosshair touch-none"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute top-4 right-4 px-4 py-2 bg-white text-xs font-bold border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-100 hover:text-slate-950 transition-all shadow-sm active:scale-[0.98]"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-slate-400 text-center font-medium">Draw your signature inside the box above. Touchscreen and mouse drawing are supported.</p>
+    </div>
+  );
+}
+
 const STEPS = [
   { id: 1, title: "Personal Info", desc: "Profile photo and basic details." },
   { id: 2, title: "Academic Info", desc: "Select your desired course." },
   { id: 3, title: "Guardian & Home", desc: "Contact for your guardian." },
   { id: 4, title: "Survey", desc: "How did you hear about us?" },
+  { id: 5, title: "E-Signature", desc: "Provide your signature to complete." },
 ];
 
 export default function RegisterPage() {
@@ -37,6 +156,7 @@ export default function RegisterPage() {
     department: "College",
     course_code: "",
     student_type: "New Student",
+    signature: "",
   });
   
   const [courses, setCourses] = useState<PublicCourse[]>([]);
@@ -87,18 +207,19 @@ export default function RegisterPage() {
     try {
       const finalFormData = {
         ...formData,
-        email: formData.email.trim() || undefined,
-        date_of_birth: formData.date_of_birth || undefined,
-        nrc: formData.nrc.trim() || undefined,
-        gender: formData.gender || undefined,
-        parent_name: formData.parent_name.trim() || undefined,
-        parent_phone: formData.parent_phone.trim() || undefined,
-        address: formData.address.trim() || undefined,
-        student_type: formData.student_type || undefined,
+        email: formData.email.trim(),
+        date_of_birth: formData.date_of_birth,
+        nrc: formData.nrc.trim(),
+        gender: formData.gender,
+        parent_name: formData.parent_name.trim(),
+        parent_phone: formData.parent_phone.trim(),
+        address: formData.address.trim(),
+        student_type: formData.student_type,
+        signature: formData.signature,
         how_did_you_hear: [
           ...howDidYouHear.filter((item) => item !== "Other (Please Specify)"),
           ...(howDidYouHear.includes("Other (Please Specify)") && otherHearAbout ? [`Other: ${otherHearAbout}`] : [])
-        ].join(", ") || undefined
+        ].join(", ").trim()
       };
       
       await AuthService.register(finalFormData);
@@ -153,14 +274,32 @@ export default function RegisterPage() {
   const validateStep = (step: number) => {
     setError("");
     if (step === 1) {
+      if (!formData.profile_picture) return "Profile picture is required";
       if (!formData.username.trim()) return "Full name is required";
+      if (!formData.email.trim()) return "Email address is required";
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) return "Please enter a valid email address";
       if (!formData.phone.trim()) return "Phone number is required";
       if (!formData.date_of_birth) return "Date of Birth is required";
+      if (!formData.nrc.trim()) return "NRC Number is required";
+      if (!formData.gender) return "Gender selection is required";
     }
     if (step === 2) {
       if (!formData.course_code.trim()) return "Please select a course of interest";
+      if (!formData.student_type) return "Please select your student type";
     }
-    // Step 3 and 4 are now fully optional
+    if (step === 3) {
+      if (!formData.parent_name.trim()) return "Parent/Guardian name is required";
+      if (!formData.parent_phone.trim()) return "Guardian phone number is required";
+      if (!formData.address.trim()) return "Full address is required";
+    }
+    if (step === 4) {
+      if (howDidYouHear.length === 0) return "Please select how you heard about us";
+      if (howDidYouHear.includes("Other (Please Specify)") && !otherHearAbout.trim()) return "Please specify how you heard about us";
+    }
+    if (step === 5) {
+      if (!formData.signature) return "E-signature is required. Please sign inside the box.";
+    }
     return "";
   };
 
@@ -232,7 +371,7 @@ export default function RegisterPage() {
                     </div>
                     <span className="text-xl font-bold tracking-tight text-white/90">NiT Student</span>
                     </div>
-
+ 
                     <div className="mb-10">
                         <span className="text-[#10b981] text-xs font-bold tracking-widest uppercase mb-2 block">Step {currentStep}</span>
                         <p className="text-white/70 text-sm leading-relaxed">
@@ -336,7 +475,7 @@ export default function RegisterPage() {
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#0d4d4d] transition-colors"><Camera size={20} /></div>
                                             <div className="text-center">
-                                                <p className="text-xs font-bold text-slate-700">Upload Photo</p>
+                                                <p className="text-xs font-bold text-slate-700">Upload Photo <span className="text-red-500">*</span></p>
                                             </div>
                                             <label className="absolute inset-0 cursor-pointer"><input type="file" accept="image/*" onChange={handleImageChange} className="hidden" /></label>
                                         </div>
@@ -349,7 +488,7 @@ export default function RegisterPage() {
                                         <input name="username" value={formData.username} onChange={handleChange} placeholder="e.g. John Doe" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Email Address (Optional)</label>
+                                        <label className="text-sm font-bold text-slate-700">Email Address <span className="text-red-500">*</span></label>
                                         <input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="john@example.com" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                 </div>
@@ -367,11 +506,11 @@ export default function RegisterPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">NRC Number (Optional)</label>
+                                        <label className="text-sm font-bold text-slate-700">NRC Number <span className="text-red-500">*</span></label>
                                         <input name="nrc" value={formData.nrc} onChange={handleChange} placeholder="Enter NRC" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700">Gender (Optional)</label>
+                                        <label className="text-sm font-bold text-slate-700">Gender <span className="text-red-500">*</span></label>
                                         <div className="grid grid-cols-3 gap-2">
                                             {["Male", "Female", "Other"].map((g) => (
                                                 <button key={g} type="button" onClick={() => setFormData(p => ({...p, gender: g}))} className={cn("py-3 rounded-2xl border-2 text-sm font-medium transition-all", formData.gender === g ? "border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d]" : "border-slate-100 text-slate-500 hover:border-slate-200")}>{g}</button>
@@ -436,15 +575,15 @@ export default function RegisterPage() {
                         {currentStep === 3 && (
                             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Parent/Guardian Name (Optional)</label>
+                                    <label className="text-sm font-bold text-slate-700">Parent/Guardian Name <span className="text-red-500">*</span></label>
                                     <input name="parent_name" value={formData.parent_name} onChange={handleChange} placeholder="Enter guardian name" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Guardian Phone Number (Optional)</label>
+                                    <label className="text-sm font-bold text-slate-700">Guardian Phone Number <span className="text-red-500">*</span></label>
                                     <input name="parent_phone" value={formData.parent_phone} onChange={handleChange} placeholder="+95 9..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-slate-700">Full Address (Optional)</label>
+                                    <label className="text-sm font-bold text-slate-700">Full Address <span className="text-red-500">*</span></label>
                                     <textarea name="address" value={formData.address} onChange={handleChange} rows={3} placeholder="Enter your current address" className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all resize-none" />
                                 </div>
                             </div>
@@ -453,7 +592,7 @@ export default function RegisterPage() {
                         {currentStep === 4 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="space-y-4">
-                                    <label className="text-sm font-bold text-slate-700">How Did You Hear About Us? (Optional)</label>
+                                    <label className="text-sm font-bold text-slate-700">How Did You Hear About Us? <span className="text-red-500">*</span></label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {["Facebook", "TikTok", "Friend Referral", "NiT Event", "Other (Please Specify)"].map((option) => (
                                             <label key={option} className={cn("flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer", howDidYouHear.includes(option) ? "border-[#0d4d4d] bg-[#0d4d4d]/5" : "border-slate-100 bg-white hover:border-slate-200")}>
@@ -465,6 +604,18 @@ export default function RegisterPage() {
                                     {howDidYouHear.includes("Other (Please Specify)") && (
                                         <input value={otherHearAbout} onChange={(e) => setOtherHearAbout(e.target.value)} placeholder="Please specify..." className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:border-[#0d4d4d] focus:bg-white focus:outline-none transition-all mt-1" />
                                     )}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentStep === 5 && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="space-y-4">
+                                    <label className="text-sm font-bold text-slate-700">E-Signature <span className="text-red-500">*</span></label>
+                                    <SignaturePad 
+                                        value={formData.signature} 
+                                        onChange={(val) => setFormData(p => ({ ...p, signature: val }))} 
+                                    />
                                 </div>
                             </div>
                         )}

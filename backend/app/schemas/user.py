@@ -131,25 +131,28 @@ class AdminParentLinkChild(BaseModel):
 
 class StudentRegister(BaseModel):
     username: str
-    email: Optional[str] = None
+    email: str
     date_of_birth: date
     
     # Contact info
     phone: str
-    nrc: Optional[str] = None
-    gender: Optional[str] = None
-    parent_name: Optional[str] = None
-    parent_phone: Optional[str] = None
-    address: Optional[str] = None
-    profile_picture: Optional[str] = None
+    nrc: str
+    gender: str
+    parent_name: str
+    parent_phone: str
+    address: str
+    profile_picture: str
     
     # Division & Enrollment
-    department: Optional[str] = "College"
-    course_code: Optional[str] = None
+    department: str
+    course_code: str
     
     # Tracking
-    how_did_you_hear: Optional[str] = None
-    student_type: Optional[str] = None
+    how_did_you_hear: str
+    student_type: str
+    
+    # E-Signature
+    signature: str
 
 class AdminStudentApprove(BaseModel):
     user_code: Optional[str] = None

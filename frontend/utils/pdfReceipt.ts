@@ -385,6 +385,16 @@ export const generateReceiptPDF = async (
   const footerBaseY = Math.max(summaryEndY + (isA5 ? 8 : 12), pageHeight - (isA5 ? 40 : 62));
 
   // Left Side: Signature & Generation details
+  if (enrollment.signature) {
+    try {
+      const sigWidth = isA5 ? 30 : 40;
+      const sigHeight = isA5 ? 10 : 14;
+      doc.addImage(enrollment.signature, "PNG", margin + (isA5 ? 14 : 20), footerBaseY - (isA5 ? 8 : 12), sigWidth, sigHeight);
+    } catch (err) {
+      console.warn("Could not draw student signature on PDF:", err);
+    }
+  }
+
   setCorrectFont("Signature: ____________________", isA5 ? 8 : 9, "bold");
   doc.text("Signature: ____________________", margin, footerBaseY);
 

@@ -241,6 +241,7 @@ export interface AdminEnrollment {
   payment_count?: number;
   foc_items?: string | null;
   profile_picture?: string | null;
+  signature?: string | null;
   batch_start_date?: string | null;
   batch_end_date?: string | null;
 }
@@ -440,6 +441,7 @@ export interface AdminPayment {
   exam_fee_currency?: string;
   exam_fee_payment_method?: string | null;
   discount_amount?: number;
+  signature?: string | null;
 }
 
 export interface WeeklyIncomeStat {

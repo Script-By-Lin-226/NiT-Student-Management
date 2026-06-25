@@ -306,3 +306,11 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-25 02:14:46,412 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
 2026-06-25 02:14:46,417 - NiT-SMS - INFO - Starting Excel export...
 2026-06-25 02:14:50,858 - NiT-SMS - INFO - Excel export completed: backup_20260625_021450.xlsx
+2026-06-26 00:13:06,475 - NiT-SMS - INFO - Activity logged: [Unknown] Approve Student: Student IN0008626 (was CO0024626) and their enrollments were approved and activated
+2026-06-26 00:13:40,567 - NiT-SMS - INFO - Activity logged: [Unknown] Create Enrollment: Enrollment ENR0019 created for student IN0008626 in course CRS0015
+2026-06-26 00:14:08,041 - NiT-SMS - INFO - Activity logged: [Unknown] Create Payment: Payment of 100000.0 recorded for enrollment 19 (2026-06-25 17:43:00)
+2026-06-26 00:14:31,038 - NiT-SMS - INFO - Activity logged: [Unknown] Update User: User IN0008626 updated
+2026-06-26 00:14:41,221 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User IN0008626 deleted
+2026-06-26 00:16:23,765 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-26 00:16:23,772 - NiT-SMS - INFO - Starting Excel export...
+2026-06-26 00:16:30,010 - NiT-SMS - INFO - Excel export completed: backup_20260626_001630.xlsx

@@ -285,6 +285,7 @@ export default function FinancePage() {
       foc_items: payment.foc_items || null,
       status: true,
       enrollment_date: payment.payment_date,
+      signature: payment.signature || null,
     };
 
     try {

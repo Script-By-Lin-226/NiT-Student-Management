@@ -48,6 +48,7 @@ class AuthenticationService:
             parent_name=user.parent_name,
             parent_phone=user.parent_phone,
             profile_picture=user.profile_picture,
+            signature=user.signature,
             role="student",
             is_active=False,
             how_did_you_hear=user.how_did_you_hear,

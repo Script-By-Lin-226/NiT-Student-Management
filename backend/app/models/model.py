@@ -59,6 +59,7 @@ class User(Base):
     parent_phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
     profile_picture = Column(Text, nullable=True) # Base64 or URL
+    signature = Column(Text, nullable=True) # Base64 signature image
     
     data_of_birth = Column(DateTime, nullable=True)
     role = Column(String, nullable=False, default="student") # admin, teacher, student, parent, hr, manager, sales
