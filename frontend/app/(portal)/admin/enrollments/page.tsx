@@ -47,7 +47,7 @@ function Modal({
 
 export default function AdminEnrollmentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdmin, loading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -106,8 +106,8 @@ export default function AdminEnrollmentsPage() {
 
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!loading && !isAdminOrSalesOrAccountant) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrAccountant, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -127,12 +127,12 @@ export default function AdminEnrollmentsPage() {
   }, [q, rows]);
 
   useEffect(() => {
-    if (isAdminOrSales) reload();
+    if (isAdminOrSalesOrAccountant) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+  }, [isAdminOrSalesOrAccountant]);
 
   if (loading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrAccountant) return null;
 
   const openCreate = () => {
     setCStudentCode("");
@@ -310,7 +310,7 @@ export default function AdminEnrollmentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 text-xs">
-                          {isAdminOrSales && (
+                          {isAdminOrSalesOrAccountant && (
                             <button onClick={() => openEdit(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm">
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -369,7 +369,7 @@ export default function AdminEnrollmentsPage() {
                         {e.status ? "Active" : "Inactive"}
                       </span>
                       <div className="flex gap-2">
-                        {isAdminOrSales && (
+                        {isAdminOrSalesOrAccountant && (
                           <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
                             <Pencil className="w-5 h-5" />
                           </button>

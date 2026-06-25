@@ -24,8 +24,9 @@ import {
 } from "recharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { StatisticSkeleton, ChartSkeleton } from "@/components/ui/Skeleton";
-import { formatAmount } from "@/utils/format";
+import { formatAmount, getExtraItemNames, getExtraItemPrices, getExtraItemMethods } from "@/utils/format";
 import { exportToExcel } from "@/utils/excelExport";
+import { generateIncomeReportPDF } from "@/utils/pdfIncomeReport";
 import clsx from "clsx";
 
 const studentChartData = [
@@ -55,6 +56,53 @@ function lastNDays(n: number) {
   }
   return days;
 }
+
+const renderExtraItemsCell = (payment: any) => {
+  const itemsStr = payment.extra_items || "";
+  let list: { name: string; price: number; method: string }[] = [];
+  if (itemsStr.startsWith("[") && itemsStr.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(itemsStr);
+      if (Array.isArray(parsed)) {
+        list = parsed.map((it: any) => ({
+          name: it.name || "",
+          price: Number(it.price) || 0,
+          method: it.method || ""
+        }));
+      }
+    } catch {}
+  }
+
+  if (list.length === 0 && payment.extra_items_fee) {
+    list = [{
+      name: payment.extra_items || "Extra Item",
+      price: payment.extra_items_fee,
+      method: payment.extra_items_payment_method || payment.payment_method || ""
+    }];
+  }
+
+  if (list.length === 0) {
+    return <span className="text-slate-400">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-1 text-right items-end font-semibold">
+      {list.map((item, idx) => (
+        <div key={idx} className="text-[11px] leading-tight">
+          <span className="text-slate-800 font-bold">{item.name}</span>{" "}
+          <span className="text-slate-500 font-normal text-nowrap">
+            ({formatAmount(item.price)} MMK - {item.method})
+          </span>
+        </div>
+      ))}
+      {list.length > 1 && (
+        <div className="text-[10px] font-black text-slate-400 border-t border-slate-100 pt-0.5 mt-0.5">
+          Total: {formatAmount(payment.extra_items_fee || 0)} MMK
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function DashboardPage() {
   const { isStudent, isParent, isAdminOrSales, isAdmin, user } = useAuth();
@@ -138,21 +186,119 @@ export default function DashboardPage() {
 
   const handleExportIncomeReport = () => {
     if (!accIncomeReport) return;
-    const formattedRecords = accIncomeReport.payment_records.map((r: any) => ({
-      ID: r.payment_id,
-      Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
-      Student_Name: r.student_name || "N/A",
-      Course_Name: r.course_name || "N/A",
-      Amount_MMK: r.amount,
-      Extra_Fee_MMK: r.extra_items_fee || 0,
-      Fine_MMK: r.fine_amount || 0,
-      Discount_MMK: r.discount_amount || 0,
-      ExamFee_GBP: r.exam_fee_paid_gbp || 0,
-      ExamFee_MMK: r.exam_fee_paid_mmk || 0,
-      Method: r.payment_method,
-      Status: r.status
+    const formattedRecords: any[] = [];
+    const methodTotals: Record<string, number> = {};
+    const addAmount = (method: string | null | undefined, amount: number) => {
+      if (!amount || amount <= 0) return;
+      const m = (method || "Unknown").trim();
+      methodTotals[m] = (methodTotals[m] || 0) + amount;
+    };
+
+    for (const r of accIncomeReport.payment_records) {
+      if (r.amount_2 && r.amount_2 > 0) {
+        // Record 1: Primary Payment
+        formattedRecords.push({
+          ID: r.payment_id,
+          Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+          Student_Name: r.student_name || "N/A",
+          Course_Name: r.course_name || "N/A",
+          Amount_MMK: r.amount,
+          Extra_Fee_MMK: r.extra_items_fee || 0,
+          Extra_Items_Name: getExtraItemNames(r.extra_items),
+          Extra_Items_Price_MMK: getExtraItemPrices(r.extra_items, r.extra_items_fee),
+          Extra_Items_Payment_Method: getExtraItemMethods(r.extra_items, r.extra_items_payment_method),
+          Fine_MMK: r.fine_amount || 0,
+          Discount_MMK: r.discount_amount || 0,
+          ExamFee_GBP: r.exam_fee_paid_gbp || 0,
+          ExamFee_MMK: r.exam_fee_paid_mmk || 0,
+          Tuition_Payment_Method: r.payment_method || "—",
+          Status: r.status
+        });
+        // Record 2: Secondary Split Payment
+        formattedRecords.push({
+          ID: `${r.payment_id} (Split)`,
+          Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+          Student_Name: r.student_name || "N/A",
+          Course_Name: r.course_name || "N/A",
+          Amount_MMK: r.amount_2,
+          Extra_Fee_MMK: 0,
+          Extra_Items_Name: "—",
+          Extra_Items_Price_MMK: 0,
+          Extra_Items_Payment_Method: "—",
+          Fine_MMK: 0,
+          Discount_MMK: 0,
+          ExamFee_GBP: 0,
+          ExamFee_MMK: 0,
+          Tuition_Payment_Method: r.payment_method_2 || "—",
+          Status: r.status
+        });
+      } else {
+        formattedRecords.push({
+          ID: r.payment_id,
+          Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+          Student_Name: r.student_name || "N/A",
+          Course_Name: r.course_name || "N/A",
+          Amount_MMK: r.amount,
+          Extra_Fee_MMK: r.extra_items_fee || 0,
+          Extra_Items_Name: getExtraItemNames(r.extra_items),
+          Extra_Items_Price_MMK: getExtraItemPrices(r.extra_items, r.extra_items_fee),
+          Extra_Items_Payment_Method: getExtraItemMethods(r.extra_items, r.extra_items_payment_method),
+          Fine_MMK: r.fine_amount || 0,
+          Discount_MMK: r.discount_amount || 0,
+          ExamFee_GBP: r.exam_fee_paid_gbp || 0,
+          ExamFee_MMK: r.exam_fee_paid_mmk || 0,
+          Tuition_Payment_Method: r.payment_method || "—",
+          Status: r.status
+        });
+      }
+
+      addAmount(r.payment_method, r.amount || 0);
+      addAmount(r.payment_method_2, r.amount_2 || 0);
+      addAmount(r.payment_method, r.fine_amount || 0);
+      addAmount(r.exam_fee_payment_method || r.payment_method, r.exam_fee_paid_mmk || 0);
+      
+      const itemsStr = r.extra_items || "";
+      let itemsParsed = false;
+      if (itemsStr.startsWith("[") && itemsStr.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(itemsStr);
+          if (Array.isArray(parsed)) {
+            itemsParsed = true;
+            for (const it of parsed) {
+              addAmount(it.method || r.extra_items_payment_method || r.payment_method, Number(it.price) || 0);
+            }
+          }
+        } catch {}
+      }
+      if (!itemsParsed && r.extra_items_fee > 0) {
+        addAmount(r.extra_items_payment_method || r.payment_method, r.extra_items_fee || 0);
+      }
+    }
+
+    const summaryRecords = Object.entries(methodTotals).map(([method, total]) => ({
+      "Payment Method": method,
+      "Total Amount (MMK)": total
     }));
-    exportToExcel(formattedRecords, "Accountant_Income_Report", "Payments");
+
+    exportToExcel(
+      {
+        "Payments Audit Log": formattedRecords,
+        "Method Summary": summaryRecords
+      },
+      "Accountant_Income_Report"
+    );
+  };
+
+  const handleExportIncomeReportPDF = () => {
+    if (!accIncomeReport) return;
+    const dateRangeStr = (accStartDate || accEndDate) ? `${accStartDate || 'Start'} to ${accEndDate || 'End'}` : "All Time";
+    generateIncomeReportPDF(
+      "daily",
+      accIncomeReport.daily_stats || [],
+      dateRangeStr,
+      user?.username || "Accountant",
+      accIncomeReport.payment_records
+    );
   };
 
   // Redirect teachers to their dedicated dashboard
@@ -468,12 +614,20 @@ export default function DashboardPage() {
                   Payments Transaction Audit Log
                 </h3>
                 {accIncomeReport?.payment_records?.length > 0 && (
-                  <button
-                    onClick={handleExportIncomeReport}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
-                  >
-                    <Download className="w-4 h-4" /> Export Excel
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportIncomeReport}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
+                    >
+                      <Download className="w-4 h-4" /> Export Excel
+                    </button>
+                    <button
+                      onClick={handleExportIncomeReportPDF}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-bold transition-all border border-indigo-200"
+                    >
+                      <Download className="w-4 h-4" /> Export PDF
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -510,7 +664,7 @@ export default function DashboardPage() {
                             <div className="text-[10px] text-slate-400 font-medium mt-0.5">{payment.course_name || "N/A"}</div>
                           </td>
                           <td className="px-6 py-3 text-right font-semibold text-slate-900">{formatAmount(payment.amount)}</td>
-                          <td className="px-6 py-3 text-right font-semibold text-slate-900">{formatAmount(payment.extra_items_fee || 0)}</td>
+                          <td className="px-6 py-3 text-right font-semibold text-slate-900">{renderExtraItemsCell(payment)}</td>
                           <td className="px-6 py-3 text-right font-semibold text-rose-600">+{formatAmount(payment.fine_amount || 0)}</td>
                           <td className="px-6 py-3 text-right font-semibold text-indigo-700">£{(payment.exam_fee_paid_gbp || 0).toFixed(2)}</td>
                           <td className="px-6 py-3 text-right font-semibold text-slate-900">{formatAmount(payment.exam_fee_paid_mmk || 0)}</td>

@@ -35,8 +35,10 @@ export const getExtraItemNames = (extraItemsStr: string | null | undefined): str
   return trimmed || "-";
 };
 
-export const getExtraItemPrices = (extraItemsStr: string | null | undefined): string => {
-  if (!extraItemsStr) return "-";
+export const getExtraItemPrices = (extraItemsStr: string | null | undefined, fallbackPrice?: number): string => {
+  if (!extraItemsStr) {
+    return fallbackPrice && fallbackPrice > 0 ? fallbackPrice.toLocaleString() : "-";
+  }
   const trimmed = extraItemsStr.trim();
   if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
     try {
@@ -46,7 +48,21 @@ export const getExtraItemPrices = (extraItemsStr: string | null | undefined): st
       }
     } catch {}
   }
-  return "-";
+  return fallbackPrice && fallbackPrice > 0 ? fallbackPrice.toLocaleString() : "-";
+};
+
+export const getExtraItemMethods = (extraItemsStr: string | null | undefined, fallbackMethod?: string | null): string => {
+  if (!extraItemsStr) return fallbackMethod || "-";
+  const trimmed = extraItemsStr.trim();
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      const items = JSON.parse(trimmed);
+      if (Array.isArray(items)) {
+        return items.map((it: any) => it.method || fallbackMethod || "-").join(", ") || "-";
+      }
+    } catch {}
+  }
+  return fallbackMethod || "-";
 };
 
 export const formatSpecificDate = (dateStr: string | null | undefined): string => {

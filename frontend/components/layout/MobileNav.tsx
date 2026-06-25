@@ -38,6 +38,7 @@ const teacherNav = [
 const accountantNav = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Finance", href: "/admin/finance", icon: BarChart },
+  { name: "Payments", href: "/admin/payments", icon: CreditCard },
   { name: "Me", href: "/profile", icon: User },
 ];
 

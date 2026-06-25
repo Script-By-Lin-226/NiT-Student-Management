@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PYIDAUNGSU_FONT_BASE64 } from "./fonts/mm-font";
-import { getExtraItemNames, getExtraItemPrices, formatSpecificDate } from "./format";
+import { getExtraItemNames, getExtraItemPrices, getExtraItemMethods, formatSpecificDate } from "./format";
 
 const containsMyanmar = (text: string = "") => /[\u1000-\u109F]/.test(text);
 
@@ -111,10 +111,49 @@ export const generateIncomeReportPDF = (
   const totalCount = data.reduce((sum, item) => sum + (item.payment_count || 0), 0);
 
   // Summary Box at bottom
-  if (finalY + 35 < pageHeight - 15) {
+  if (finalY + 45 < pageHeight - 15) {
     const summaryY = finalY + 10;
     doc.setFillColor(245, 247, 250);
-    doc.roundedRect(14, summaryY, pageWidth - 28, 25, 3, 3, "F");
+    
+    // Method breakdown calculations
+    const methodTotals: Record<string, number> = {};
+    const addAmount = (method: string | null | undefined, amount: number) => {
+      if (!amount || amount <= 0) return;
+      const m = (method || "Unknown").trim();
+      methodTotals[m] = (methodTotals[m] || 0) + amount;
+    };
+    for (const p of paymentRecords) {
+      addAmount(p.payment_method, p.amount || 0);
+      addAmount(p.payment_method_2, p.amount_2 || 0);
+      addAmount(p.payment_method, p.fine_amount || 0);
+      addAmount(p.exam_fee_payment_method || p.payment_method, p.exam_fee_paid_mmk || 0);
+      const itemsStr = p.extra_items || "";
+      let itemsParsed = false;
+      if (itemsStr.startsWith("[") && itemsStr.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(itemsStr);
+          if (Array.isArray(parsed)) {
+            itemsParsed = true;
+            for (const it of parsed) {
+              addAmount(it.method || p.extra_items_payment_method || p.payment_method, Number(it.price) || 0);
+            }
+          }
+        } catch {}
+      }
+      if (!itemsParsed && p.extra_items_fee > 0) {
+        addAmount(p.extra_items_payment_method || p.payment_method, p.extra_items_fee || 0);
+      }
+    }
+    
+    const entries = Object.entries(methodTotals);
+    const methodLines: string[] = [];
+    for (let i = 0; i < entries.length; i += 4) {
+      const chunk = entries.slice(i, i + 4);
+      methodLines.push(chunk.map(([m, val]) => `${m}: ${val.toLocaleString()} MMK`).join("      |      "));
+    }
+    
+    const summaryHeight = 22 + (methodLines.length > 0 ? 8 + methodLines.length * 5 : 0);
+    doc.roundedRect(14, summaryY, pageWidth - 28, summaryHeight, 3, 3, "F");
     
     setCorrectFont("SUMMARY STATS", 9, "bold");
     doc.text("SUMMARY STATS", 18, summaryY + 7);
@@ -123,6 +162,16 @@ export const generateIncomeReportPDF = (
     doc.text(`Total Transactions: ${totalCount}`, 18, summaryY + 13);
     doc.text(`Total MMK Income: ${totalMMK.toLocaleString()} MMK`, 18, summaryY + 19);
     doc.text(`Total GBP Income: ${totalGBP.toLocaleString()} GBP`, 150, summaryY + 19);
+    
+    if (methodLines.length > 0) {
+      setCorrectFont("Income by Payment Method:", 8, "bold");
+      doc.text("Income by Payment Method:", 18, summaryY + 25);
+      
+      setCorrectFont("", 8, "normal");
+      methodLines.forEach((line, idx) => {
+        doc.text(line, 18, summaryY + 30 + idx * 5);
+      });
+    }
   }
 
 
@@ -142,6 +191,7 @@ export const generateIncomeReportPDF = (
       "Student",
       "Course",
       "Tuition (MMK)",
+      "Tuition Method",
       "Exam Fee",
       "Extra Item Name",
       "Extra Item Price (MMK)",
@@ -151,24 +201,68 @@ export const generateIncomeReportPDF = (
       "Total (GBP)"
     ];
     
-    const detailRows = paymentRecords.map(p => [
-      p.payment_date ? new Date(p.payment_date).toLocaleDateString() : "-",
-      p.receipt_id || "N/A",
-      `${p.student_name || "N/A"}`,
-      p.course_name || "N/A",
-      ((p.amount || 0) + (p.amount_2 || 0)).toLocaleString(),
-      p.exam_fee_paid_gbp > 0 
-        ? `${p.exam_fee_paid_gbp} GBP` 
-        : p.exam_fee_paid_mmk > 0 
-          ? `${p.exam_fee_paid_mmk.toLocaleString()} MMK` 
-          : "-",
-      getExtraItemNames(p.extra_items),
-      getExtraItemPrices(p.extra_items),
-      p.extra_items_payment_method || "-",
-      (p.fine_amount || 0).toLocaleString(),
-      (p.total_paid_mmk || 0).toLocaleString(),
-      p.total_paid_gbp > 0 ? `${p.total_paid_gbp.toLocaleString()} GBP` : "-"
-    ]);
+    const detailRows: any[] = [];
+    for (const p of paymentRecords) {
+      if (p.amount_2 && p.amount_2 > 0) {
+        // Row 1: Primary Payment
+        detailRows.push([
+          p.payment_date ? new Date(p.payment_date).toLocaleDateString() : "-",
+          p.receipt_id || "N/A",
+          `${p.student_name || "N/A"}`,
+          p.course_name || "N/A",
+          (p.amount || 0).toLocaleString(),
+          p.payment_method || "-",
+          p.exam_fee_paid_gbp > 0 
+            ? `${p.exam_fee_paid_gbp} GBP` 
+            : p.exam_fee_paid_mmk > 0 
+              ? `${p.exam_fee_paid_mmk.toLocaleString()} MMK` 
+              : "-",
+          getExtraItemNames(p.extra_items),
+          getExtraItemPrices(p.extra_items, p.extra_items_fee),
+          getExtraItemMethods(p.extra_items, p.extra_items_payment_method),
+          (p.fine_amount || 0).toLocaleString(),
+          ((p.amount || 0) + (p.extra_items_fee || 0) + (p.fine_amount || 0) + (p.exam_fee_paid_mmk || 0)).toLocaleString(),
+          p.exam_fee_paid_gbp > 0 ? `${p.exam_fee_paid_gbp.toLocaleString()} GBP` : "-"
+        ]);
+        // Row 2: Secondary Split Payment
+        detailRows.push([
+          p.payment_date ? new Date(p.payment_date).toLocaleDateString() : "-",
+          `${p.receipt_id || "N/A"} (Split)`,
+          `${p.student_name || "N/A"}`,
+          p.course_name || "N/A",
+          (p.amount_2 || 0).toLocaleString(),
+          p.payment_method_2 || "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          (p.amount_2 || 0).toLocaleString(),
+          "-"
+        ]);
+      } else {
+        // Single payment row
+        detailRows.push([
+          p.payment_date ? new Date(p.payment_date).toLocaleDateString() : "-",
+          p.receipt_id || "N/A",
+          `${p.student_name || "N/A"}`,
+          p.course_name || "N/A",
+          (p.amount || 0).toLocaleString(),
+          p.payment_method || "-",
+          p.exam_fee_paid_gbp > 0 
+            ? `${p.exam_fee_paid_gbp} GBP` 
+            : p.exam_fee_paid_mmk > 0 
+              ? `${p.exam_fee_paid_mmk.toLocaleString()} MMK` 
+              : "-",
+          getExtraItemNames(p.extra_items),
+          getExtraItemPrices(p.extra_items, p.extra_items_fee),
+          getExtraItemMethods(p.extra_items, p.extra_items_payment_method),
+          (p.fine_amount || 0).toLocaleString(),
+          ((p.amount || 0) + (p.extra_items_fee || 0) + (p.fine_amount || 0) + (p.exam_fee_paid_mmk || 0)).toLocaleString(),
+          p.exam_fee_paid_gbp > 0 ? `${p.exam_fee_paid_gbp.toLocaleString()} GBP` : "-"
+        ]);
+      }
+    }
     
     autoTable(doc, {
       startY: 20,
@@ -179,11 +273,11 @@ export const generateIncomeReportPDF = (
       styles: { fontSize: 6.5, cellPadding: 1.5, font: hasMyanmarFont ? "Pyidaungsu" : "helvetica" },
       columnStyles: {
         4: { halign: "right" },
-        5: { halign: "right" },
-        7: { halign: "right" },
-        9: { halign: "right" },
+        6: { halign: "right" },
+        8: { halign: "right" },
         10: { halign: "right" },
-        11: { halign: "right" }
+        11: { halign: "right" },
+        12: { halign: "right" }
       }
     });
   }

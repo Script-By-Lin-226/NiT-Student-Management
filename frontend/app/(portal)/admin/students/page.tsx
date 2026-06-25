@@ -53,7 +53,7 @@ function Modal({
 
 export default function AdminStudentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, user, loading: authLoading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdmin, user, loading: authLoading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -210,8 +210,8 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isAdminOrSales) router.replace("/dashboard");
-  }, [authLoading, isAdminOrSales, router]);
+    if (!authLoading && !isAdminOrSalesOrAccountant) router.replace("/dashboard");
+  }, [authLoading, isAdminOrSalesOrAccountant, router]);
 
   const filtered = useMemo(() => {
     let result = [...rows];
@@ -557,7 +557,7 @@ export default function AdminStudentsPage() {
   };
 
   if (authLoading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrAccountant) return null;
 
   const exportSelectedStudent = () => {
     if (!selected || !relations) return;

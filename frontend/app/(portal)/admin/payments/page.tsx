@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import { AdminService, AdminEnrollment, AdminPayment, AdminPaymentCreate } from "@/services/admin.service";
 import { useAuth } from "@/hooks/useAuth";
 import { generateReceiptPDF } from "@/utils/pdfReceipt";
+import { generateIncomeReportPDF } from "@/utils/pdfIncomeReport";
 import clsx from "clsx";
-import { formatAmount, parseExtraItems } from "@/utils/format";
+import { formatAmount, parseExtraItems, getExtraItemNames, getExtraItemPrices, getExtraItemMethods } from "@/utils/format";
 import { useEnrollments, useCourses, useCreatePayment } from "@/hooks/useAdmin";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -112,7 +113,7 @@ const renderExtraItemsCell = (payment: any) => {
 
 export default function AdminPaymentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, loading, user } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, loading, user } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -231,10 +232,10 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "dashboard" && isAdminOrSales) {
+    if (activeTab === "dashboard" && isAdminOrSalesOrAccountant) {
       fetchIncomeDashboardData();
     }
-  }, [activeTab, dashStartDate, dashEndDate, isAdminOrSales]);
+  }, [activeTab, dashStartDate, dashEndDate, isAdminOrSalesOrAccountant]);
 
   const dashIncomeTrendData = useMemo(() => {
     if (!dashIncomeReport) return [];
@@ -245,21 +246,119 @@ export default function AdminPaymentsPage() {
 
   const handleExportIncomeReport = () => {
     if (!dashIncomeReport) return;
-    const formattedRecords = dashIncomeReport.payment_records.map((r: any) => ({
-      ID: r.payment_id,
-      Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
-      Student_Name: r.student_name || "N/A",
-      Course_Name: r.course_name || "N/A",
-      Amount_MMK: r.amount,
-      Extra_Fee_MMK: r.extra_items_fee || 0,
-      Fine_MMK: r.fine_amount || 0,
-      Discount_MMK: r.discount_amount || 0,
-      ExamFee_GBP: r.exam_fee_paid_gbp || 0,
-      ExamFee_MMK: r.exam_fee_paid_mmk || 0,
-      Method: r.payment_method,
-      Status: r.status
+    const formattedRecords: any[] = [];
+    const methodTotals: Record<string, number> = {};
+    const addAmount = (method: string | null | undefined, amount: number) => {
+      if (!amount || amount <= 0) return;
+      const m = (method || "Unknown").trim();
+      methodTotals[m] = (methodTotals[m] || 0) + amount;
+    };
+
+    for (const r of dashIncomeReport.payment_records) {
+      if (r.amount_2 && r.amount_2 > 0) {
+        // Record 1: Primary Payment
+        formattedRecords.push({
+          ID: r.payment_id,
+          Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+          Student_Name: r.student_name || "N/A",
+          Course_Name: r.course_name || "N/A",
+          Amount_MMK: r.amount,
+          Extra_Fee_MMK: r.extra_items_fee || 0,
+          Extra_Items_Name: getExtraItemNames(r.extra_items),
+          Extra_Items_Price_MMK: getExtraItemPrices(r.extra_items, r.extra_items_fee),
+          Extra_Items_Payment_Method: getExtraItemMethods(r.extra_items, r.extra_items_payment_method),
+          Fine_MMK: r.fine_amount || 0,
+          Discount_MMK: r.discount_amount || 0,
+          ExamFee_GBP: r.exam_fee_paid_gbp || 0,
+          ExamFee_MMK: r.exam_fee_paid_mmk || 0,
+          Tuition_Payment_Method: r.payment_method || "—",
+          Status: r.status
+        });
+        // Record 2: Secondary Split Payment
+        formattedRecords.push({
+          ID: `${r.payment_id} (Split)`,
+          Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+          Student_Name: r.student_name || "N/A",
+          Course_Name: r.course_name || "N/A",
+          Amount_MMK: r.amount_2,
+          Extra_Fee_MMK: 0,
+          Extra_Items_Name: "—",
+          Extra_Items_Price_MMK: 0,
+          Extra_Items_Payment_Method: "—",
+          Fine_MMK: 0,
+          Discount_MMK: 0,
+          ExamFee_GBP: 0,
+          ExamFee_MMK: 0,
+          Tuition_Payment_Method: r.payment_method_2 || "—",
+          Status: r.status
+        });
+      } else {
+        formattedRecords.push({
+          ID: r.payment_id,
+          Date: r.payment_date ? r.payment_date.split("T")[0] : "—",
+          Student_Name: r.student_name || "N/A",
+          Course_Name: r.course_name || "N/A",
+          Amount_MMK: r.amount,
+          Extra_Fee_MMK: r.extra_items_fee || 0,
+          Extra_Items_Name: getExtraItemNames(r.extra_items),
+          Extra_Items_Price_MMK: getExtraItemPrices(r.extra_items, r.extra_items_fee),
+          Extra_Items_Payment_Method: getExtraItemMethods(r.extra_items, r.extra_items_payment_method),
+          Fine_MMK: r.fine_amount || 0,
+          Discount_MMK: r.discount_amount || 0,
+          ExamFee_GBP: r.exam_fee_paid_gbp || 0,
+          ExamFee_MMK: r.exam_fee_paid_mmk || 0,
+          Tuition_Payment_Method: r.payment_method || "—",
+          Status: r.status
+        });
+      }
+
+      addAmount(r.payment_method, r.amount || 0);
+      addAmount(r.payment_method_2, r.amount_2 || 0);
+      addAmount(r.payment_method, r.fine_amount || 0);
+      addAmount(r.exam_fee_payment_method || r.payment_method, r.exam_fee_paid_mmk || 0);
+      
+      const itemsStr = r.extra_items || "";
+      let itemsParsed = false;
+      if (itemsStr.startsWith("[") && itemsStr.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(itemsStr);
+          if (Array.isArray(parsed)) {
+            itemsParsed = true;
+            for (const it of parsed) {
+              addAmount(it.method || r.extra_items_payment_method || r.payment_method, Number(it.price) || 0);
+            }
+          }
+        } catch {}
+      }
+      if (!itemsParsed && r.extra_items_fee > 0) {
+        addAmount(r.extra_items_payment_method || r.payment_method, r.extra_items_fee || 0);
+      }
+    }
+
+    const summaryRecords = Object.entries(methodTotals).map(([method, total]) => ({
+      "Payment Method": method,
+      "Total Amount (MMK)": total
     }));
-    exportToExcel(formattedRecords, "Payments_Income_Report", "Payments");
+
+    exportToExcel(
+      {
+        "Payments Audit Log": formattedRecords,
+        "Method Summary": summaryRecords
+      },
+      "Payments_Income_Report"
+    );
+  };
+
+  const handleExportIncomeReportPDF = () => {
+    if (!dashIncomeReport) return;
+    const dateRangeStr = (dashStartDate || dashEndDate) ? `${dashStartDate || 'Start'} to ${dashEndDate || 'End'}` : "All Time";
+    generateIncomeReportPDF(
+      "daily",
+      dashIncomeReport.daily_stats || [],
+      dateRangeStr,
+      user?.username || "Admin",
+      dashIncomeReport.payment_records
+    );
   };
 
   const calculateLeftAmount = (enr: AdminEnrollment) => {
@@ -286,9 +385,9 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSales) load();
+    if (isAdminOrSalesOrAccountant) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+  }, [isAdminOrSalesOrAccountant]);
 
   const openRecordPayment = (enr: AdminEnrollment) => {
     setSelectedEnrollment(enr);
@@ -578,7 +677,7 @@ export default function AdminPaymentsPage() {
   };
 
   if (loading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrAccountant) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -880,7 +979,7 @@ export default function AdminPaymentsPage() {
                             <History className="w-3.5 h-3.5" />
                             History
                           </button>
-                          {(enr.payment_plan === 'installment' || enr.payment_plan === 'full') && calculateLeftAmount(enr) > 0 && (
+                          {user?.role !== "accountant" && (enr.payment_plan === 'installment' || enr.payment_plan === 'full') && calculateLeftAmount(enr) > 0 && (
                             <button
                               onClick={() => openRecordPayment(enr)}
                               className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm transition-all active:scale-95"
@@ -889,7 +988,7 @@ export default function AdminPaymentsPage() {
                               Pay Now
                             </button>
                           )}
-                          {((calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) > 0)) && (
+                          {user?.role !== "accountant" && ((calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) > 0)) && (
                             <button
                               onClick={() => openRecordPayment(enr)}
                               className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-sm transition-all active:scale-95"
@@ -1051,7 +1150,7 @@ export default function AdminPaymentsPage() {
                       <History className="w-3.5 h-3.5" />
                       Logs
                     </button>
-                    {!isFullyPaid && (
+                    {user?.role !== "accountant" && !isFullyPaid && (
                       <button
                         onClick={() => openRecordPayment(enr)}
                         className="flex-1 h-9 flex items-center justify-center rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors"
@@ -1229,12 +1328,20 @@ export default function AdminPaymentsPage() {
                 Payments Transaction Audit Log
               </h3>
               {dashIncomeReport?.payment_records?.length > 0 && (
-                <button
-                  onClick={handleExportIncomeReport}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
-                >
-                  <Download className="w-4 h-4" /> Export Excel
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportIncomeReport}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
+                  >
+                    <Download className="w-4 h-4" /> Export Excel
+                  </button>
+                  <button
+                    onClick={handleExportIncomeReportPDF}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-bold transition-all border border-indigo-100"
+                  >
+                    <Download className="w-4 h-4" /> Export PDF
+                  </button>
+                </div>
               )}
             </div>
 

@@ -73,5 +73,7 @@ export function useAuth() {
     isStaff: ["hr", "manager", "sales", "teacher", "accountant"].includes(user?.role || ""),
     isAdmin: user?.role === "admin",
     isAdminOrSales: user?.role === "admin" || user?.role === "sales",
+    isAccountant: user?.role === "accountant",
+    isAdminOrSalesOrAccountant: ["admin", "sales", "accountant"].includes(user?.role || ""),
   };
 }

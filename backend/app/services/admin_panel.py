@@ -486,7 +486,7 @@ class AdminPanelService:
         )
 
     async def get_students_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Base query optimized to exclude large columns
@@ -618,7 +618,7 @@ class AdminPanelService:
         )
     
     async def get_specific_student(user_code: str ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(and_(User.user_code == user_code , User.role == "student"))
@@ -635,7 +635,7 @@ class AdminPanelService:
         )
 
     async def get_student_relations(user_code: str, request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(User).where(and_(User.user_code == user_code, User.role == "student")))
@@ -1201,7 +1201,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Academic year created successfully", "data": _serialize_academic_year(new_academic_year)}, status_code=201)
         
     async def get_all_academic_years(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return {"message": "You are not authorized to perform this action"}
         query = select(AcademicYear)
         result = await session.execute(query)
@@ -1209,7 +1209,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": [_serialize_academic_year(y) for y in years]})
         
     async def get_specific_academic_details(academic_year_id: int ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(AcademicYear).where(AcademicYear.academic_year_id == academic_year_id)
@@ -1260,7 +1260,7 @@ class AdminPanelService:
     # CRUD - Courses
 
     async def list_courses(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -1410,7 +1410,7 @@ class AdminPanelService:
     # --- CRUD - Batches ---
 
     async def list_batches(request: Request, session: AsyncSession, course_id: Optional[int] = None):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Batch, Course).join(Course, Batch.course_id == Course.course_id)
@@ -1593,7 +1593,7 @@ class AdminPanelService:
     # --- CRUD - Enrollments ---
 
     async def list_enrollments(request: Request, session: AsyncSession, status: bool = None, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -2631,7 +2631,7 @@ class AdminPanelService:
         })
 
     async def list_payments(request: Request, session: AsyncSession, page: int = 1, limit: int = 50, enrollment_id: Optional[int] = None, student_id: Optional[int] = None, receipt_id: Optional[str] = None):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -2742,7 +2742,7 @@ class AdminPanelService:
         })
 
     async def create_payment(request: Request, session: AsyncSession, payload: PaymentCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=False):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         enroll_r = await session.execute(select(Enrollment).where(Enrollment.enrollment_id == payload.enrollment_id))
@@ -2849,7 +2849,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Payment recorded successfully"})
 
     async def update_payment(request: Request, session: AsyncSession, payment_id: int, payload: PaymentUpdate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=False):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         pay_r = await session.execute(select(Payment).where(Payment.payment_id == payment_id))
@@ -2915,7 +2915,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Payment updated successfully"})
 
     async def delete_payment(request: Request, session: AsyncSession, payment_id: int):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=False):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         pay_r = await session.execute(select(Payment).where(Payment.payment_id == payment_id))
