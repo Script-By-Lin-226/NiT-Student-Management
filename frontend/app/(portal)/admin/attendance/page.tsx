@@ -48,6 +48,8 @@ interface BatchGroup {
   course_code: string;
   course_name: string;
   batch_no: string;
+  batch_start_date?: string | null;
+  batch_end_date?: string | null;
   students: {
     student_code: string;
     student_name: string;
@@ -57,7 +59,7 @@ interface BatchGroup {
 
 export default function AdminAttendancePage() {
   const router = useRouter();
-  const { isAdminOrSales, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
 
   const { data: enrollmentsData, isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useEnrollments(undefined, 1, 1000);
   const { data: attendanceData = [], isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendance();
@@ -103,8 +105,8 @@ export default function AdminAttendancePage() {
   }, [selectedStudentCode, selectedGroup, attendance, courses]);
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, router]);
 
   const load = async () => {
     await Promise.all([
@@ -134,6 +136,8 @@ export default function AdminAttendancePage() {
           course_code: e.course_code,
           course_name: e.course_name || e.course_code,
           batch_no: e.batch_no,
+          batch_start_date: e.batch_start_date || null,
+          batch_end_date: e.batch_end_date || null,
           students: []
         });
       }
@@ -152,6 +156,9 @@ export default function AdminAttendancePage() {
     if (filterMode === "ended") {
       const todayStr = getTodayDateString();
       let endedArr = arr.filter(g => {
+        if (g.batch_end_date) {
+          return g.batch_end_date < todayStr;
+        }
         const c = courseMap.get(g.course_code);
         if (c && c.end_date) {
           return c.end_date < todayStr;
@@ -171,47 +178,59 @@ export default function AdminAttendancePage() {
     }
 
     arr = arr.filter(g => {
-      const c = courseMap.get(g.course_code);
-      if (c && c.start_date && c.end_date) {
-        return targetDate >= c.start_date && targetDate <= c.end_date;
+      const start = g.batch_start_date || courseMap.get(g.course_code)?.start_date;
+      const end = g.batch_end_date || courseMap.get(g.course_code)?.end_date;
+      if (start && end) {
+        return targetDate >= start && targetDate <= end;
       }
-      if (c && c.start_date) {
-        return targetDate >= c.start_date;
+      if (start) {
+        return targetDate >= start;
       }
-      if (c && c.end_date) {
-        return targetDate <= c.end_date;
+      if (end) {
+        return targetDate <= end;
       }
       return true;
     });
 
     const scheduledCoursesToday = timetables.filter((t: any) => t.day_of_week === currentDayName);
 
-    // STRICTLY RELY ON TIMETABLE: Only show batches if their course is scheduled today
+    // STRICTLY RELY ON TIMETABLE: Only show batches if they are scheduled today
     const scheduledArr = arr.filter(g =>
-      scheduledCoursesToday.some((t: any) => t.course_code === g.course_code)
+      scheduledCoursesToday.some((t: any) => 
+        t.course_code === g.course_code &&
+        (!t.batch_no || t.batch_no === g.batch_no)
+      )
     );
 
     scheduledCoursesToday.forEach((t: any) => {
       const c = courseMap.get(t.course_code);
       let isActive = true;
-      if (c && c.start_date && c.end_date) {
-        isActive = targetDate >= c.start_date && targetDate <= c.end_date;
-      } else if (c && c.start_date) {
-        isActive = targetDate >= c.start_date;
-      } else if (c && c.end_date) {
-        isActive = targetDate <= c.end_date;
+      const start = t.batch_start_date || c?.start_date;
+      const end = t.batch_end_date || c?.end_date;
+      if (start && end) {
+        isActive = targetDate >= start && targetDate <= end;
+      } else if (start) {
+        isActive = targetDate >= start;
+      } else if (end) {
+        isActive = targetDate <= end;
       }
 
       if (!isActive) return;
 
-      const hasBatch = scheduledArr.some(g => g.course_code === t.course_code);
+      const hasBatch = scheduledArr.some(g => 
+        g.course_code === t.course_code &&
+        (!t.batch_no || g.batch_no === t.batch_no)
+      );
       if (!hasBatch) {
-        if (!scheduledArr.some(g => g.course_code === t.course_code && g.batch_no === "Pending Enrollments")) {
+        const fallbackBatchNo = t.batch_no || "Pending Enrollments";
+        if (!scheduledArr.some(g => g.course_code === t.course_code && g.batch_no === fallbackBatchNo)) {
           scheduledArr.push({
-            id: `${t.course_code}-empty`,
+            id: `${t.course_code}-${fallbackBatchNo}`,
             course_code: t.course_code,
             course_name: t.course_name || t.course_code,
-            batch_no: "Pending Enrollments",
+            batch_no: fallbackBatchNo,
+            batch_start_date: t.batch_start_date || null,
+            batch_end_date: t.batch_end_date || null,
             students: []
           });
         }
@@ -234,7 +253,11 @@ export default function AdminAttendancePage() {
 
   const currentSlots = useMemo(() => {
     if (!selectedGroup) return [];
-    const groupTimetables = timetables.filter(t => t.course_code === selectedGroup.course_code && t.day_of_week === currentDayName);
+    const groupTimetables = timetables.filter(t => 
+      t.course_code === selectedGroup.course_code && 
+      t.day_of_week === currentDayName &&
+      (!t.batch_no || t.batch_no === selectedGroup.batch_no)
+    );
     if (groupTimetables.length > 0) {
       return groupTimetables.map(t => ({
         id: t.timetable_id,
@@ -244,7 +267,10 @@ export default function AdminAttendancePage() {
       })).sort((a, b) => a.text.localeCompare(b.text));
     }
     // Fallback if they search class not scheduled today
-    const allTimeTables = timetables.filter(t => t.course_code === selectedGroup.course_code);
+    const allTimeTables = timetables.filter(t => 
+      t.course_code === selectedGroup.course_code && 
+      (!t.batch_no || t.batch_no === selectedGroup.batch_no)
+    );
     if (allTimeTables.length > 0) {
       // Group by distinct time range for fallback? Or just show all?
       // For now, let's keep all distinct slots
@@ -267,7 +293,7 @@ export default function AdminAttendancePage() {
   }, [selectedGroup, timetables, currentDayName]);
 
   if (loading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrManager) return null;
 
   const openGroup = (g: BatchGroup) => {
     setSelectedGroup(g);
@@ -459,12 +485,14 @@ export default function AdminAttendancePage() {
                                       <XCircle className="w-3.5 h-3.5 mr-1" /> Absent
                                     </span>
                                   )}
-                                  <button
-                                    onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
-                                    className="text-[10px] text-slate-400 font-semibold hover:text-brand-600 underline"
-                                  >
-                                    Change
-                                  </button>
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
+                                      className="text-[10px] text-slate-400 font-semibold hover:text-brand-600 underline"
+                                    >
+                                      Change
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex justify-center items-center gap-1.5 min-w-[120px]">
@@ -538,12 +566,14 @@ export default function AdminAttendancePage() {
                                 <span className={`px-2 py-0.5 rounded-lg font-bold text-[10px] border ${record.check_today ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-red-700 bg-red-50 border-red-100'}`}>
                                   {record.check_today ? "Present" : "Absent"}
                                 </span>
-                                <button
-                                  onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
-                                  className="text-[10px] text-brand-600 font-bold underline"
-                                >
-                                  Change
-                                </button>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => doUpdateAttendance(record.attendance_id, !record.check_today)}
+                                    className="text-[10px] text-brand-600 font-bold underline"
+                                  >
+                                    Change
+                                  </button>
+                                )}
                               </>
                             ) : (
                               <div className="flex items-center gap-1.5">

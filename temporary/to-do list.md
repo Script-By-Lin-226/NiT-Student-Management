@@ -1,14 +1,23 @@
-# To-Do List - Fix Income Summary Exports & Include Student Transactions
+# To-Do List - Manager Role & Sales Role Realignment & Dashboard Enhancement
 
-- [x] Create `./temporary` directory and prepare this to-do list
-- [x] Modify `backend/app/services/admin_panel.py`
-  - [x] Adjust `start_date` and `end_date` filters timezone to UTC
-  - [x] Adjust grouping keys (`day_key`, `week_key`, `month_key`) to local timezone
-- [x] Modify `frontend/utils/excelExport.ts` to support multiple sheets
-- [x] Modify `frontend/utils/pdfIncomeReport.ts` to include detailed student transactions table
-- [x] Modify `frontend/app/(portal)/admin/payments/page.tsx`
-  - [x] Implement detailed mapping helper `getDetailedTransactionsForExport`
-  - [x] Update Excel summary export buttons (multi-sheet)
-  - [x] Update PDF summary export buttons
-  - [x] Update the main Export Income Excel export
-- [x] Verify functionality
+- [x] Restrict backend RBAC permission validators
+  - [x] Modify `validating_admin_role` in `rbac_portal.py` to treat `manager` exactly like `sales` (only allowed when `allow_sales` is True, and limit HTTP methods to `GET` and `POST`)
+  - [x] Limit `sales` HTTP methods to `GET` and `POST` (no PUT/DELETE) in `rbac_portal.py`
+- [x] Update frontend authentication hook `useAuth.ts`
+  - [x] Add `manager` role to `isAdminOrSales` to load operations dashboard
+  - [x] Remove `manager` role from `isAdminOrManager` to restrict access to Staff management
+- [x] Align layouts navigation items
+  - [x] Filter out Staff, Backup, and Activity Logs from desktop sidebar for both sales and manager
+  - [x] Filter out Staff, Backup, and Logs from mobile navigation for both sales and manager
+- [x] Restrict Edit/Delete permissions in frontend pages
+  - [x] Restrict Staff management (`users/page.tsx`) access to `isAdmin` only
+  - [x] Restrict parent edits (`parents/page.tsx`) to `isAdmin` only
+  - [x] Restrict enrollment edits (`enrollments/page.tsx`) to `isAdmin` and `isAccountant` only
+  - [x] Restrict batch/subject creation and deletion (`courses/page.tsx`) to `isAdmin` only
+  - [x] Restrict attendance updating/toggling (`attendance/page.tsx`) to `isAdmin` only
+- [x] Enhance Manager & Sales Portal Dashboard (`dashboard/page.tsx`)
+  - [x] Display dynamic role-based headers ("Manager Portal Dashboard", "Sales Portal Dashboard", etc.)
+  - [x] Display dynamic greeting ("Good Morning", "Good Afternoon", "Good Evening") based on current time
+  - [x] Implement Quick Operations Panel with links to permitted modules (Students, Attendance, Payments, Enrollments, Courses, Rooms)
+  - [x] Apply premium glassmorphism styles and hover transformations
+- [x] Verify correctness and run compilation checks

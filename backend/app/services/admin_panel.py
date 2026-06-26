@@ -1598,7 +1598,8 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
-        base_q = select(Enrollment, User, Course).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).options(
+        from app.models.model import Batch
+        base_q = select(Enrollment, User, Course, Batch).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).outerjoin(Batch, Enrollment.batch_id == Batch.batch_id).options(
             defer(User.address), defer(User.password_hash)
         ).order_by(Enrollment.enrollment_date.desc(), Enrollment.enrollment_id.desc())
 
@@ -1643,13 +1644,15 @@ class AdminPanelService:
                 pay_counts[eid] = int(pcount or 0)
 
         data = []
-        for e, u, c in rows:
+        for e, u, c, b in rows:
             d = _serialize_enrollment(e)
             d["student_code"] = u.user_code
             d["student_name"] = u.username
             d["course_code"] = c.course_code
             d["course_name"] = c.course_name
             d["room"] = getattr(c, "room", None)
+            d["batch_start_date"] = b.start_date.isoformat() if b and b.start_date else None
+            d["batch_end_date"] = b.end_date.isoformat() if b and b.end_date else None
             
             plan = getattr(e, "payment_plan", None)
             course_cost = float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if plan == "full" else (c.fee_installment if plan == "installment" else 0.0)) or 0.0)
@@ -2268,6 +2271,10 @@ class AdminPanelService:
                     "course_name": c.course_name,
                     "batch_id": t.batch_id,
                     "batch_no": b.batch_no if b else None,
+                    "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
+                    "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
+                    "course_start_date": c.start_date.isoformat() if c and c.start_date else None,
+                    "course_end_date": c.end_date.isoformat() if c and c.end_date else None,
                     "teacher_id": t.teacher_id,
                     "teacher_code": u.user_code if u else None,
                     "teacher_name": u.username if u else None,
@@ -2423,7 +2430,8 @@ class AdminPanelService:
 
     # --- Payments CRUD ---
     async def get_income_report(request: Request, session: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        user = getattr(request.state, "user", None)
+        if not user or user.get("role") not in ["admin", "accountant"]:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         base_q = select(

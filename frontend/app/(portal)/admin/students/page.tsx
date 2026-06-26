@@ -179,7 +179,7 @@ function SignaturePad({ value, onChange }: { value: string; onChange: (val: stri
 
 export default function AdminStudentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdmin, user, loading: authLoading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdminOrSalesOrAccountantOrManager, isAdmin, user, loading: authLoading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -337,8 +337,8 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isAdminOrSalesOrAccountant) router.replace("/dashboard");
-  }, [authLoading, isAdminOrSalesOrAccountant, router]);
+    if (!authLoading && !isAdminOrSalesOrAccountantOrManager) router.replace("/dashboard");
+  }, [authLoading, isAdminOrSalesOrAccountantOrManager, router]);
 
   const filtered = useMemo(() => {
     let result = [...rows];
@@ -687,7 +687,7 @@ export default function AdminStudentsPage() {
   };
 
   if (authLoading) return null;
-  if (!isAdminOrSalesOrAccountant) return null;
+  if (!isAdminOrSalesOrAccountantOrManager) return null;
 
   const exportSelectedStudent = () => {
     if (!selected || !relations) return;

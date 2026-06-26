@@ -78,7 +78,7 @@ export default function MobileNav() {
   if (isStaff) navigation = staffNav;
   if (user?.role === "teacher") navigation = teacherNav;
   if (user?.role === "accountant") navigation = accountantNav;
-  if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Logs" && item.name !== "Staff" && item.name !== "Backup");
+  if (user?.role === "sales" || user?.role === "manager") navigation = adminNav.filter(item => item.name !== "Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 
   const primaryNav = navigation.length > 5 ? navigation.slice(0, 4) : navigation;

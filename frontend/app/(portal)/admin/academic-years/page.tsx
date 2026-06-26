@@ -41,7 +41,7 @@ function Modal({
 
 export default function AdminAcademicYearsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminAcademicYear[]>([]);
   const [busy, setBusy] = useState(false);
@@ -61,8 +61,8 @@ export default function AdminAcademicYearsPage() {
   const [eEnd, setEEnd] = useState("");
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -83,12 +83,12 @@ export default function AdminAcademicYearsPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSales) load();
+    if (isAdminOrSalesOrManager) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+  }, [isAdminOrSalesOrManager]);
 
   if (loading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrManager) return null;
 
   const openCreate = () => {
     setCName("");

@@ -18,10 +18,15 @@ async def validating_admin_role(request: Request, allow_sales: bool = False, all
     if role == "admin":
         return True
     if role == "sales" and allow_sales:
-        if request.method in ["GET", "POST", "PUT"]:
+        if request.method in ["GET", "POST"]:
             return True
         else:
-            raise HTTPException(status_code=403, detail="Sales account can only read, create, and update (GET, POST, PUT)")
+            raise HTTPException(status_code=403, detail="Sales account can only read and create (GET, POST)")
+    if role == "manager" and allow_sales:
+        if request.method in ["GET", "POST"]:
+            return True
+        else:
+            raise HTTPException(status_code=403, detail="Manager account can only read and create (GET, POST)")
     if role == "accountant" and allow_accountant:
         return True
     raise HTTPException(status_code=403, detail="Admin access required")

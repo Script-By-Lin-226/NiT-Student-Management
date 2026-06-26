@@ -1,9 +1,10 @@
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
-from app.models.model import User, Enrollment, Course, Grade, TimeTable, Attendance, ParentStudent, Payment
+from sqlalchemy import select, and_, func, or_
+from app.models.model import User, Enrollment, Course, Grade, TimeTable, Attendance, ParentStudent, Payment, Batch
 from app.services.rbac_portal import validating_student_role, validating_parent_role
+from app.core.timezone_utils import get_now_local
 
 
 def _user_from_request(request: Request) -> dict:
@@ -150,18 +151,45 @@ class StudentPortalService:
         if not user:
             raise HTTPException(status_code=404, detail="Student not found")
 
-        # Get enrolled course IDs
-        enroll_q = select(Enrollment.course_id).where(Enrollment.student_id == user.user_id)
+        # Get active enrollments with batch details
+        enroll_q = (
+            select(Enrollment, Batch)
+            .outerjoin(Batch, Enrollment.batch_id == Batch.batch_id)
+            .where(and_(Enrollment.student_id == user.user_id, Enrollment.status == True))
+        )
         enroll_r = await session.execute(enroll_q)
-        course_ids = [row[0] for row in enroll_r.all()]
+        enroll_rows = enroll_r.all()
 
-        if not course_ids:
+        current_date = get_now_local().date()
+        valid_enrolls = []
+        for e, b in enroll_rows:
+            if b:
+                if b.start_date and current_date < b.start_date:
+                    continue
+                if b.end_date and current_date > b.end_date:
+                    continue
+            valid_enrolls.append((e, b))
+
+        if not valid_enrolls:
             return JSONResponse({"success": True, "data": [], "error": None})
 
+        conditions = []
+        for e, b in valid_enrolls:
+            if b:
+                conditions.append(
+                    and_(
+                        TimeTable.course_id == e.course_id,
+                        or_(TimeTable.batch_id == b.batch_id, TimeTable.batch_id.is_(None))
+                    )
+                )
+            else:
+                conditions.append(TimeTable.course_id == e.course_id)
+
         tt_q = (
-            select(TimeTable, Course)
+            select(TimeTable, Course, Batch)
             .join(Course, TimeTable.course_id == Course.course_id)
-            .where(TimeTable.course_id.in_(course_ids))
+            .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
+            .where(or_(*conditions))
         )
         tt_r = await session.execute(tt_q)
         rows = tt_r.all()
@@ -172,9 +200,11 @@ class StudentPortalService:
                 "day": t.day_of_week,
                 "start_time": t.start_time,
                 "end_time": t.end_time,
-                "course": {"course_code": c.course_code, "course_name": c.course_name}
+                "course": {"course_code": c.course_code, "course_name": c.course_name},
+                "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
+                "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
             }
-            for t, c in rows
+            for t, c, b in rows
         ]
         return JSONResponse({"success": True, "data": data, "error": None})
 

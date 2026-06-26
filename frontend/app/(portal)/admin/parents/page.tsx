@@ -23,7 +23,7 @@ function Modal({ title, open, onClose, children }: { title: string; open: boolea
 }
 
 export default function AdminParentsPage() {
-  const { isAdminOrSales } = useAuth();
+  const { isAdmin, isAdminOrSales, isAdminOrSalesOrManager, loading: authLoading } = useAuth();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
 
@@ -78,8 +78,11 @@ export default function AdminParentsPage() {
   }, [linkForm]);
 
   useEffect(() => {
-    if (isAdminOrSales) refresh();
-  }, [isAdminOrSales, page, refresh]);
+    if (isAdminOrSalesOrManager) refresh();
+  }, [isAdminOrSalesOrManager, page, refresh]);
+
+  if (authLoading) return null;
+  if (!isAdminOrSalesOrManager) return null;
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -354,8 +357,12 @@ export default function AdminParentsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEdit(p)} className="btn-icon-sm hover:bg-slate-100 text-slate-400 group-hover:text-brand-600 transition-all"><Pencil size={16} /></button>
-                      <button onClick={() => openDelete(p)} className="btn-icon-sm hover:bg-red-50 text-slate-400 group-hover:text-red-600 transition-all"><Trash2 size={16} /></button>
+                      {isAdmin && (
+                        <button onClick={() => openEdit(p)} className="btn-icon-sm hover:bg-slate-100 text-slate-400 group-hover:text-brand-600 transition-all"><Pencil size={16} /></button>
+                      )}
+                      {isAdmin && (
+                        <button onClick={() => openDelete(p)} className="btn-icon-sm hover:bg-red-50 text-slate-400 group-hover:text-red-600 transition-all"><Trash2 size={16} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -382,8 +389,12 @@ export default function AdminParentsPage() {
                   <div className="text-xs text-slate-500 font-medium mt-0.5">{p.email}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-slate-50 text-slate-500"><Pencil size={14} /></button>
-                  <button onClick={() => openDelete(p)} className="p-2 rounded-lg bg-slate-50 text-red-500"><Trash2 size={14} /></button>
+                  {isAdmin && (
+                    <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-slate-50 text-slate-500"><Pencil size={14} /></button>
+                  )}
+                  {isAdmin && (
+                    <button onClick={() => openDelete(p)} className="p-2 rounded-lg bg-slate-50 text-red-500"><Trash2 size={14} /></button>
+                  )}
                 </div>
               </div>
             </div>

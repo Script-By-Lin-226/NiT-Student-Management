@@ -72,8 +72,11 @@ export function useAuth() {
     isTeacher: user?.role === "teacher",
     isStaff: ["hr", "manager", "sales", "teacher", "accountant"].includes(user?.role || ""),
     isAdmin: user?.role === "admin",
-    isAdminOrSales: user?.role === "admin" || user?.role === "sales",
+    isAdminOrSales: user?.role === "admin" || user?.role === "sales" || user?.role === "manager",
     isAccountant: user?.role === "accountant",
     isAdminOrSalesOrAccountant: ["admin", "sales", "accountant"].includes(user?.role || ""),
+    isAdminOrSalesOrManager: ["admin", "sales", "manager"].includes(user?.role || ""),
+    isAdminOrSalesOrAccountantOrManager: ["admin", "sales", "accountant", "manager"].includes(user?.role || ""),
+    isAdminOrManager: ["admin"].includes(user?.role || ""),
   };
 }

@@ -42,7 +42,7 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 export default function AdminRoomsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminRoom[]>([]);
   const [busy, setBusy] = useState(false);
@@ -69,8 +69,8 @@ export default function AdminRoomsPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, router]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -99,12 +99,12 @@ export default function AdminRoomsPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSales) load();
+    if (isAdminOrSalesOrManager) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+  }, [isAdminOrSalesOrManager]);
 
   if (loading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrManager) return null;
 
   const openCreate = () => {
     setCName("");

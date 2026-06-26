@@ -46,7 +46,7 @@ function Modal({
 
 export default function AdminCoursesPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading: authLoading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading: authLoading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -95,8 +95,8 @@ export default function AdminCoursesPage() {
   const busy = yearsLoading || coursesLoading || createCourse.isPending || updateCourse.isPending || deleteCourse.isPending;
 
   useEffect(() => {
-    if (!authLoading && !isAdminOrSales) router.replace("/dashboard");
-  }, [authLoading, isAdminOrSales, router]);
+    if (!authLoading && !isAdminOrSalesOrManager) router.replace("/dashboard");
+  }, [authLoading, isAdminOrSalesOrManager, router]);
 
   const yearNameById = useMemo(() => {
     const m = new Map<number, string>();
@@ -111,7 +111,7 @@ export default function AdminCoursesPage() {
   }, [q, rows]);
 
   if (authLoading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrManager) return null;
 
   const openCreate = () => {
     setCName(""); setCInstructor(""); setCFeeFull(0); setCFeeInst(0); setCExamFeeGbp(0);
@@ -577,6 +577,7 @@ export default function AdminCoursesPage() {
 function BatchManagement({ courseId }: { courseId: number }) {
   const { data: batchRes, isLoading } = useBatches(courseId);
   const { data: rooms = [] } = useRooms();
+  const { isAdmin } = useAuth();
   const batches = batchRes?.data || [];
   const createBatch = useCreateBatch();
   const updateBatch = useUpdateBatch();
@@ -627,37 +628,39 @@ function BatchManagement({ courseId }: { courseId: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
-        <h4 className="text-sm font-bold text-slate-900 border-l-4 border-brand-500 pl-3">New Batch</h4>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Batch Number</label>
-            <input value={newNo} onChange={(e) => setNewNo(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" placeholder="e.g. Batch #1" />
+      {isAdmin && (
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
+          <h4 className="text-sm font-bold text-slate-900 border-l-4 border-brand-500 pl-3">New Batch</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Batch Number</label>
+              <input value={newNo} onChange={(e) => setNewNo(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" placeholder="e.g. Batch #1" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Start Date</label>
+              <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">End Date</label>
+              <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Room</label>
+              <select value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm">
+                <option value="">Select Room…</option>
+                {rooms.map(r => (
+                  <option key={r.room_id} value={r.room_name} disabled={r.is_full}>
+                    {r.room_name} ({r.current_load ?? 0}/{r.capacity}) {r.is_full ? "[FULL]" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Start Date</label>
-            <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">End Date</label>
-            <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
-          </div>
-          <div className="col-span-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Room</label>
-            <select value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm">
-              <option value="">Select Room…</option>
-              {rooms.map(r => (
-                <option key={r.room_id} value={r.room_name} disabled={r.is_full}>
-                  {r.room_name} ({r.current_load ?? 0}/{r.capacity}) {r.is_full ? "[FULL]" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <button onClick={handleCreate} disabled={createBatch.isPending || !newNo} className="w-full py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-50 transition-all active:scale-95">
+            Add Batch
+          </button>
         </div>
-        <button onClick={handleCreate} disabled={createBatch.isPending || !newNo} className="w-full py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-50 transition-all active:scale-95">
-          Add Batch
-        </button>
-      </div>
+      )}
 
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-slate-900 px-1">Active Batches</h4>
@@ -677,9 +680,11 @@ function BatchManagement({ courseId }: { courseId: number }) {
                   <button onClick={() => setViewBatch(b)} className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-all border border-slate-200">
                     View
                   </button>
-                  <button onClick={() => handleDelete(b.batch_id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {isAdmin && (
+                    <button onClick={() => handleDelete(b.batch_id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -748,6 +753,7 @@ function BatchManagement({ courseId }: { courseId: number }) {
 
 function SubjectManagement({ courseId, courseCode, courseName }: { courseId: number; courseCode: string; courseName: string }) {
   const { data: subjectRes, isLoading } = useSubjects(courseId);
+  const { isAdmin } = useAuth();
   const subjects = subjectRes?.data || [];
   const createSubject = useCreateSubject();
   const deleteSubject = useDeleteSubject();
@@ -817,30 +823,32 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>
-          <div className="text-[10px] font-bold text-slate-400 uppercase bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm">
-            Course ID: {courseId}
+      {isAdmin && (
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>
+            <div className="text-[10px] font-bold text-slate-400 uppercase bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+              Course ID: {courseId}
+            </div>
           </div>
-        </div>
-        <div className="text-xs font-semibold text-slate-500 px-3">
-          Adding subject for <span className="text-blue-600">{courseName}</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Subject Code</label>
-            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm" placeholder="e.g. NCC-101" />
+          <div className="text-xs font-semibold text-slate-500 px-3">
+            Adding subject for <span className="text-blue-600">{courseName}</span>
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Subject Name</label>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm" placeholder="e.g. Database Systems" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Subject Code</label>
+              <input value={newCode} onChange={(e) => setNewCode(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm" placeholder="e.g. NCC-101" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Subject Name</label>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm" placeholder="e.g. Database Systems" />
+            </div>
           </div>
+          <button onClick={handleCreate} disabled={createSubject.isPending || !newCode || !newName} className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-95">
+            Add Subject
+          </button>
         </div>
-        <button onClick={handleCreate} disabled={createSubject.isPending || !newCode || !newName} className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-95">
-          Add Subject
-        </button>
-      </div>
+      )}
 
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-slate-900 px-1">Course Subjects</h4>
@@ -854,9 +862,11 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
                   <div className="font-bold text-slate-900">{s.subject_name}</div>
                   <div className="text-[10px] text-slate-500 font-medium">{s.subject_code}</div>
                 </div>
-                <button onClick={() => handleDelete(s.subject_id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {isAdmin && (
+                  <button onClick={() => handleDelete(s.subject_id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>

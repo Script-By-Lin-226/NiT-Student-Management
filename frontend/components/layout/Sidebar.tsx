@@ -74,7 +74,7 @@ export default function Sidebar() {
   if (isStaff) navigation = staffNav;
   if (user?.role === "teacher") navigation = teacherNav;
   if (user?.role === "accountant") navigation = accountantNav;
-  if (user?.role === "sales") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff" && item.name !== "Backup");
+  if (user?.role === "sales" || user?.role === "manager") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 
   return (

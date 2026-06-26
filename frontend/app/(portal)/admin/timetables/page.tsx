@@ -59,23 +59,50 @@ function SortIcon({ active, order }: { active: boolean; order: "asc" | "desc" })
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
-function getDayDate(dayName: string) {
-  const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const now = new Date();
-  const todayIndex = now.getDay(); // 0 is Sun, 1 is Mon...
+function parseLocalDate(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  return new Date(dateStr);
+}
 
-  // Target index (0-6)
+function getDayDate(dayName: string, batchStartDateStr?: string | null, courseStartDateStr?: string | null) {
+  const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const targetIndex = weekday.indexOf(dayName);
   if (targetIndex === -1) return null;
 
-  // We want to get the date of this week
-  // If today is Monday (1) and we want Monday (1), diff is 0
-  // If today is Monday (1) and we want Tuesday (2), diff is 1
-  let diff = targetIndex - todayIndex;
+  const now = new Date();
   
+  let startDate: Date | null = null;
+  if (batchStartDateStr) {
+    startDate = parseLocalDate(batchStartDateStr);
+  } else if (courseStartDateStr) {
+    startDate = parseLocalDate(courseStartDateStr);
+  }
+
+  if (startDate && !isNaN(startDate.getTime())) {
+    const startDayIndex = startDate.getDay();
+    let diff = targetIndex - startDayIndex;
+    if (diff < 0) diff += 7;
+    const firstOccurrence = new Date(startDate);
+    firstOccurrence.setDate(startDate.getDate() + diff);
+
+    const firstOccMidnight = new Date(firstOccurrence.getFullYear(), firstOccurrence.getMonth(), firstOccurrence.getDate());
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (firstOccMidnight > nowMidnight) {
+      return firstOccurrence;
+    }
+  }
+
+  const todayIndex = now.getDay();
+  let diff = targetIndex - todayIndex;
   const targetDate = new Date(now);
   targetDate.setDate(now.getDate() + diff);
-  
   return targetDate;
 }
 
@@ -86,7 +113,7 @@ const formatDate = (date: Date | null) => {
 
 export default function AdminTimetablesPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminTimeTableRow[]>([]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
@@ -114,8 +141,9 @@ export default function AdminTimetablesPage() {
   const [cTeacherCode, setCTeacherCode] = useState("");
 
   const [batches, setBatches] = useState<any[]>([]);
-  const [cDay, setCDay] = useState<(typeof DAYS)[number]>("Monday");
-  const [cSlots, setCSlots] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "10:00" }]);
+  const [cSlots, setCSlots] = useState<{ day_of_week: (typeof DAYS)[number]; start: string; end: string }[]>([
+    { day_of_week: "Monday", start: "09:00", end: "10:00" }
+  ]);
   const [cRoom, setCRoom] = useState<string>("");
 
   const [eDay, setEDay] = useState<(typeof DAYS)[number]>("Monday");
@@ -133,8 +161,8 @@ export default function AdminTimetablesPage() {
   const [eSubjects, setESubjects] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!loading && !isAdminOrSales) router.replace("/dashboard");
-  }, [loading, isAdminOrSales, router]);
+    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, router]);
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -204,9 +232,9 @@ export default function AdminTimetablesPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSales) load();
+    if (isAdminOrSalesOrManager) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSales]);
+  }, [isAdminOrSalesOrManager]);
 
   useEffect(() => {
     if (cCourseCode) {
@@ -254,7 +282,7 @@ export default function AdminTimetablesPage() {
   }, [quickSubjectOpen, cCourseCode, subjects]);
 
   if (loading) return null;
-  if (!isAdminOrSales) return null;
+  if (!isAdminOrSalesOrManager) return null;
 
   const openCreate = () => {
     const firstCourse = courses[0];
@@ -263,8 +291,7 @@ export default function AdminTimetablesPage() {
     setCBatchId("");
     setCSubjectCode("");
     setCTeacherCode("");
-    setCDay("Monday");
-    setCSlots([{ start: "09:00", end: "10:00" }]);
+    setCSlots([{ day_of_week: "Monday", start: "09:00", end: "10:00" }]);
     setCRoom(rooms[0]?.room_name ?? "");
     setCreateOpen(true);
 
@@ -320,7 +347,7 @@ export default function AdminTimetablesPage() {
             subject_code: cSubjectCode || null,
             teacher_code: cTeacherCode || null,
 
-            day_of_week: cDay,
+            day_of_week: slot.day_of_week,
             start_time: slot.start,
             end_time: slot.end,
             room_name: cRoom || null,
@@ -542,7 +569,7 @@ export default function AdminTimetablesPage() {
                           <span className="font-bold text-slate-900">{r.day_of_week}</span>
                           <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] font-black text-slate-500 w-fit">
                             <Calendar className="w-3 h-3 text-slate-400" />
-                            {formatDate(getDayDate(r.day_of_week))}
+                            {formatDate(getDayDate(r.day_of_week, r.batch_start_date, r.course_start_date))}
                           </div>
                         </div>
                       </td>
@@ -653,16 +680,6 @@ export default function AdminTimetablesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Day</label>
-            <select value={cDay} onChange={(e) => setCDay(e.target.value as any)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
-              {DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Room</label>
             <select value={cRoom} onChange={(e) => setCRoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
               <option value="">(no room)</option>
@@ -674,31 +691,54 @@ export default function AdminTimetablesPage() {
             </select>
           </div>
           <div className="sm:col-span-2 space-y-3">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Time Slots</label>
-            {cSlots.map((slot, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <input
-                  value={slot.start}
-                  onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, start: e.target.value } : s))}
-                  type="time"
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                />
-                <span className="text-slate-400 font-bold">to</span>
-                <input
-                  value={slot.end}
-                  onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, end: e.target.value } : s))}
-                  type="time"
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                />
-                {cSlots.length > 1 && (
-                  <button type="button" onClick={() => setCSlots(cSlots.filter((_, idx) => idx !== i))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button type="button" onClick={() => setCSlots([...cSlots, { start: "09:00", end: "10:00" }])} className="text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
-              + Add another time slot
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Day and Time Slots</label>
+            <div className="space-y-2">
+              {cSlots.map((slot, i) => (
+                <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 relative">
+                  <div className="w-full sm:w-auto flex-1">
+                    <select
+                      value={slot.day_of_week}
+                      onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, day_of_week: e.target.value as any } : s))}
+                      className="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold focus:outline-none"
+                    >
+                      {DAYS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input
+                      value={slot.start}
+                      onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, start: e.target.value } : s))}
+                      type="time"
+                      className="w-full sm:w-28 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs focus:outline-none"
+                    />
+                    <span className="text-slate-400 text-xs font-bold">to</span>
+                    <input
+                      value={slot.end}
+                      onChange={(e) => setCSlots(cSlots.map((s, idx) => idx === i ? { ...s, end: e.target.value } : s))}
+                      type="time"
+                      className="w-full sm:w-28 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs focus:outline-none"
+                    />
+                  </div>
+                  {cSlots.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setCSlots(cSlots.filter((_, idx) => idx !== i))}
+                      className="absolute top-2 right-2 sm:static p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCSlots([...cSlots, { day_of_week: cSlots[cSlots.length - 1]?.day_of_week || "Monday", start: "09:00", end: "10:00" }])}
+              className="text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors"
+            >
+              + Add another day/time slot
             </button>
           </div>
           <div className="sm:col-span-2 flex items-center justify-end pt-2">

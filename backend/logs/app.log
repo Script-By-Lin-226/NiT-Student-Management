@@ -317,3 +317,16 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-26 00:20:26,266 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
 2026-06-26 00:20:26,269 - NiT-SMS - INFO - Starting Excel export...
 2026-06-26 00:21:46,507 - NiT-SMS - INFO - Excel export completed: backup_20260626_002146.xlsx
+2026-06-26 20:27:02,506 - NiT-SMS - INFO - Activity logged: [Unknown] Create Staff: Created manager account 'Lynn Lynn Aung' (MGR0002)
+2026-06-26 23:22:16,990 - NiT-SMS - INFO - Activity logged: [Unknown] Update User: User CO0030626 updated
+2026-06-26 23:55:07,074 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User MGR0002 deleted
+2026-06-26 23:55:16,033 - NiT-SMS - INFO - Activity logged: [Unknown] Delete User: User ACC0001 deleted
+2026-06-26 23:56:26,437 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Timetable: Timetable ID 2 deleted
+2026-06-26 23:57:15,329 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Batch: Batch ID 2 deleted
+2026-06-26 23:58:10,737 - NiT-SMS - INFO - Activity logged: [Unknown] Create Batch: Batch Batch 1 created for course Linux System Administration
+2026-06-26 23:58:37,086 - NiT-SMS - INFO - Activity logged: [Unknown] Create Timetable: Timetable for CRS0015 (Batch Batch 1) on Monday 09:00-10:00 created
+2026-06-26 23:59:29,013 - NiT-SMS - INFO - Activity logged: [Unknown] Update Enrollment: Enrollment ENR0009 updated
+2026-06-27 00:02:10,989 - NiT-SMS - INFO - Activity logged: [Unknown] Export Backup: Administrator started database export to Excel
+2026-06-27 00:02:10,989 - NiT-SMS - INFO - Starting Excel export...
+2026-06-27 00:02:18,953 - NiT-SMS - INFO - Excel export completed: backup_20260627_000218.xlsx
+2026-06-27 00:30:24,589 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Timetable: Timetable ID 3 deleted

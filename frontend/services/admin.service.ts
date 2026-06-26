@@ -346,6 +346,10 @@ export interface AdminTimeTableRow {
   subject_id?: number | null;
   subject_code?: string | null;
   subject_name?: string | null;
+  batch_start_date?: string | null;
+  batch_end_date?: string | null;
+  course_start_date?: string | null;
+  course_end_date?: string | null;
 }
 
 export interface AdminTimeTableCreate {

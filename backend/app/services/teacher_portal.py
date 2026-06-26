@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.model import Attendance, Batch, Course, Subject, TimeTable, User, Enrollment
 from app.services.rbac_portal import validating_teacher_role
 from datetime import datetime
+from app.core.timezone_utils import get_now_local
 
 
 def _user_from_request(request: Request) -> dict:
@@ -39,6 +40,7 @@ class TeacherPortalService:
         teacher name/code, course, subject, batch, room, day/time.
         """
         teacher = await TeacherPortalService._resolve_teacher(request, session)
+        current_date = get_now_local().date()
 
         # Query 1: timetable rows relevant to this teacher
         tt_q = (
@@ -47,10 +49,19 @@ class TeacherPortalService:
             .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
             .outerjoin(Subject, TimeTable.subject_id == Subject.subject_id)
             .where(
-                or_(
-                    TimeTable.teacher_id == teacher.user_id,   # explicitly assigned
-                    Course.instructor_id == teacher.user_id,   # course instructor fallback
-                    Batch.instructor_id == teacher.user_id,    # batch instructor fallback
+                and_(
+                    or_(
+                        TimeTable.teacher_id == teacher.user_id,   # explicitly assigned
+                        Course.instructor_id == teacher.user_id,   # course instructor fallback
+                        Batch.instructor_id == teacher.user_id,    # batch instructor fallback
+                    ),
+                    or_(
+                        Batch.batch_id.is_(None),
+                        and_(
+                            or_(Batch.start_date.is_(None), Batch.start_date <= current_date),
+                            or_(Batch.end_date.is_(None), Batch.end_date >= current_date)
+                        )
+                    )
                 )
             )
             .order_by(TimeTable.day_of_week, TimeTable.start_time)
@@ -101,6 +112,8 @@ class TeacherPortalService:
                     "subject_name": s.subject_name if s else None,
                     "batch_id": b.batch_id if b else None,
                     "batch_no": b.batch_no if b else None,
+                    "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
+                    "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
                     "total_students": batch_student_count.get(b.batch_id, 0) if b else 0,
                     "room": tt.room_name or (b.room if b else c.room),
                     "day_of_week": tt.day_of_week,
@@ -127,6 +140,11 @@ class TeacherPortalService:
             target_batches = batch_by_course.get(c.course_id, [None])
 
             for b in target_batches:
+                if b:
+                    if b.start_date and current_date < b.start_date:
+                        continue
+                    if b.end_date and current_date > b.end_date:
+                        continue
                 for s in subjects:
                     key = (c.course_id, b.batch_id if b else None, s.subject_id if s else None, None, None, None)
                     if key in existing_keys:
@@ -158,7 +176,23 @@ class TeacherPortalService:
     @staticmethod
     async def total_classes_taught(request: Request, session: AsyncSession):
         teacher = await TeacherPortalService._resolve_teacher(request, session)
-        q = select(func.count(TimeTable.timetable_id)).where(and_(TimeTable.teacher_id == teacher.user_id))
+        current_date = get_now_local().date()
+        q = (
+            select(func.count(TimeTable.timetable_id))
+            .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
+            .where(
+                and_(
+                    TimeTable.teacher_id == teacher.user_id,
+                    or_(
+                        Batch.batch_id.is_(None),
+                        and_(
+                            or_(Batch.start_date.is_(None), Batch.start_date <= current_date),
+                            or_(Batch.end_date.is_(None), Batch.end_date >= current_date)
+                        )
+                    )
+                )
+            )
+        )
         
         r = await session.execute(q)
         total_classes = r.scalar() or 0
@@ -191,8 +225,23 @@ class TeacherPortalService:
     async def total_hours_taught_daily(request: Request, session: AsyncSession):
         teacher = await TeacherPortalService._resolve_teacher(request, session)
         today_name = datetime.now().strftime("%A")
-        q = select(TimeTable.start_time, TimeTable.end_time).where(
-            and_(TimeTable.teacher_id == teacher.user_id, TimeTable.day_of_week == today_name)
+        current_date = get_now_local().date()
+        q = (
+            select(TimeTable.start_time, TimeTable.end_time)
+            .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
+            .where(
+                and_(
+                    TimeTable.teacher_id == teacher.user_id,
+                    TimeTable.day_of_week == today_name,
+                    or_(
+                        Batch.batch_id.is_(None),
+                        and_(
+                            or_(Batch.start_date.is_(None), Batch.start_date <= current_date),
+                            or_(Batch.end_date.is_(None), Batch.end_date >= current_date)
+                        )
+                    )
+                )
+            )
         )
         r = await session.execute(q)
         rows = r.all()

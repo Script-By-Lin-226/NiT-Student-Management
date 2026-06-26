@@ -691,14 +691,85 @@ export default function DashboardPage() {
   }
 
   if (isAdminOrSales) {
+    const getGreeting = () => {
+      const hr = new Date().getHours();
+      if (hr < 12) return "Good Morning";
+      if (hr < 17) return "Good Afternoon";
+      return "Good Evening";
+    };
+
+    const dashboardTitle = () => {
+      if (user?.role === "admin") return "Admin Dashboard";
+      if (user?.role === "manager") return "Manager Portal Dashboard";
+      if (user?.role === "sales") return "Sales Portal Dashboard";
+      return "Operations Dashboard";
+    };
+
     return (
-      <div className="space-y-6 animate-in fade-in duration-500">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Admin Dashboard</h1>
-            <p className="text-slate-500 font-medium text-sm mt-1 flex items-center gap-2">Welcome back, {user?.user_code}</p>
+      <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+        
+        {/* Modern Dynamic Header Panel
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-brand-600 via-indigo-600 to-violet-600 p-6 md:p-8 shadow-xl shadow-brand-500/10">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10" />
+          <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-brand-500/20 rounded-full blur-2xl" />
+
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white font-bold text-xs uppercase tracking-wider backdrop-blur-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live Database
+              </span>
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mt-3 font-outfit">
+                {getGreeting()}, {user?.username || user?.user_code}
+              </h1>
+              <p className="text-white/80 font-medium text-sm md:text-base mt-2">
+                Welcome to your {dashboardTitle()}. Here is an overview of the academy's current metrics.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 self-start md:self-auto bg-white/10 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center font-bold text-brand-600 shadow-inner">
+                {user?.role?.[0]?.toUpperCase() || "S"}
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none">Logged in as</p>
+                <p className="text-sm font-bold text-white uppercase mt-1 tracking-wider">{user?.role}</p>
+              </div>
+            </div>
           </div>
-        </div>
+        </div> */}
+
+        {/* Quick Operations Panel */}
+        {/* <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="font-black text-slate-800 uppercase tracking-wider text-sm">Quick Operations Panel</h3>
+              <p className="text-xs text-slate-400 font-medium mt-1">Common administrative tasks and directory actions</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: "Students", desc: "View & Add", href: "/admin/students", icon: Users, color: "from-blue-500 to-indigo-500", text: "text-blue-600", bg: "bg-blue-50" },
+              { label: "Attendance", desc: "Record Daily", href: "/admin/attendance", icon: Fingerprint, color: "from-emerald-500 to-teal-500", text: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: "Payments", desc: "Record Fees", href: "/admin/payments", icon: CreditCard, color: "from-purple-500 to-pink-500", text: "text-purple-600", bg: "bg-purple-50" },
+              { label: "Enrollments", desc: "New Student", href: "/admin/enrollments", icon: Award, color: "from-amber-500 to-orange-500", text: "text-amber-600", bg: "bg-amber-50" },
+              { label: "Courses", desc: "View Classes", href: "/admin/courses", icon: BookOpen, color: "from-indigo-500 to-violet-500", text: "text-indigo-600", bg: "bg-indigo-50" },
+              { label: "Rooms", desc: "Check Status", href: "/admin/rooms", icon: DoorOpen, color: "from-sky-500 to-cyan-500", text: "text-sky-600", bg: "bg-sky-50" },
+            ].map((act, i) => (
+              <a
+                key={i}
+                href={act.href}
+                className="group flex flex-col items-center justify-center p-4 bg-slate-50/50 hover:bg-white rounded-2xl border border-slate-100 hover:border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-300 active:scale-95 text-center relative overflow-hidden"
+              >
+                <div className={`p-3.5 rounded-2xl ${act.bg} ${act.text} transition-transform group-hover:scale-110 duration-300`}>
+                  <act.icon className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-slate-800 text-xs mt-3 leading-tight tracking-tight">{act.label}</h4>
+                <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wider">{act.desc}</p>
+              </a>
+            ))}
+          </div>
+        </div> */}
 
         {dashboardError && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-rose-100">

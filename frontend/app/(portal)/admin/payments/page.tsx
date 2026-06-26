@@ -113,7 +113,7 @@ const renderExtraItemsCell = (payment: any) => {
 
 export default function AdminPaymentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrAccountant, loading, user } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdminOrSalesOrAccountantOrManager, isAdmin, loading, user } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -232,10 +232,10 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "dashboard" && isAdminOrSalesOrAccountant) {
+    if (activeTab === "dashboard" && isAdmin) {
       fetchIncomeDashboardData();
     }
-  }, [activeTab, dashStartDate, dashEndDate, isAdminOrSalesOrAccountant]);
+  }, [activeTab, dashStartDate, dashEndDate, isAdmin]);
 
   const dashIncomeTrendData = useMemo(() => {
     if (!dashIncomeReport) return [];
@@ -385,9 +385,9 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSalesOrAccountant) load();
+    if (isAdminOrSalesOrAccountantOrManager) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSalesOrAccountant]);
+  }, [isAdminOrSalesOrAccountantOrManager]);
 
   const openRecordPayment = (enr: AdminEnrollment) => {
     setSelectedEnrollment(enr);
@@ -677,7 +677,7 @@ export default function AdminPaymentsPage() {
   };
 
   if (loading) return null;
-  if (!isAdminOrSalesOrAccountant) return null;
+  if (!isAdminOrSalesOrAccountantOrManager) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -699,21 +699,23 @@ export default function AdminPaymentsPage() {
             >
               Payments Tracker
             </button>
-            <button
-              onClick={() => setActiveTab("dashboard")}
-              className={clsx(
-                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                activeTab === "dashboard"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-slate-200/40"
-              )}
-            >
-              <BarChartIcon className="w-3.5 h-3.5" />
-              Income Dashboard
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab("dashboard")}
+                className={clsx(
+                  "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                  activeTab === "dashboard"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-slate-200/40"
+                )}
+              >
+                <BarChartIcon className="w-3.5 h-3.5" />
+                Income Dashboard
+              </button>
+            )}
           </div>
         </div>
-        {activeTab === "tracker" ? (
+        {activeTab === "tracker" || !isAdmin ? (
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={load}
@@ -818,7 +820,7 @@ export default function AdminPaymentsPage() {
         )}
       </div>
 
-      {activeTab === "tracker" ? (
+      {activeTab === "tracker" || !isAdmin ? (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
           <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-md">
@@ -1855,7 +1857,7 @@ export default function AdminPaymentsPage() {
                               <Receipt className="w-3.5 h-3.5" />
                               Receipt
                             </button>
-                            {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
+                            {(user?.role === 'admin' || user?.role === 'hr') && (
                               <>
                                 <button
                                   onClick={() => {

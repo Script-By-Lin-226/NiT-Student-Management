@@ -274,30 +274,34 @@ export default function AdminStaffPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => openPassword(r)}
-                      disabled={busy}
-                      className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors disabled:opacity-50"
-                      title="Change Password"
-                    >
-                      <Key className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => openUpdate(r)}
-                      disabled={busy}
-                      className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-colors disabled:opacity-50"
-                      title="Edit Staff"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteStaff(r)}
-                      disabled={busy}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
-                      title="Delete Staff"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          onClick={() => openPassword(r)}
+                          disabled={busy}
+                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors disabled:opacity-50"
+                          title="Change Password"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openUpdate(r)}
+                          disabled={busy}
+                          className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-colors disabled:opacity-50"
+                          title="Edit Staff"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStaff(r)}
+                          disabled={busy}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                          title="Delete Staff"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
