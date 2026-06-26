@@ -17,6 +17,7 @@ function SignaturePad({ value, onChange }: { value: string; onChange: (val: stri
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // Initialize canvas only once on mount
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -32,8 +33,15 @@ function SignaturePad({ value, onChange }: { value: string; onChange: (val: stri
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
     ctx.scale(2, 2);
+  }, []);
 
+  // Clear canvas when value is reset externally
+  useEffect(() => {
     if (!value) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }, [value]);

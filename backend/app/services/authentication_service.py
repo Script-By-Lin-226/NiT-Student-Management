@@ -291,3 +291,31 @@ class AuthenticationService:
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         return response
+
+    @staticmethod
+    async def get_esign_student(user_code: str, session: AsyncSession):
+        query = select(User).where(User.user_code == user_code)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Student not found")
+        return {
+            "user_code": user.user_code,
+            "username": user.username,
+            "signature": user.signature
+        }
+
+    @staticmethod
+    async def update_esign_signature(user_code: str, signature: str, session: AsyncSession):
+        query = select(User).where(User.user_code == user_code)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Student not found")
+        user.signature = signature
+        await session.commit()
+        
+        # Clear cache for this user
+        from app.core.cache import cache_manager
+        await cache_manager.delete(f"user:{user.user_code.lower()}")
+        return {"message": "Signature submitted successfully"}

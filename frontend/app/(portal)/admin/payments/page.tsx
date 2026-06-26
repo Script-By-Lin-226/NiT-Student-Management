@@ -979,23 +979,35 @@ export default function AdminPaymentsPage() {
                             <History className="w-3.5 h-3.5" />
                             History
                           </button>
-                          {user?.role !== "accountant" && (enr.payment_plan === 'installment' || enr.payment_plan === 'full') && calculateLeftAmount(enr) > 0 && (
-                            <button
-                              onClick={() => openRecordPayment(enr)}
-                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm transition-all active:scale-95"
-                            >
-                              <CreditCard className="w-3.5 h-3.5" />
-                              Pay Now
-                            </button>
-                          )}
-                          {user?.role !== "accountant" && ((calculateLeftAmount(enr) <= 0 && calculateLeftExamFeeGbp(enr) > 0)) && (
-                            <button
-                              onClick={() => openRecordPayment(enr)}
-                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-sm transition-all active:scale-95"
-                            >
-                              <CreditCard className="w-3.5 h-3.5" />
-                              Exam Fee
-                            </button>
+                          {user?.role !== "accountant" && (
+                            <>
+                              {((enr.payment_plan === 'installment' || enr.payment_plan === 'full') && calculateLeftAmount(enr) > 0) ? (
+                                <button
+                                  onClick={() => openRecordPayment(enr)}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-sm transition-all active:scale-95"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  Pay Now
+                                </button>
+                              ) : calculateLeftExamFeeGbp(enr) > 0 ? (
+                                <button
+                                  onClick={() => openRecordPayment(enr)}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-sm transition-all active:scale-95"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  Exam Fee
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openRecordPayment(enr)}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-600 text-white font-bold hover:bg-slate-700 shadow-sm transition-all active:scale-95"
+                                  title="Record Other Payment (Fine / Extra Item)"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  Record
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
@@ -1150,12 +1162,15 @@ export default function AdminPaymentsPage() {
                       <History className="w-3.5 h-3.5" />
                       Logs
                     </button>
-                    {user?.role !== "accountant" && !isFullyPaid && (
+                    {user?.role !== "accountant" && (
                       <button
                         onClick={() => openRecordPayment(enr)}
-                        className="flex-1 h-9 flex items-center justify-center rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors"
+                        className={clsx(
+                          "flex-1 h-9 flex items-center justify-center rounded-lg text-white text-[11px] font-bold transition-colors",
+                          isFullyPaid ? "bg-slate-600 hover:bg-slate-700" : "bg-indigo-600 hover:bg-indigo-700"
+                        )}
                       >
-                        PAY NOW
+                        {isFullyPaid ? "RECORD" : "PAY NOW"}
                       </button>
                     )}
                   </div>

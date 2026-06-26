@@ -51,6 +51,132 @@ function Modal({
   );
 }
 
+function SignaturePad({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  // Initialize canvas only once on mount
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.strokeStyle = "#0d4d4d"; // Brand color
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Adjust canvas resolution for crisp rendering
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+  }, []);
+
+  // Clear canvas when value is reset externally
+  useEffect(() => {
+    if (!value) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [value]);
+
+  const getCoordinates = (e: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e: any) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = getCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: any) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = getCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = (e: any) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      onChange(canvas.toDataURL("image/png"));
+    }
+  };
+
+  const handleClear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange("");
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="relative border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden bg-slate-50 h-52 group hover:border-[#0d4d4d]/30 transition-all">
+        <canvas
+          ref={canvasRef}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          className="w-full h-full cursor-crosshair touch-none"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute top-4 right-4 px-4 py-2 bg-white text-xs font-bold border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-100 hover:text-slate-950 transition-all shadow-sm active:scale-[0.98]"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-slate-400 text-center font-medium">Draw your signature inside the box above. Touchscreen and mouse drawing are supported.</p>
+    </div>
+  );
+}
+
 export default function AdminStudentsPage() {
   const router = useRouter();
   const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdmin, user, loading: authLoading } = useAuth();
@@ -135,6 +261,7 @@ export default function AdminStudentsPage() {
   const [eHowDidYouHear, setEHowDidYouHear] = useState("");
   const [eStudentType, setEStudentType] = useState("");
   const [eIntendedCourse, setEIntendedCourse] = useState("");
+  const [eSignature, setESignature] = useState("");
 
   // Enrollment edit state
   const [enrollToEdit, setEnrollToEdit] = useState<any | null>(null);
@@ -354,6 +481,7 @@ export default function AdminStudentsPage() {
     setEHowDidYouHear(s.how_did_you_hear || "");
     setEStudentType(s.student_type || "");
     setEIntendedCourse(s.intended_course_code || "");
+    setESignature((s as any).signature || "");
     setRelations(null);
     setRelationsLoading(true);
     setEditOpen(true);
@@ -362,7 +490,8 @@ export default function AdminStudentsPage() {
       .then(data => {
         setRelations(data);
         if (data.student) {
-          // Additional student info is now included in relations.student
+          setSelected(data.student);
+          setESignature(data.student.signature || "");
         }
       })
       .catch(() => setRelations(null))
@@ -391,6 +520,7 @@ export default function AdminStudentsPage() {
           how_did_you_hear: eHowDidYouHear || null,
           student_type: eStudentType || null,
           intended_course_code: eIntendedCourse || null,
+          signature: eSignature || null,
         }
       });
       setEditOpen(false);
@@ -1692,6 +1822,26 @@ export default function AdminStudentsPage() {
           </div>
 
           <div className="sm:col-span-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5 font-bold">E-Signature</label>
+            {eSignature ? (
+              <div className="relative border border-slate-200 bg-white rounded-2xl p-4 flex flex-col items-center justify-center min-h-[140px] group shadow-sm">
+                <img src={eSignature} alt="Signature Preview" className="max-h-[100px] object-contain" />
+                <button
+                  type="button"
+                  onClick={() => setESignature("")}
+                  className="absolute top-2 right-2 px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 transition-colors cursor-pointer"
+                >
+                  Clear & Re-draw
+                </button>
+              </div>
+            ) : (
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50">
+                <SignaturePad value={eSignature} onChange={setESignature} />
+              </div>
+            )}
+          </div>
+
+          <div className="sm:col-span-2">
             <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-bold text-slate-800">Relations</div>
@@ -1921,6 +2071,38 @@ export default function AdminStudentsPage() {
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase">Parent Phone</div>
                 <div className="font-semibold text-slate-800 mt-1">{selected.parent_phone || "-"}</div>
+              </div>
+            </div>
+
+            {selected.signature && (
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="text-xs font-semibold text-slate-500 uppercase mb-2">E-Signature</div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 flex items-center justify-center h-20 shadow-sm">
+                  <img src={selected.signature} alt="E-Signature" className="max-h-full max-w-full object-contain" />
+                </div>
+              </div>
+            )}
+
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+              <div className="text-xs font-semibold text-slate-500 uppercase">E-Sign Link (Request)</div>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  readOnly
+                  value={typeof window !== "undefined" ? `${window.location.origin}/esign/${selected.user_code}` : ""}
+                  className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-600 font-mono focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      navigator.clipboard.writeText(`${window.location.origin}/esign/${selected.user_code}`);
+                      toast.success("E-Sign link copied to clipboard!");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors active:scale-95 cursor-pointer shrink-0"
+                >
+                  Copy Link
+                </button>
               </div>
             </div>
 

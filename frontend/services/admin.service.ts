@@ -52,6 +52,7 @@ export interface AdminStudent {
   how_did_you_hear?: string | null;
   student_type?: string | null;
   intended_course_code?: string | null;
+  signature?: string | null;
 }
 
 export interface AdminStudentCreate {
@@ -94,6 +95,7 @@ export interface AdminStudentUpdate {
   how_did_you_hear?: string | null;
   student_type?: string | null;
   intended_course_code?: string | null;
+  signature?: string | null;
 }
 
 export interface AdminAcademicYear {

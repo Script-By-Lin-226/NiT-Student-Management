@@ -38,3 +38,14 @@ async def update_profile_route(request: Request, payload: dict, session: AsyncSe
 @router.post("/logout")
 async def logout_route(request: Request):
     return await AuthenticationService.logout(request)
+
+@router.get("/esign/{user_code}")
+async def get_esign_student_route(user_code: str, session: AsyncSession = Depends(get_db)):
+    return await AuthenticationService.get_esign_student(user_code, session)
+
+@router.post("/esign/{user_code}")
+async def update_esign_signature_route(user_code: str, payload: dict, session: AsyncSession = Depends(get_db)):
+    signature = payload.get("signature")
+    if not signature:
+         raise HTTPException(status_code=400, detail="Signature is required")
+    return await AuthenticationService.update_esign_signature(user_code, signature, session)

@@ -46,6 +46,7 @@ class UserUpdate(BaseModel):
     how_did_you_hear: Optional[str] = None
     student_type: Optional[str] = None
     intended_course_code: Optional[str] = None
+    signature: Optional[str] = None
 
 
 class AdminStudentCreate(BaseModel):

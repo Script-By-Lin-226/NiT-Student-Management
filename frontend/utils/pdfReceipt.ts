@@ -371,11 +371,11 @@ export const generateReceiptPDF = async (
   currentY += isA5 ? 4.5 : 6;
 
   // Grand Total Row
-  setCorrectFont("Grand Total (Received):", isA5 ? 7.5 : 10, "bold");
+  setCorrectFont("Grand Total (Received):", isA5 ? 7.5 : 9, "bold");
   doc.setTextColor(63, 81, 181); // Indigo theme color
   doc.text("Grand Total (Received):", summaryStartX, currentY);
 
-  setCorrectFont(`${grandTotal.toLocaleString()} MMK`, isA5 ? 8.5 : 10, "bold");
+  setCorrectFont(`${grandTotal.toLocaleString()} MMK`, isA5 ? 8.5 : 9, "bold");
   doc.text(`${grandTotal.toLocaleString()} MMK`, summaryEndX, currentY, { align: "right" });
   doc.setTextColor(0, 0, 0);
 
@@ -416,8 +416,8 @@ export const generateReceiptPDF = async (
 
   // Refund policy warning highlighted in red under the contact information
   doc.setTextColor(220, 38, 38);
-  setCorrectFont("No Refund!", isA5 ? 8 : 9, "bold");
-  doc.text("No Refund!", pageCenter, footerBaseY + (isA5 ? 20 : 26), { align: "center" });
+  setCorrectFont("No Refund! (That payment is considered final and no refund will be issued)", isA5 ? 8 : 9, "bold");
+  doc.text("No Refund! (That payment is considered final and no refund will be issued)", pageCenter, footerBaseY + (isA5 ? 20 : 26), { align: "center" });
   doc.setTextColor(0, 0, 0);
 
   const filenameSuffix = payments.length === 1 && payments[0].month ? `_${payments[0].month.replace(/\s+/g, "_")}` : "";
