@@ -50,6 +50,31 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Sync function called in async context for migrations."""
+    import sqlalchemy as sa
+    from alembic.script import ScriptDirectory
+
+    inspector = sa.inspect(connection)
+    tables = inspector.get_table_names()
+
+    if 'academic_years' in tables:
+        # Check if alembic_version table exists and has a record
+        has_version_table = 'alembic_version' in tables
+        has_record = False
+        if has_version_table:
+            result = connection.execute(sa.text("SELECT 1 FROM alembic_version LIMIT 1"))
+            has_record = result.fetchone() is not None
+
+        if not has_record:
+            script = ScriptDirectory.from_config(config)
+            head_revision = script.get_current_head()
+            if head_revision:
+                print(f"[Alembic Auto-Stamp] Database tables exist but alembic_version is empty/missing. Stamping database with head revision: {head_revision}")
+                if not has_version_table:
+                    connection.execute(sa.text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"))
+                else:
+                    connection.execute(sa.text("DELETE FROM alembic_version"))
+                connection.execute(sa.text(f"INSERT INTO alembic_version (version_num) VALUES ('{head_revision}')"))
+
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()

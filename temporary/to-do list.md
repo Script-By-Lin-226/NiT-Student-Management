@@ -1,23 +1,5 @@
-# To-Do List - Manager Role & Sales Role Realignment & Dashboard Enhancement
+# To-Do List - Resolve Database Migration Error
 
-- [x] Restrict backend RBAC permission validators
-  - [x] Modify `validating_admin_role` in `rbac_portal.py` to treat `manager` exactly like `sales` (only allowed when `allow_sales` is True, and limit HTTP methods to `GET` and `POST`)
-  - [x] Limit `sales` HTTP methods to `GET` and `POST` (no PUT/DELETE) in `rbac_portal.py`
-- [x] Update frontend authentication hook `useAuth.ts`
-  - [x] Add `manager` role to `isAdminOrSales` to load operations dashboard
-  - [x] Remove `manager` role from `isAdminOrManager` to restrict access to Staff management
-- [x] Align layouts navigation items
-  - [x] Filter out Staff, Backup, and Activity Logs from desktop sidebar for both sales and manager
-  - [x] Filter out Staff, Backup, and Logs from mobile navigation for both sales and manager
-- [x] Restrict Edit/Delete permissions in frontend pages
-  - [x] Restrict Staff management (`users/page.tsx`) access to `isAdmin` only
-  - [x] Restrict parent edits (`parents/page.tsx`) to `isAdmin` only
-  - [x] Restrict enrollment edits (`enrollments/page.tsx`) to `isAdmin` and `isAccountant` only
-  - [x] Restrict batch/subject creation and deletion (`courses/page.tsx`) to `isAdmin` only
-  - [x] Restrict attendance updating/toggling (`attendance/page.tsx`) to `isAdmin` only
-- [x] Enhance Manager & Sales Portal Dashboard (`dashboard/page.tsx`)
-  - [x] Display dynamic role-based headers ("Manager Portal Dashboard", "Sales Portal Dashboard", etc.)
-  - [x] Display dynamic greeting ("Good Morning", "Good Afternoon", "Good Evening") based on current time
-  - [x] Implement Quick Operations Panel with links to permitted modules (Students, Attendance, Payments, Enrollments, Courses, Rooms)
-  - [x] Apply premium glassmorphism styles and hover transformations
-- [x] Verify correctness and run compilation checks
+- [x] Modify `backend/migration/env.py` to auto-stamp the database with head revision when tables exist but alembic history is missing
+- [x] Verify local database status and run `alembic upgrade head`
+- [x] Run backend tests using pytest to verify nothing is broken
