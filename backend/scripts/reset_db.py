@@ -7,7 +7,7 @@ from sqlalchemy import text
 sys.path.append(os.path.join(os.getcwd(), "backend"))
 sys.path.append(os.getcwd())
 
-from app.core.database_initialization import engine, Base, AsyncSessionLocal, _seed_admin_if_needed
+from app.core.database_initialization import engine, Base, AsyncSessionLocal, _seed_admin_if_needed, _seed_accounts_if_needed
 # Import models so Base.metadata is populated
 import app.models.model 
 
@@ -17,7 +17,7 @@ async def auto_backup(session):
     from app.models.model import (
         User, AcademicYear, Course, Room, Enrollment, Payment,
         Batch, Subject, TimeTable, Grade, Attendance, StaffAttendance,
-        ParentStudent, ActivityLog
+        ParentStudent, ActivityLog, Account, Expense, JournalEntry, JournalEntryLine
     )
     from sqlalchemy import select
     
@@ -37,7 +37,11 @@ async def auto_backup(session):
         (Attendance, "Attendances"),
         (StaffAttendance, "StaffAttendances"),
         (ParentStudent, "ParentStudentLinks"),
-        (ActivityLog, "ActivityLogs")
+        (ActivityLog, "ActivityLogs"),
+        (Account, "Accounts"),
+        (Expense, "Expenses"),
+        (JournalEntry, "JournalEntries"),
+        (JournalEntryLine, "JournalEntryLines")
     ]
     
     # Ensure backup directory exists
@@ -117,11 +121,12 @@ async def reset_database():
             
     print("✅ All data, indexes, and primary key auto increments have been reset successfully.")
     
-    print("Re-seeding initial admin data if configured...")
+    print("Re-seeding initial admin data and Chart of Accounts...")
     try:
         await _seed_admin_if_needed()
+        await _seed_accounts_if_needed()
     except Exception as e:
-        print(f"Note: Could not automatically seed admin account: {e}")
+        print(f"Note: Could not automatically seed initial data: {e}")
 
 if __name__ == "__main__":
     asyncio.run(reset_database())

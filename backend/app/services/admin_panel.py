@@ -547,7 +547,11 @@ class AdminPanelService:
         else:
             user_code = await _next_student_code(session, getattr(payload, "department", "College"))
             
-        hashed = await hash_password(payload.password)
+        if payload.password and payload.password.strip():
+            hashed = await hash_password(payload.password)
+        else:
+            import secrets
+            hashed = await hash_password(secrets.token_urlsafe(16))
 
         dob_dt = datetime.combine(payload.date_of_birth, time.min)
         new_user = User(
@@ -936,6 +940,19 @@ class AdminPanelService:
             
         update_data = user_update.dict(exclude_unset=True)
         
+        # Check if user_code is being modified
+        if "user_code" in update_data:
+            new_code = update_data["user_code"].strip() if update_data["user_code"] else None
+            if not new_code:
+                return JSONResponse({"status_code": 400, "message": "Student code cannot be empty"}, status_code=400)
+            if new_code != user.user_code:
+                # Check for conflict
+                dup = await session.execute(select(User).where(User.user_code == new_code))
+                if dup.scalars().first():
+                    return JSONResponse({"status_code": 409, "message": f"Student code {new_code} already exists"}, status_code=409)
+                user.user_code = new_code
+            update_data.pop("user_code", None)
+        
         # Schema uses date_of_birth (date); model uses data_of_birth (DateTime)
         if "date_of_birth" in update_data:
             val = update_data.pop("date_of_birth")
@@ -1153,20 +1170,34 @@ class AdminPanelService:
         tables = [
             "activity_logs", "refresh_tokens", "parent_student", "grades",
             "attendances", "staff_attendance", "payments", "enrollments",
-            "timetables", "batches", "subjects", "courses", "academic_years", "rooms"
+            "timetables", "batches", "subjects", "courses", "academic_years", "rooms",
+            "journal_entry_lines", "journal_entries", "expenses"
         ]
         
-        # 1. Truncate all tables except users to reset their IDs to 1
-        truncate_query = f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE;"
-        await session.execute(text(truncate_query))
-        
-        # 2. Delete non-admin users
-        await session.execute(delete(User).where(User.role != "admin"))
-        
-        # 3. Reset users sequence to avoid gaps
-        res = await session.execute(select(func.max(User.user_id)))
-        max_id = res.scalar() or 0
-        await session.execute(text(f"SELECT setval('users_user_id_seq', {max_id}, true)"))
+        dialect_name = session.bind.dialect.name
+        if "sqlite" in dialect_name:
+            # SQLite does not support TRUNCATE and CASCADE
+            await session.execute(text("PRAGMA foreign_keys = OFF;"))
+            for t in tables:
+                await session.execute(text(f"DELETE FROM {t};"))
+            # Delete non-admin users
+            await session.execute(delete(User).where(User.role != "admin"))
+            # Reset SQLite sequences
+            await session.execute(text("DELETE FROM sqlite_sequence;"))
+            await session.execute(text("PRAGMA foreign_keys = ON;"))
+        else:
+            # PostgreSQL or other dialects
+            truncate_query = f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE;"
+            await session.execute(text(truncate_query))
+            
+            # Delete non-admin users
+            await session.execute(delete(User).where(User.role != "admin"))
+            
+            # Reset users sequence to avoid gaps
+            res = await session.execute(select(func.max(User.user_id)))
+            max_id = res.scalar() or 0
+            if "postgresql" in dialect_name:
+                await session.execute(text(f"SELECT setval('users_user_id_seq', {max_id}, true)"))
 
         await session.commit()
         return JSONResponse({"status_code": 200, "message": "Purged all data except admin accounts and base structure"})

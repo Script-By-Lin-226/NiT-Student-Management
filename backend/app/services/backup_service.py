@@ -203,11 +203,14 @@ class BackupService:
                                     record['username'] = email_str
 
                         # Special case: Password hashing for Users
-                        if model == User and record.get('password_hash'):
-                            # If it doesn't look like a bcrypt hash (starts with $2b$ or $2a$), hash it
-                            ph = str(record['password_hash'])
-                            if not (ph.startswith("$2b$") or ph.startswith("$2a$")):
-                                record['password_hash'] = await hash_password(ph)
+                        if model == User:
+                            if not record.get('password_hash'):
+                                import secrets
+                                record['password_hash'] = await hash_password(secrets.token_urlsafe(16))
+                            else:
+                                ph = str(record['password_hash'])
+                                if not (ph.startswith("$2b$") or ph.startswith("$2a$")):
+                                    record['password_hash'] = await hash_password(ph)
 
                         # Convert objects
                         for col in model.__table__.columns:

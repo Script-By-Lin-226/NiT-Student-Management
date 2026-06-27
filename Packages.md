@@ -1,7 +1,7 @@
 # Project Dependency & Package Analysis
 
 This document details the packages and libraries used in this project across both the **Front-End** and **Back-End** environments. The packages are grouped by functional categories, specifically highlighting PDF export, API handling, data backup, and other utilities.
-
+postgresql://nit_db_yca1_user:qoECkymDXjpIC4QAXcuyTur0zNkwk4Xc@dpg-d6vavjfkijhs73coa82g-a.singapore-postgres.render.com/nit_db_yca1
 ---
 
 ## 🖥️ Front-End Dependencies (`frontend`)

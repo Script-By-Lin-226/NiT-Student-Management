@@ -248,6 +248,7 @@ export default function AdminStudentsPage() {
   const [fBatchId, setFBatchId] = useState<number | "" | "manual">("");
 
   // Edit form
+  const [eUserCode, setEUserCode] = useState("");
   const [eUsername, setEUsername] = useState("");
   const [eEmail, setEEmail] = useState("");
   const [eDob, setEDob] = useState<string>("");
@@ -468,6 +469,7 @@ export default function AdminStudentsPage() {
 
   const openEdit = (s: AdminStudent) => {
     setSelected(s);
+    setEUserCode(s.user_code || "");
     setEUsername(s.username || "");
     setEEmail(s.email || "");
     setEDob(s.data_of_birth ? s.data_of_birth.slice(0, 10) : "");
@@ -507,6 +509,7 @@ export default function AdminStudentsPage() {
       await updateMutation.mutateAsync({
         code: selected.user_code,
         payload: {
+          user_code: eUserCode.trim() || undefined,
           username: eUsername.trim(),
           email: eEmail.trim(),
           date_of_birth: eDob ? eDob : null,
@@ -1391,16 +1394,6 @@ export default function AdminStudentsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
-            <input
-              value={cPassword}
-              onChange={(e) => setCPassword(e.target.value)}
-              type="password"
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              placeholder="Min 6 characters"
-            />
-          </div>
-          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date of birth <span className="text-red-500">*</span></label>
             <input
               value={cDob}
@@ -1673,7 +1666,7 @@ export default function AdminStudentsPage() {
           <div className="sm:col-span-2 flex justify-end">
             <button
               onClick={submitCreate}
-              disabled={combinedLoading || !cUsername.trim() || !cEmail.trim() || cPassword.length < 6 || !cDob}
+              disabled={combinedLoading || !cUsername.trim() || !cEmail.trim() || !cDob}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-60 transition-all active:scale-95 shadow-sm"
             >
               {createMutation.isPending && <RefreshCw className="w-4 h-4 animate-spin" />}
@@ -1694,7 +1687,16 @@ export default function AdminStudentsPage() {
               </div>
             </div>
           )}
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Student Code <span className="text-red-500">*</span></label>
+            <input
+              value={eUserCode}
+              onChange={(e) => setEUserCode(e.target.value)}
+              placeholder="Student Code"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-medium"
+            />
+          </div>
+          <div className="sm:col-span-1">
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name <span className="text-red-500">*</span></label>
             <input
               value={eUsername}

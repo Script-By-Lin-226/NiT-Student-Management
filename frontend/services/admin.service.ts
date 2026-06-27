@@ -59,7 +59,7 @@ export interface AdminStudentCreate {
   user_code?: string | null;
   username: string;
   email: string;
-  password: string;
+  password?: string | null;
   date_of_birth?: string | null;
   is_active?: boolean;
   nrc?: string | null;
@@ -81,6 +81,7 @@ export interface AdminStudentCreate {
 }
 
 export interface AdminStudentUpdate {
+  user_code?: string | null;
   username?: string;
   email?: string;
   date_of_birth?: string | null;

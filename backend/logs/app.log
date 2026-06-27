@@ -330,3 +330,4 @@ WHERE users.user_code = $1::VARCHAR]
 2026-06-27 00:02:10,989 - NiT-SMS - INFO - Starting Excel export...
 2026-06-27 00:02:18,953 - NiT-SMS - INFO - Excel export completed: backup_20260627_000218.xlsx
 2026-06-27 00:30:24,589 - NiT-SMS - INFO - Activity logged: [Unknown] Delete Timetable: Timetable ID 3 deleted
+2026-06-27 12:05:24,943 - NiT-SMS - INFO - Activity logged: [Admin] Create Student: Student CO0035626 created

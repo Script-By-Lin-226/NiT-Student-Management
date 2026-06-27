@@ -47,12 +47,13 @@ class UserUpdate(BaseModel):
     student_type: Optional[str] = None
     intended_course_code: Optional[str] = None
     signature: Optional[str] = None
+    user_code: Optional[str] = None
 
 
 class AdminStudentCreate(BaseModel):
     username: str
     email: str
-    password: str
+    password: Optional[str] = None
     date_of_birth: date
     is_active: Optional[bool] = True
     
@@ -87,7 +88,7 @@ class AdminStudentCreate(BaseModel):
 
     @validator('password')
     def password_length(cls, v):
-        if len(v) < 6:
+        if v is not None and len(v) < 6:
             raise ValueError('Password must be at least 6 characters long')
         return v
 
