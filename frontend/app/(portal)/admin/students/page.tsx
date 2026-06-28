@@ -493,6 +493,20 @@ export default function AdminStudentsPage() {
         setRelations(data);
         if (data.student) {
           setSelected(data.student);
+          setEUserCode(data.student.user_code || "");
+          setEUsername(data.student.username || "");
+          setEEmail(data.student.email || "");
+          setEDob(data.student.data_of_birth ? data.student.data_of_birth.slice(0, 10) : "");
+          setEActive(!!data.student.is_active);
+          setEPhone(data.student.phone || "");
+          setENrc(data.student.nrc || "");
+          setEGender(data.student.gender || "");
+          setEAddress(data.student.address || "");
+          setEParentName(data.student.parent_name || "");
+          setEParentPhone(data.student.parent_phone || "");
+          setEHowDidYouHear(data.student.how_did_you_hear || "");
+          setEStudentType(data.student.student_type || "");
+          setEIntendedCourse(data.student.intended_course_code || "");
           setESignature(data.student.signature || "");
         }
       })
@@ -506,25 +520,29 @@ export default function AdminStudentsPage() {
     if (!eUsername.trim()) { setError("Full name is required"); return; }
     if (!eDob) { setError("Date of Birth is required"); return; }
     try {
+      const payload: any = {};
+      if (eUserCode.trim() !== (selected.user_code || "")) payload.user_code = eUserCode.trim() || undefined;
+      if (eUsername.trim() !== (selected.username || "")) payload.username = eUsername.trim();
+      if (eEmail.trim() !== (selected.email || "")) payload.email = eEmail.trim();
+      
+      const originalDob = selected.data_of_birth ? selected.data_of_birth.slice(0, 10) : "";
+      if (eDob !== originalDob) payload.date_of_birth = eDob ? eDob : null;
+      
+      if (eActive !== !!selected.is_active) payload.is_active = eActive;
+      if (ePhone.trim() !== (selected.phone || "")) payload.phone = ePhone.trim() || null;
+      if (eNrc.trim() !== (selected.nrc || "")) payload.nrc = eNrc.trim() || null;
+      if (eGender !== (selected.gender || "")) payload.gender = eGender || null;
+      if (eAddress.trim() !== (selected.address || "")) payload.address = eAddress.trim() || null;
+      if (eParentName.trim() !== (selected.parent_name || "")) payload.parent_name = eParentName.trim() || null;
+      if (eParentPhone.trim() !== (selected.parent_phone || "")) payload.parent_phone = eParentPhone.trim() || null;
+      if (eHowDidYouHear !== (selected.how_did_you_hear || "")) payload.how_did_you_hear = eHowDidYouHear || null;
+      if (eStudentType !== (selected.student_type || "")) payload.student_type = eStudentType || null;
+      if (eIntendedCourse !== (selected.intended_course_code || "")) payload.intended_course_code = eIntendedCourse || null;
+      if (eSignature !== (selected.signature || "")) payload.signature = eSignature || null;
+
       await updateMutation.mutateAsync({
         code: selected.user_code,
-        payload: {
-          user_code: eUserCode.trim() || undefined,
-          username: eUsername.trim(),
-          email: eEmail.trim(),
-          date_of_birth: eDob ? eDob : null,
-          is_active: eActive,
-          phone: ePhone.trim() || null,
-          nrc: eNrc.trim() || null,
-          gender: eGender || null,
-          address: eAddress.trim() || null,
-          parent_name: eParentName.trim() || null,
-          parent_phone: eParentPhone.trim() || null,
-          how_did_you_hear: eHowDidYouHear || null,
-          student_type: eStudentType || null,
-          intended_course_code: eIntendedCourse || null,
-          signature: eSignature || null,
-        }
+        payload
       });
       setEditOpen(false);
       setSelected(null);
