@@ -1788,20 +1788,25 @@ class AdminPanelService:
         e = r.scalars().first()
         if not e:
             return JSONResponse({"status_code": 404, "message": "Enrollment not found"}, status_code=404)
-        if payload.status is not None:
-            e.status = payload.status
-        if getattr(payload, "batch_id", None) is not None or getattr(payload, "batch_no", None) is not None:
-            batch_id = getattr(payload, "batch_id", None)
-            batch_no = getattr(payload, "batch_no", None)
-            
+
+        # Only update fields that were explicitly sent in the request body
+        update_fields = payload.dict(exclude_unset=True)
+
+        if "status" in update_fields and update_fields["status"] is not None:
+            e.status = update_fields["status"]
+
+        # Batch resolution — only if batch_id or batch_no was explicitly sent
+        if "batch_id" in update_fields or "batch_no" in update_fields:
+            batch_id = update_fields.get("batch_id")
+            batch_no = update_fields.get("batch_no")
+
             if batch_id and batch_id != 0:
                 e.batch_id = batch_id
-                # optionally update batch_no too if you want it in sync
             elif batch_no:
                 b_r = await session.execute(
                     select(Batch).where(
                         and_(
-                            Batch.course_id == e.course_id, 
+                            Batch.course_id == e.course_id,
                             func.lower(func.trim(Batch.batch_no)) == func.lower(batch_no.strip())
                         )
                     )
@@ -1816,17 +1821,17 @@ class AdminPanelService:
                 e.batch_id = None
                 e.batch_no = None
 
-        if getattr(payload, "payment_plan", None) is not None:
-            e.payment_plan = payload.payment_plan
-        if getattr(payload, "downpayment", None) is not None:
-            e.downpayment = payload.downpayment
-        if getattr(payload, "installment_amount", None) is not None:
-            e.installment_amount = payload.installment_amount
-        if getattr(payload, "total_fee", None) is not None:
-            e.total_fee = payload.total_fee
-        if getattr(payload, "exam_fee_gbp", None) is not None:
-            e.exam_fee_gbp = payload.exam_fee_gbp
-            
+        if "payment_plan" in update_fields:
+            e.payment_plan = update_fields["payment_plan"]
+        if "downpayment" in update_fields:
+            e.downpayment = update_fields["downpayment"]
+        if "installment_amount" in update_fields:
+            e.installment_amount = update_fields["installment_amount"]
+        if "total_fee" in update_fields:
+            e.total_fee = update_fields["total_fee"]
+        if "exam_fee_gbp" in update_fields:
+            e.exam_fee_gbp = update_fields["exam_fee_gbp"]
+
         await session.commit()
         await log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
         return JSONResponse({"status_code": 200, "message": "Enrollment updated successfully", "data": _serialize_enrollment(e)})
