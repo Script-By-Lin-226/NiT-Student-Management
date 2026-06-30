@@ -1496,7 +1496,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Batch created successfully", "data": _serialize_batch(new_batch)}, status_code=201)
 
     async def update_batch(request: Request, session: AsyncSession, batch_id: int, payload: AdminBatchUpdate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_sales_update=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
             
         r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
@@ -1587,7 +1587,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Subject created successfully", "data": _serialize_subject(new_subject)}, status_code=201)
 
     async def update_subject(request: Request, session: AsyncSession, subject_id: int, payload: AdminSubjectUpdate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_sales_update=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
             
         r = await session.execute(select(Subject).where(Subject.subject_id == subject_id))
@@ -1782,7 +1782,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Enrollment created successfully", "data": _serialize_enrollment(e)}, status_code=201)
 
     async def update_enrollment(request: Request, session: AsyncSession, enrollment_code: str, payload: AdminEnrollmentUpdate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_sales_update=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         r = await session.execute(select(Enrollment).where(Enrollment.enrollment_code == enrollment_code))
         e = r.scalars().first()

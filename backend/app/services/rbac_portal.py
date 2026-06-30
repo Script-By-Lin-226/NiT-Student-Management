@@ -12,7 +12,7 @@ def _get_user(request: Request) -> dict:
 
 # ── Role validators ───────────────────────────────────────────────────────────
 
-async def validating_admin_role(request: Request, allow_sales: bool = False, allow_accountant: bool = False) -> bool:
+async def validating_admin_role(request: Request, allow_sales: bool = False, allow_accountant: bool = False, allow_sales_update: bool = False) -> bool:
     user = _get_user(request)
     role = user.get("role")
     if role == "admin":
@@ -20,13 +20,17 @@ async def validating_admin_role(request: Request, allow_sales: bool = False, all
     if role == "sales" and allow_sales:
         if request.method in ["GET", "POST"]:
             return True
-        else:
-            raise HTTPException(status_code=403, detail="Sales account can only read and create (GET, POST)")
+        # When allow_sales_update is True, sales can also do PUT (update)
+        if request.method == "PUT" and allow_sales_update:
+            return True
+        raise HTTPException(status_code=403, detail="Sales account can only read, create, and (when permitted) update")
     if role == "manager" and allow_sales:
         if request.method in ["GET", "POST"]:
             return True
-        else:
-            raise HTTPException(status_code=403, detail="Manager account can only read and create (GET, POST)")
+        # When allow_sales_update is True, manager can also do PUT (update)
+        if request.method == "PUT" and allow_sales_update:
+            return True
+        raise HTTPException(status_code=403, detail="Manager account can only read, create, and (when permitted) update")
     if role == "accountant" and allow_accountant:
         return True
     raise HTTPException(status_code=403, detail="Admin access required")

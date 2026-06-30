@@ -577,19 +577,38 @@ export default function AdminCoursesPage() {
 function BatchManagement({ courseId }: { courseId: number }) {
   const { data: batchRes, isLoading } = useBatches(courseId);
   const { data: rooms = [] } = useRooms();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAdminOrSales } = useAuth();
   const batches = batchRes?.data || [];
   const createBatch = useCreateBatch();
   const updateBatch = useUpdateBatch();
   const deleteBatch = useDeleteBatch();
 
+  // Create form state
   const [newNo, setNewNo] = useState("");
   const [newStart, setNewStart] = useState("");
   const [newEnd, setNewEnd] = useState("");
   const [newRoom, setNewRoom] = useState("");
+
+  // Edit modal state
+  const [editBatch, setEditBatch] = useState<AdminBatch | null>(null);
+  const [editNo, setEditNo] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editRoom, setEditRoom] = useState("");
+  const [editActive, setEditActive] = useState(true);
+
   const [batchToDelete, setBatchToDelete] = useState<number | null>(null);
   const [viewBatch, setViewBatch] = useState<AdminBatch | null>(null);
   const router = useRouter();
+
+  const openEdit = (b: AdminBatch) => {
+    setEditBatch(b);
+    setEditNo(b.batch_no);
+    setEditStart(b.start_date || "");
+    setEditEnd(b.end_date || "");
+    setEditRoom(b.room || "");
+    setEditActive(b.is_active ?? true);
+  };
 
   const handleCreate = async () => {
     if (!newNo.trim()) return;
@@ -605,6 +624,26 @@ function BatchManagement({ courseId }: { courseId: number }) {
       toast.success("Batch created");
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to create batch");
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editBatch) return;
+    try {
+      await updateBatch.mutateAsync({
+        id: editBatch.batch_id,
+        payload: {
+          batch_no: editNo.trim() || undefined,
+          start_date: editStart || undefined,
+          end_date: editEnd || undefined,
+          room: editRoom || undefined,
+          is_active: editActive,
+        },
+      });
+      setEditBatch(null);
+      toast.success("Batch updated");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to update batch");
     }
   };
 
@@ -628,7 +667,8 @@ function BatchManagement({ courseId }: { courseId: number }) {
 
   return (
     <div className="space-y-6">
-      {isAdmin && (
+      {/* Create form — visible to admin, sales, and manager */}
+      {isAdminOrSales && (
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
           <h4 className="text-sm font-bold text-slate-900 border-l-4 border-brand-500 pl-3">New Batch</h4>
           <div className="grid grid-cols-2 gap-3">
@@ -680,8 +720,15 @@ function BatchManagement({ courseId }: { courseId: number }) {
                   <button onClick={() => setViewBatch(b)} className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-all border border-slate-200">
                     View
                   </button>
+                  {/* Edit — visible to sales, manager, admin */}
+                  {isAdminOrSales && (
+                    <button onClick={() => openEdit(b)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-50 text-brand-600 border border-brand-100 hover:bg-brand-100 transition-all" title="Edit Batch">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  {/* Delete — admin only */}
                   {isAdmin && (
-                    <button onClick={() => handleDelete(b.batch_id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                    <button onClick={() => handleDelete(b.batch_id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all" title="Delete Batch">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -692,6 +739,7 @@ function BatchManagement({ courseId }: { courseId: number }) {
         )}
       </div>
 
+      {/* View Detail Modal */}
       <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={`Batch Details: ${viewBatch?.batch_no}`}>
         {viewBatch && (
           <div className="space-y-6">
@@ -737,6 +785,47 @@ function BatchManagement({ courseId }: { courseId: number }) {
         )}
       </Modal>
 
+      {/* Edit Batch Modal — admin, sales, manager */}
+      <Modal open={!!editBatch} onClose={() => setEditBatch(null)} title={`Edit Batch — ${editBatch?.batch_no}`}>
+        {editBatch && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Batch Number</label>
+              <input value={editNo} onChange={(e) => setEditNo(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" placeholder="e.g. Batch #1" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Start Date</label>
+                <input type="date" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">End Date</label>
+                <input type="date" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Room</label>
+              <select value={editRoom} onChange={(e) => setEditRoom(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm">
+                <option value="">Select Room…</option>
+                {rooms.map(r => (
+                  <option key={r.room_id} value={r.room_name} disabled={r.is_full}>
+                    {r.room_name} ({r.current_load ?? 0}/{r.capacity}) {r.is_full ? "[FULL]" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+              Active
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setEditBatch(null)} className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 text-sm">Cancel</button>
+              <button onClick={handleUpdate} disabled={updateBatch.isPending || !editNo.trim()} className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-50 text-sm">Save</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ConfirmModal
         open={!!batchToDelete}
         onClose={() => setBatchToDelete(null)}
@@ -753,7 +842,7 @@ function BatchManagement({ courseId }: { courseId: number }) {
 
 function SubjectManagement({ courseId, courseCode, courseName }: { courseId: number; courseCode: string; courseName: string }) {
   const { data: subjectRes, isLoading } = useSubjects(courseId);
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAdminOrSales } = useAuth();
   const subjects = subjectRes?.data || [];
   const createSubject = useCreateSubject();
   const deleteSubject = useDeleteSubject();
@@ -823,7 +912,8 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
 
   return (
     <div className="space-y-6">
-      {isAdmin && (
+      {/* Create form — visible to admin, sales, and manager */}
+      {isAdminOrSales && (
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>

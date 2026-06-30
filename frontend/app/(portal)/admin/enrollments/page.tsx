@@ -60,6 +60,8 @@ export default function AdminEnrollmentsPage() {
   const pagination = enrollmentsResponse?.pagination;
 
   const [q, setQ] = useState("");
+  const [filterCourse, setFilterCourse] = useState("");
+  const [filterBatch, setFilterBatch] = useState("");
   const [exporting, setExporting] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -109,10 +111,34 @@ export default function AdminEnrollmentsPage() {
     if (!loading && !isAdminOrSalesOrAccountantOrManager) router.replace("/dashboard");
   }, [loading, isAdminOrSalesOrAccountantOrManager, router]);
 
+  // Derive unique batch options for the selected course from loaded rows
+  const filterBatchOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { batch_no: string; batch_id: number | null }[] = [];
+    rows.forEach((e: any) => {
+      if (filterCourse && (e.course_code || "") !== filterCourse) return;
+      const key = String(e.batch_id ?? "") + (e.batch_no || "");
+      if ((e.batch_no || e.batch_id) && !seen.has(key)) {
+        seen.add(key);
+        opts.push({ batch_no: e.batch_no || `Batch #${e.batch_id}`, batch_id: e.batch_id });
+      }
+    });
+    return opts.sort((a, b) => a.batch_no.localeCompare(b.batch_no));
+  }, [rows, filterCourse]);
+
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return rows;
     return rows.filter((e: any) => {
+      // Course filter
+      if (filterCourse && (e.course_code || "") !== filterCourse) return false;
+      // Batch filter
+      if (filterBatch) {
+        const matchByNo = (e.batch_no || "") === filterBatch;
+        const matchById = String(e.batch_id) === filterBatch;
+        if (!matchByNo && !matchById) return false;
+      }
+      // Text search
+      if (!term) return true;
       return (
         e.enrollment_code.toLowerCase().includes(term) ||
         String(e.student_id).includes(term) ||
@@ -124,7 +150,7 @@ export default function AdminEnrollmentsPage() {
         (e.room || "").toLowerCase().includes(term)
       );
     });
-  }, [q, rows]);
+  }, [q, filterCourse, filterBatch, rows]);
 
   useEffect(() => {
     if (isAdminOrSalesOrAccountantOrManager) reload();
@@ -245,11 +271,65 @@ export default function AdminEnrollmentsPage() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100/50 overflow-hidden">
-        <div className="px-4 sm:px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-md">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 space-y-3">
+          {/* Text search */}
+          <div className="relative w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by student or course…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm sm:text-base" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by student, code, or course…" className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-800 font-medium text-sm" />
           </div>
+          {/* Course + Batch filters */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={filterCourse}
+              onChange={(e) => { setFilterCourse(e.target.value); setFilterBatch(""); setPage(1); }}
+              className="flex-1 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-700 font-medium text-sm"
+            >
+              <option value="">All Courses</option>
+              {courses.map((c) => (
+                <option key={c.course_id} value={c.course_code}>
+                  {c.course_name} ({c.course_code})
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterBatch}
+              onChange={(e) => { setFilterBatch(e.target.value); setPage(1); }}
+              disabled={filterBatchOptions.length === 0}
+              className="flex-1 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-700 font-medium text-sm disabled:opacity-50"
+            >
+              <option value="">All Batches</option>
+              {filterBatchOptions.map((b) => (
+                <option key={b.batch_id ?? b.batch_no} value={b.batch_no}>
+                  {b.batch_no}
+                </option>
+              ))}
+            </select>
+            {(filterCourse || filterBatch || q) && (
+              <button
+                onClick={() => { setFilterCourse(""); setFilterBatch(""); setQ(""); setPage(1); }}
+                className="px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-all whitespace-nowrap"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {/* Active filter badges */}
+          {(filterCourse || filterBatch) && (
+            <div className="flex flex-wrap gap-2">
+              {filterCourse && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-100 text-xs font-bold">
+                  Course: {courses.find(c => c.course_code === filterCourse)?.course_name || filterCourse}
+                  <button onClick={() => { setFilterCourse(""); setFilterBatch(""); setPage(1); }} className="hover:text-brand-900">×</button>
+                </span>
+              )}
+              {filterBatch && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold">
+                  Batch: {filterBatch}
+                  <button onClick={() => { setFilterBatch(""); setPage(1); }} className="hover:text-emerald-900">×</button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Desktop Table */}
@@ -310,7 +390,7 @@ export default function AdminEnrollmentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 text-xs">
-                          {(isAdmin || isAccountant) && (
+                          {(isAdmin || isAccountant || isAdminOrSales) && (
                             <button onClick={() => openEdit(e)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-200 transition-all active:scale-90 shadow-sm">
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -369,7 +449,7 @@ export default function AdminEnrollmentsPage() {
                         {e.status ? "Active" : "Inactive"}
                       </span>
                       <div className="flex gap-2">
-                        {(isAdmin || isAccountant) && (
+                        {(isAdmin || isAccountant || isAdminOrSales) && (
                           <button onClick={() => openEdit(e)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-200 transition-all active:scale-90" title="Edit">
                             <Pencil className="w-5 h-5" />
                           </button>
