@@ -2274,8 +2274,8 @@ class AdminPanelService:
             ],
         })
 
-    async def get_batch_attendance_report(request: Request, session: AsyncSession, batch_id: int):
-        """Compute per-student attendance report for a batch: overall, monthly, weekly breakdowns."""
+    async def get_batch_attendance_report(request: Request, session: AsyncSession, batch_id: int, month: Optional[str] = None):
+        """Compute per-student attendance report for a batch: overall, monthly, weekly breakdowns and specific month filters."""
         if not await validating_admin_role(request, allow_sales=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
@@ -2301,13 +2301,16 @@ class AdminPanelService:
             return JSONResponse({
                 "status_code": 200,
                 "message": "No students enrolled in this batch",
-                "data": {"batch_id": batch_id, "batch_no": batch.batch_no, "students": []}
+                "data": {"batch_id": batch_id, "batch_no": batch.batch_no, "students": [], "available_months": [], "month_filter": month}
             })
 
         # Get all attendance for this batch
         att_q = select(Attendance).where(Attendance.batch_id == batch_id).order_by(Attendance.attendance_date)
         att_res = await session.execute(att_q)
         all_records = att_res.scalars().all()
+
+        # Get distinct months of attendance
+        available_months = sorted(list(set(rec.attendance_date.strftime("%Y-%m") for rec in all_records)), reverse=True)
 
         # Build per-student stats
         student_stats = {}
@@ -2319,6 +2322,7 @@ class AdminPanelService:
                 "overall_total": 0, "overall_present": 0,
                 "month_total": 0, "month_present": 0,
                 "week_total": 0, "week_present": 0,
+                "specific_total": 0, "specific_present": 0,
             }
 
         for rec in all_records:
@@ -2340,6 +2344,11 @@ class AdminPanelService:
                 stats["week_total"] += 1
                 if rec.check_today:
                     stats["week_present"] += 1
+            # Specific month filter (YYYY-MM)
+            if month and rec.attendance_date.strftime("%Y-%m") == month:
+                stats["specific_total"] += 1
+                if rec.check_today:
+                    stats["specific_present"] += 1
 
         def pct(present, total):
             if total == 0:
@@ -2367,16 +2376,25 @@ class AdminPanelService:
                     "total": stats["week_total"],
                     "percentage": pct(stats["week_present"], stats["week_total"]),
                 },
+                "monthly_specific": {
+                    "present": stats["specific_present"],
+                    "total": stats["specific_total"],
+                    "percentage": pct(stats["specific_present"], stats["specific_total"]),
+                } if month else None
             })
 
-        # Sort by overall percentage desc
-        report_students.sort(key=lambda x: x["overall"]["percentage"] if x["overall"]["percentage"] is not None else -1, reverse=True)
+        # Sort by specific month percentage if filtered, else overall percentage desc
+        if month:
+            report_students.sort(key=lambda x: x["monthly_specific"]["percentage"] if x["monthly_specific"]["percentage"] is not None else -1, reverse=True)
+        else:
+            report_students.sort(key=lambda x: x["overall"]["percentage"] if x["overall"]["percentage"] is not None else -1, reverse=True)
 
         # Batch-level totals (all unique class dates for the batch)
         unique_dates = set(r.attendance_date for r in all_records)
         total_classes = len(unique_dates)
         recent_month_dates = {r.attendance_date for r in all_records if r.attendance_date >= one_month_ago}
         recent_week_dates = {r.attendance_date for r in all_records if r.attendance_date >= one_week_ago}
+        specific_month_dates = {r.attendance_date for r in all_records if month and r.attendance_date.strftime("%Y-%m") == month}
 
         return JSONResponse({
             "status_code": 200,
@@ -2390,6 +2408,9 @@ class AdminPanelService:
                 "total_classes_overall": total_classes,
                 "total_classes_month": len(recent_month_dates),
                 "total_classes_week": len(recent_week_dates),
+                "total_classes_specific_month": len(specific_month_dates) if month else 0,
+                "available_months": available_months,
+                "month_filter": month,
                 "students": report_students,
             }
         })

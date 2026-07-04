@@ -1106,8 +1106,10 @@ export class AdminService {
     return res.data.data;
   }
 
-  static async getBatchAttendanceReport(batchId: number): Promise<BatchAttendanceReport> {
-    const res = await api.get<{ data: BatchAttendanceReport }>(`/admin/attendance/report/batch/${batchId}`);
+  static async getBatchAttendanceReport(batchId: number, month?: string): Promise<BatchAttendanceReport> {
+    const res = await api.get<{ data: BatchAttendanceReport }>(`/admin/attendance/report/batch/${batchId}`, {
+      params: { month }
+    });
     return res.data.data;
   }
 }
@@ -1119,6 +1121,7 @@ export interface StudentAttendanceStat {
   overall: { present: number; total: number; percentage: number | null };
   month: { present: number; total: number; percentage: number | null };
   week: { present: number; total: number; percentage: number | null };
+  monthly_specific?: { present: number; total: number; percentage: number | null } | null;
 }
 
 export interface BatchAttendanceReport {
@@ -1130,5 +1133,8 @@ export interface BatchAttendanceReport {
   total_classes_overall: number;
   total_classes_month: number;
   total_classes_week: number;
+  total_classes_specific_month?: number;
+  available_months: string[];
+  month_filter?: string | null;
   students: StudentAttendanceStat[];
 }

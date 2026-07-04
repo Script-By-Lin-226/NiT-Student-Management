@@ -200,8 +200,8 @@ async def get_batch_attendance(batch_id: int, request: Request, start_date: str 
     return await AdminPanelService.get_batch_attendance(request, session, batch_id, start_date, end_date)
 
 @router.get("/attendance/report/batch/{batch_id}")
-async def get_batch_attendance_report(batch_id: int, request: Request, session: AsyncSession = Depends(get_db)):
-    return await AdminPanelService.get_batch_attendance_report(request, session, batch_id)
+async def get_batch_attendance_report(batch_id: int, request: Request, month: str = None, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_batch_attendance_report(request, session, batch_id, month)
 
 @router.get("/attendance/{student_code}")
 async def get_specific_attendance(student_code: str, request: Request, session: AsyncSession = Depends(get_db)):

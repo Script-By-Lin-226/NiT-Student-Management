@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AdminAttendanceRecord, AdminCourse, AdminService, BatchAttendanceReport } from "@/services/admin.service";
 import { Plus, Search, RefreshCw, X, Users, CheckCircle, XCircle, FileText, Download, BarChart2, Clock, AlertTriangle, Lock, ChevronDown } from "lucide-react";
 import { exportToExcel } from "@/utils/excelExport";
+import { generateAttendanceReportPDF } from "@/utils/pdfAttendanceReport";
 import {
   useEnrollments, useAttendance, useTimetables, useCourses, useMarkAttendance,
   useUpdateAttendance, useSubjects, useBatches, useEndBatch, useBatchAttendanceReport
@@ -93,7 +94,7 @@ const getTodayDateString = () => {
 
 export default function AdminAttendancePage() {
   const router = useRouter();
-  const { isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
+  const { isAdminOrSalesOrManager, isAdmin, loading, user } = useAuth();
 
   const { data: enrollmentsData, isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useEnrollments(undefined, 1, 1000);
   const { data: attendanceData = [], isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendance();
@@ -135,7 +136,8 @@ export default function AdminAttendancePage() {
 
   // Batch attendance report
   const [reportBatchId, setReportBatchId] = useState<number | null>(null);
-  const { data: batchReport, isLoading: reportLoading } = useBatchAttendanceReport(reportBatchId);
+  const [selectedReportMonth, setSelectedReportMonth] = useState<string>("");
+  const { data: batchReport, isLoading: reportLoading } = useBatchAttendanceReport(reportBatchId, selectedReportMonth || undefined);
 
   useEffect(() => {
     if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
@@ -313,6 +315,7 @@ export default function AdminAttendancePage() {
     setSelectedGroup(g);
     setModalTab("attendance");
     setSubjectOverrides({});
+    setSelectedReportMonth("");
     setGroupModalOpen(true);
     if (g.batch_id) setReportBatchId(g.batch_id);
   };
@@ -725,33 +728,109 @@ export default function AdminAttendancePage() {
                   </div>
                 ) : batchReport ? (
                   <>
-                    {/* Summary cards */}
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: "This Week", total: batchReport.total_classes_week, color: "text-blue-600 bg-blue-50 border-blue-100" },
-                        { label: "This Month", total: batchReport.total_classes_month, color: "text-violet-600 bg-violet-50 border-violet-100" },
-                        { label: "Overall", total: batchReport.total_classes_overall, color: "text-brand-600 bg-brand-50 border-brand-100" },
-                      ].map(item => (
-                        <div key={item.label} className={`rounded-2xl border p-4 text-center ${item.color}`}>
-                          <p className="text-xs font-bold uppercase tracking-widest opacity-70">{item.label}</p>
-                          <p className="text-2xl font-black mt-1">{item.total}</p>
-                          <p className="text-[10px] font-semibold opacity-60 mt-0.5">Classes</p>
+                    {/* Month selector dropdown */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Select Report Month</label>
+                        <div className="relative">
+                          <select
+                            value={selectedReportMonth}
+                            onChange={(e) => setSelectedReportMonth(e.target.value)}
+                            className="pl-3 pr-8 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20 appearance-none"
+                          >
+                            <option value="">All Time Summary</option>
+                            {batchReport.available_months?.map(m => {
+                              const [year, month] = m.split("-");
+                              const date = new Date(Number(year), Number(month) - 1, 1);
+                              const name = date.toLocaleString("default", { month: "long", year: "numeric" });
+                              return (
+                                <option key={m} value={m}>{name}</option>
+                              );
+                            })}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
-                      ))}
+                      </div>
+                      {selectedReportMonth && (
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Classes in Selected Month</p>
+                          <p className="text-xl font-extrabold text-slate-800">{batchReport.total_classes_specific_month ?? 0} sessions</p>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Summary cards */}
+                    {!selectedReportMonth && (
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: "This Week", total: batchReport.total_classes_week, color: "text-blue-600 bg-blue-50 border-blue-100" },
+                          { label: "This Month", total: batchReport.total_classes_month, color: "text-violet-600 bg-violet-50 border-violet-100" },
+                          { label: "Overall", total: batchReport.total_classes_overall, color: "text-brand-600 bg-brand-50 border-brand-100" },
+                        ].map(item => (
+                          <div key={item.label} className={`rounded-2xl border p-4 text-center ${item.color}`}>
+                            <p className="text-xs font-bold uppercase tracking-widest opacity-70">{item.label}</p>
+                            <p className="text-2xl font-black mt-1">{item.total}</p>
+                            <p className="text-[10px] font-semibold opacity-60 mt-0.5">Classes</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Per-student table */}
                     <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                      <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 grid grid-cols-[1fr_80px_80px_80px] text-xs font-bold text-slate-500 uppercase tracking-wide">
-                        <span>Student</span>
-                        <span className="text-center text-blue-600">Week</span>
-                        <span className="text-center text-violet-600">Month</span>
-                        <span className="text-center text-brand-600">Overall</span>
-                      </div>
+                      {selectedReportMonth ? (
+                        <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 grid grid-cols-[1fr_120px_100px_100px] text-xs font-bold text-slate-500 uppercase tracking-wide">
+                          <span>Student</span>
+                          <span className="text-center text-amber-600">Selected Month</span>
+                          <span className="text-center text-amber-700">Month Rate</span>
+                          <span className="text-center text-brand-600">Overall Rate</span>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 grid grid-cols-[1fr_80px_80px_80px] text-xs font-bold text-slate-500 uppercase tracking-wide">
+                          <span>Student</span>
+                          <span className="text-center text-blue-600">Week</span>
+                          <span className="text-center text-violet-600">Month</span>
+                          <span className="text-center text-brand-600">Overall</span>
+                        </div>
+                      )}
+
                       <div className="divide-y divide-slate-100 max-h-[45vh] overflow-y-auto custom-scrollbar">
                         {batchReport.students.map(stu => {
                           const overallPct = stu.overall.percentage;
                           const barColor = overallPct === null ? "bg-slate-200" : overallPct >= 80 ? "bg-emerald-500" : overallPct >= 60 ? "bg-amber-400" : "bg-red-500";
+                          
+                          if (selectedReportMonth) {
+                            const spec = stu.monthly_specific;
+                            const specPct = spec?.percentage ?? null;
+                            const specBarColor = specPct === null ? "bg-slate-200" : specPct >= 80 ? "bg-emerald-500" : specPct >= 60 ? "bg-amber-400" : "bg-red-500";
+                            return (
+                              <div key={stu.user_code} className="px-5 py-3.5 grid grid-cols-[1fr_120px_100px_100px] items-center gap-2 hover:bg-slate-50 transition-colors">
+                                <div>
+                                  <p className="font-bold text-slate-800 text-sm">{stu.username}</p>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{stu.user_code}</p>
+                                  <div className="mt-1.5">
+                                    <PercentBar value={specPct} colorClass={specBarColor} />
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <span className="text-sm font-bold text-slate-700">
+                                    {spec ? `${spec.present} / ${spec.total}` : "0 / 0"}
+                                  </span>
+                                </div>
+                                <div className="text-center">
+                                  <span className={`text-sm font-bold ${specPct === null ? "text-slate-300" : specPct >= 80 ? "text-emerald-600" : specPct >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                                    {specPct === null ? "—" : `${specPct}%`}
+                                  </span>
+                                </div>
+                                <div className="text-center">
+                                  <span className={`text-sm font-bold ${overallPct === null ? "text-slate-300" : overallPct >= 80 ? "text-emerald-600" : overallPct >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                                    {overallPct === null ? "—" : `${overallPct}%`}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           return (
                             <div key={stu.user_code} className="px-5 py-3.5 grid grid-cols-[1fr_80px_80px_80px] items-center gap-2 hover:bg-slate-50 transition-colors">
                               <div>
@@ -788,29 +867,65 @@ export default function AdminAttendancePage() {
                       </div>
                     </div>
 
-                    {/* Export report */}
-                    <div className="flex justify-end pt-2 border-t border-slate-100">
+                    {/* Export and PDF actions */}
+                    <div className="flex justify-end items-center gap-3 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          if (!batchReport || !selectedGroup) return;
+                          generateAttendanceReportPDF(
+                            {
+                              course_name: selectedGroup.course_name,
+                              batch_no: selectedGroup.batch_no,
+                              start_date: batchReport.start_date,
+                              end_date: batchReport.end_date,
+                              is_active: batchReport.is_active
+                            },
+                            selectedReportMonth || null,
+                            selectedReportMonth ? (batchReport.total_classes_specific_month ?? 0) : batchReport.total_classes_overall,
+                            batchReport.students,
+                            user?.username || "Admin"
+                          );
+                        }}
+                        className="btn-primary btn-md !bg-brand-600 hover:!bg-brand-700 !shadow-brand-100"
+                      >
+                        <FileText className="w-4 h-4" /> Download PDF
+                      </button>
                       <button
                         onClick={() => {
                           if (!batchReport) return;
-                          const reportRows = batchReport.students.map(s => ({
-                            "Student": s.username,
-                            "Code": s.user_code,
-                            "Week %": s.week.percentage ?? "N/A",
-                            "Week Present": s.week.present,
-                            "Week Total": s.week.total,
-                            "Month %": s.month.percentage ?? "N/A",
-                            "Month Present": s.month.present,
-                            "Month Total": s.month.total,
-                            "Overall %": s.overall.percentage ?? "N/A",
-                            "Overall Present": s.overall.present,
-                            "Overall Total": s.overall.total,
-                          }));
-                          exportToExcel(reportRows, `Report_${selectedGroup?.course_code}_${selectedGroup?.batch_no}`, "Attendance Report");
+                          const reportRows = batchReport.students.map(s => {
+                            if (selectedReportMonth) {
+                              return {
+                                "Student": s.username,
+                                "Code": s.user_code,
+                                "Selected Month %": s.monthly_specific?.percentage ?? "N/A",
+                                "Selected Month Present": s.monthly_specific?.present ?? 0,
+                                "Selected Month Total": s.monthly_specific?.total ?? 0,
+                                "Overall %": s.overall.percentage ?? "N/A",
+                                "Overall Present": s.overall.present,
+                                "Overall Total": s.overall.total,
+                              };
+                            }
+                            return {
+                              "Student": s.username,
+                              "Code": s.user_code,
+                              "Week %": s.week.percentage ?? "N/A",
+                              "Week Present": s.week.present,
+                              "Week Total": s.week.total,
+                              "Month %": s.month.percentage ?? "N/A",
+                              "Month Present": s.month.present,
+                              "Month Total": s.month.total,
+                              "Overall %": s.overall.percentage ?? "N/A",
+                              "Overall Present": s.overall.present,
+                              "Overall Total": s.overall.total,
+                            };
+                          });
+                          const namePeriod = selectedReportMonth || "overall";
+                          exportToExcel(reportRows, `Report_${selectedGroup?.course_code}_${selectedGroup?.batch_no}_${namePeriod}`, "Attendance Report");
                         }}
                         className="btn-primary btn-md !bg-emerald-600 hover:!bg-emerald-700 !shadow-emerald-100"
                       >
-                        <Download className="w-4 h-4" /> Export Report
+                        <Download className="w-4 h-4" /> Export Excel
                       </button>
                     </div>
                   </>

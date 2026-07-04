@@ -381,10 +381,10 @@ export function useBatchAttendance(batchId: number | null, startDate?: string, e
   });
 }
 
-export function useBatchAttendanceReport(batchId: number | null) {
+export function useBatchAttendanceReport(batchId: number | null, month?: string) {
   return useQuery({
-    queryKey: [...adminKeys.batches(batchId ?? undefined), "report"],
-    queryFn: () => AdminService.getBatchAttendanceReport(batchId!),
+    queryKey: [...adminKeys.batches(batchId ?? undefined), "report", month],
+    queryFn: () => AdminService.getBatchAttendanceReport(batchId!, month),
     enabled: !!batchId,
   });
 }
