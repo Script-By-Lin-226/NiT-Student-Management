@@ -1,5 +1,6 @@
-# To-Do List - Resolve Database Migration Error
+# To-Do List - Add Student Affairs Role to Staff Creation UI
 
-- [x] Modify `backend/migration/env.py` to auto-stamp the database with head revision when tables exist but alembic history is missing
-- [x] Verify local database status and run `alembic upgrade head`
-- [x] Run backend tests using pytest to verify nothing is broken
+- [x] Add `student_affairs` option to the Role dropdown in `frontend/app/(portal)/admin/users/page.tsx`
+- [x] Implement `getRoleLabel()` helper function in `frontend/app/(portal)/admin/users/page.tsx` to handle user-friendly role names (e.g. "Student Affairs", "HR")
+- [x] Update table display cell for Role to use `getRoleLabel(r.role)`
+- [x] Run typescript compile checks to verify no type or import errors
