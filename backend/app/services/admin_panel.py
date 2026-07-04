@@ -594,6 +594,15 @@ class AdminPanelService:
                     batch_o = b_r.scalars().first()
                     if batch_o:
                         batch_id = batch_o.batch_id
+                    else:
+                        new_batch = Batch(
+                            batch_no=payload.batch_no.strip(),
+                            course_id=course_obj.course_id,
+                            is_active=True
+                        )
+                        session.add(new_batch)
+                        await session.flush()
+                        batch_id = new_batch.batch_id
                 
                 enroll = Enrollment(
                     enrollment_code=e_code,
@@ -1751,6 +1760,17 @@ class AdminPanelService:
             batch = b_r.scalars().first()
             if batch:
                 batch_id = batch.batch_id
+                batch_no = batch.batch_no # Keep exact case from DB
+            else:
+                new_batch = Batch(
+                    batch_no=batch_no.strip(),
+                    course_id=course.course_id,
+                    is_active=True
+                )
+                session.add(new_batch)
+                await session.flush()
+                batch_id = new_batch.batch_id
+                batch_no = new_batch.batch_no
         elif batch_id and not batch_no:
             b_res = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
             batch = b_res.scalars().first()
@@ -1802,6 +1822,10 @@ class AdminPanelService:
 
             if batch_id and batch_id != 0:
                 e.batch_id = batch_id
+                b_res = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+                batch_o = b_res.scalars().first()
+                if batch_o:
+                    e.batch_no = batch_o.batch_no
             elif batch_no:
                 b_r = await session.execute(
                     select(Batch).where(
@@ -1816,7 +1840,15 @@ class AdminPanelService:
                     e.batch_id = batch.batch_id
                     e.batch_no = batch.batch_no
                 else:
-                    return JSONResponse({"status_code": 404, "message": f"Batch '{batch_no}' not found for this course"}, status_code=404)
+                    new_batch = Batch(
+                        batch_no=batch_no.strip(),
+                        course_id=e.course_id,
+                        is_active=True
+                    )
+                    session.add(new_batch)
+                    await session.flush()
+                    e.batch_id = new_batch.batch_id
+                    e.batch_no = new_batch.batch_no
             else:
                 e.batch_id = None
                 e.batch_no = None
