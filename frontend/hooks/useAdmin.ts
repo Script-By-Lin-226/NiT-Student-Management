@@ -355,3 +355,36 @@ export function useLinkParentChild() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   });
 }
+
+// Batch lifecycle hooks
+export function useEndBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (batchId: number) => AdminService.endBatch(batchId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export function useBatchStudents(batchId: number | null) {
+  return useQuery({
+    queryKey: [...adminKeys.batches(batchId ?? undefined), "students"],
+    queryFn: () => AdminService.getBatchStudents(batchId!),
+    enabled: !!batchId,
+  });
+}
+
+export function useBatchAttendance(batchId: number | null, startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: [...adminKeys.batches(batchId ?? undefined), "attendance", startDate, endDate],
+    queryFn: () => AdminService.getBatchAttendance(batchId!, startDate, endDate),
+    enabled: !!batchId,
+  });
+}
+
+export function useBatchAttendanceReport(batchId: number | null) {
+  return useQuery({
+    queryKey: [...adminKeys.batches(batchId ?? undefined), "report"],
+    queryFn: () => AdminService.getBatchAttendanceReport(batchId!),
+    enabled: !!batchId,
+  });
+}

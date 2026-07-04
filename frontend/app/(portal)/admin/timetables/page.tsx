@@ -556,8 +556,11 @@ export default function AdminTimetablesPage() {
                         <div className="font-semibold text-slate-800">{r.course_name}</div>
                         <div className="text-xs text-brand-600 font-bold uppercase tracking-tight">{r.course_code}</div>
                         {r.subject_name && (
-                          <div className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
-                            {r.subject_name}
+                          <div className="flex flex-col gap-0.5 mt-1 items-start">
+                            <span className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {r.subject_name}
+                            </span>
+                            <span className="text-[8px] font-bold text-slate-400 px-0.5">Default subject (overrideable)</span>
                           </div>
                         )}
                       </td>
