@@ -7,3 +7,9 @@
 - [x] Add Course link to the Sidebar and Mobile navigation components for the `student_affairs` role
 - [x] Enable Attendance page and Timetable page access for the `student_affairs` role on both frontend and backend APIs
 - [x] Run TypeScript and Python syntax/compile checks to verify correctness
+
+## PDF Attendance Reporting Specific Month
+
+- [x] Update `frontend/utils/pdfAttendanceReport.ts` with robust month name parsing
+- [x] Verify frontend build compile status via `npm run build`
+

@@ -33,11 +33,17 @@ export const generateAttendanceReportPDF = (
     }
   };
 
+  const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
   const getMonthName = (monthStr: string | null) => {
     if (!monthStr) return "All Time";
     const [year, month] = monthStr.split("-");
-    const date = new Date(Number(year), Number(month) - 1, 1);
-    return date.toLocaleString("default", { month: "long", year: "numeric" });
+    const monthIdx = Number(month) - 1;
+    const monthName = MONTHS[monthIdx] || "";
+    return `${monthName} ${year}`;
   };
 
   // Header Title
@@ -77,8 +83,8 @@ export const generateAttendanceReportPDF = (
   const headers = [
     "Student Name",
     "Code",
-    monthFilter ? `Attendance (${getMonthName(monthFilter).split(" ")[0]})` : "Attendance (Recent Month)",
-    monthFilter ? `Rate (${getMonthName(monthFilter).split(" ")[0]})` : "Rate (Recent Month)",
+    monthFilter ? `Attendance (${getMonthName(monthFilter)})` : "Attendance (Recent Month)",
+    monthFilter ? `Rate (${getMonthName(monthFilter)})` : "Rate (Recent Month)",
     "Overall Attendance",
     "Overall Rate"
   ];
