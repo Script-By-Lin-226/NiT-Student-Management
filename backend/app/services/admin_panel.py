@@ -759,7 +759,7 @@ class AdminPanelService:
         )
     
     async def get_teachers_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -784,7 +784,7 @@ class AdminPanelService:
         })
     
     async def get_specific_teacher(user_code: str ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(and_(User.user_code == user_code , User.role == "teacher"))
@@ -1243,7 +1243,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Academic year created successfully", "data": _serialize_academic_year(new_academic_year)}, status_code=201)
         
     async def get_all_academic_years(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
         query = select(AcademicYear)
         result = await session.execute(query)
@@ -1251,7 +1251,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": [_serialize_academic_year(y) for y in years]})
         
     async def get_specific_academic_details(academic_year_id: int ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(AcademicYear).where(AcademicYear.academic_year_id == academic_year_id)
@@ -3299,7 +3299,7 @@ class AdminPanelService:
             return 0
 
     async def get_teaching_hours_report(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # Get all teachers

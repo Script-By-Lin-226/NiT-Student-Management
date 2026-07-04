@@ -94,7 +94,7 @@ const getTodayDateString = () => {
 
 export default function AdminAttendancePage() {
   const router = useRouter();
-  const { isAdminOrSalesOrManager, isAdmin, loading, user } = useAuth();
+  const { isAdminOrSalesOrManager, isStudentAffairs, isAdmin, loading, user } = useAuth();
 
   const { data: enrollmentsData, isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useEnrollments(undefined, 1, 1000);
   const { data: attendanceData = [], isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendance();
@@ -140,8 +140,8 @@ export default function AdminAttendancePage() {
   const { data: batchReport, isLoading: reportLoading } = useBatchAttendanceReport(reportBatchId, selectedReportMonth || undefined);
 
   useEffect(() => {
-    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
-  }, [loading, isAdminOrSalesOrManager, router]);
+    if (!loading && !isAdminOrSalesOrManager && !isStudentAffairs) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, isStudentAffairs, router]);
 
   const load = async () => {
     await Promise.all([
@@ -309,7 +309,7 @@ export default function AdminAttendancePage() {
   }, [selectedStudentCode, selectedGroup, attendance, courses]);
 
   if (loading) return null;
-  if (!isAdminOrSalesOrManager) return null;
+  if (!isAdminOrSalesOrManager && !isStudentAffairs) return null;
 
   const openGroup = (g: BatchGroup) => {
     setSelectedGroup(g);
