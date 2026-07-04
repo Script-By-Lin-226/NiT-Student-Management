@@ -12,7 +12,13 @@ def _get_user(request: Request) -> dict:
 
 # ── Role validators ───────────────────────────────────────────────────────────
 
-async def validating_admin_role(request: Request, allow_sales: bool = False, allow_accountant: bool = False, allow_sales_update: bool = False) -> bool:
+async def validating_admin_role(
+    request: Request,
+    allow_sales: bool = False,
+    allow_accountant: bool = False,
+    allow_sales_update: bool = False,
+    allow_student_affairs: bool = False,
+) -> bool:
     user = _get_user(request)
     role = user.get("role")
     if role == "admin":
@@ -33,6 +39,11 @@ async def validating_admin_role(request: Request, allow_sales: bool = False, all
         raise HTTPException(status_code=403, detail="Manager account can only read, create, and (when permitted) update")
     if role == "accountant" and allow_accountant:
         return True
+    if role == "student_affairs" and allow_student_affairs:
+        # Student Affairs: Read (GET) and Create (POST) only — no PUT/DELETE
+        if request.method in ["GET", "POST"]:
+            return True
+        raise HTTPException(status_code=403, detail="Student Affairs account can only read and create records")
     raise HTTPException(status_code=403, detail="Admin access required")
 
 
@@ -58,9 +69,9 @@ async def validating_parent_role(request: Request) -> bool:
 
 
 async def validating_staff_role(request: Request) -> bool:
-    """Accepts hr | manager | sales | teacher | accountant roles."""
+    """Accepts hr | manager | sales | teacher | accountant | student_affairs roles."""
     user = _get_user(request)
-    STAFF_ROLES = {"hr", "manager", "sales", "teacher", "accountant"}
+    STAFF_ROLES = {"hr", "manager", "sales", "teacher", "accountant", "student_affairs"}
     if user.get("role") not in STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Staff access required")
     return True

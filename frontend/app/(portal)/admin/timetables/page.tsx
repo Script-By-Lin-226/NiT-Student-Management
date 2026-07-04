@@ -113,7 +113,7 @@ const formatDate = (date: Date | null) => {
 
 export default function AdminTimetablesPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, isStudentAffairs, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminTimeTableRow[]>([]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
@@ -161,8 +161,8 @@ export default function AdminTimetablesPage() {
   const [eSubjects, setESubjects] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
-  }, [loading, isAdminOrSalesOrManager, router]);
+    if (!loading && !isAdminOrSalesOrManager && !isStudentAffairs) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, isStudentAffairs, router]);
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -232,9 +232,9 @@ export default function AdminTimetablesPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSalesOrManager) load();
+    if (isAdminOrSalesOrManager || isStudentAffairs) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSalesOrManager]);
+  }, [isAdminOrSalesOrManager, isStudentAffairs]);
 
   useEffect(() => {
     if (cCourseCode) {
@@ -282,7 +282,7 @@ export default function AdminTimetablesPage() {
   }, [quickSubjectOpen, cCourseCode, subjects]);
 
   if (loading) return null;
-  if (!isAdminOrSalesOrManager) return null;
+  if (!isAdminOrSalesOrManager && !isStudentAffairs) return null;
 
   const openCreate = () => {
     const firstCourse = courses[0];

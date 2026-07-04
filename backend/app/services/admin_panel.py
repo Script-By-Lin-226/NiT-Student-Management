@@ -302,7 +302,8 @@ async def _next_staff_code(session: AsyncSession, role: str) -> str:
         "teacher": "TCH",
         "hr": "HRX",
         "manager": "MGR",
-        "accountant": "ACC"
+        "accountant": "ACC",
+        "student_affairs": "STA"
     }
     prefix = prefix_map.get(role, "STF")
     
@@ -487,7 +488,7 @@ class AdminPanelService:
         )
 
     async def get_students_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Base query optimized to exclude large columns
@@ -1301,7 +1302,7 @@ class AdminPanelService:
     # CRUD - Courses
 
     async def list_courses(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -1451,7 +1452,7 @@ class AdminPanelService:
     # --- CRUD - Batches ---
 
     async def list_batches(request: Request, session: AsyncSession, course_id: Optional[int] = None):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Batch, Course).join(Course, Batch.course_id == Course.course_id)
@@ -1552,7 +1553,7 @@ class AdminPanelService:
     # --- CRUD - Subjects ---
 
     async def list_subjects(request: Request, session: AsyncSession, course_id: Optional[int] = None):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Subject, Course).join(Course, Subject.course_id == Course.course_id)
@@ -1634,7 +1635,7 @@ class AdminPanelService:
     # --- CRUD - Enrollments ---
 
     async def list_enrollments(request: Request, session: AsyncSession, status: bool = None, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -1726,7 +1727,7 @@ class AdminPanelService:
         })
 
     async def create_enrollment(request: Request, session: AsyncSession, payload: AdminEnrollmentCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         stu_r = await session.execute(select(User).where(and_(User.user_code == payload.student_code, User.role == "student")))
@@ -1918,7 +1919,7 @@ class AdminPanelService:
 
     async def mark_attendance(request: Request, session: AsyncSession, payload: AttendanceMarkRequest):
         """Mark attendance for a student. One record allowed per student per day per slot/subject."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # Resolve user_code -> user_id
@@ -2052,7 +2053,7 @@ class AdminPanelService:
         }, status_code=201)
 
     async def get_all_attendance(request: Request, session: AsyncSession, days: int = 30):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = (
@@ -2195,7 +2196,7 @@ class AdminPanelService:
 
     async def get_batch_students(request: Request, session: AsyncSession, batch_id: int):
         """Return all students enrolled in a specific batch."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
@@ -2222,7 +2223,7 @@ class AdminPanelService:
 
     async def get_batch_attendance(request: Request, session: AsyncSession, batch_id: int, start_date: str = None, end_date: str = None):
         """Return attendance records for a specific batch, optionally filtered by date range."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         from sqlalchemy.orm import aliased
@@ -2276,7 +2277,7 @@ class AdminPanelService:
 
     async def get_batch_attendance_report(request: Request, session: AsyncSession, batch_id: int, month: Optional[str] = None):
         """Compute per-student attendance report for a batch: overall, monthly, weekly breakdowns and specific month filters."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
@@ -2586,7 +2587,7 @@ class AdminPanelService:
     # Timetables
 
     async def list_timetables(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(
@@ -2626,7 +2627,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Timetables fetched successfully", "data": data})
 
     async def create_timetable(request: Request, session: AsyncSession, payload: AdminTimeTableCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         c_r = await session.execute(select(Course).where(Course.course_code == payload.course_code))

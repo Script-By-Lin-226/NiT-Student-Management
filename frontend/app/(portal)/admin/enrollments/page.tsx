@@ -47,7 +47,7 @@ function Modal({
 
 export default function AdminEnrollmentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdminOrSalesOrAccountantOrManager, isAdmin, isAccountant, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdminOrSalesOrAccountantOrManager, isAdmin, isAccountant, isStudentAffairs, loading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -108,8 +108,8 @@ export default function AdminEnrollmentsPage() {
 
 
   useEffect(() => {
-    if (!loading && !isAdminOrSalesOrAccountantOrManager) router.replace("/dashboard");
-  }, [loading, isAdminOrSalesOrAccountantOrManager, router]);
+    if (!loading && !isAdminOrSalesOrAccountantOrManager && !isStudentAffairs) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrAccountantOrManager, isStudentAffairs, router]);
 
   // Derive unique batch options for the selected course from loaded rows
   const filterBatchOptions = useMemo(() => {
@@ -153,12 +153,12 @@ export default function AdminEnrollmentsPage() {
   }, [q, filterCourse, filterBatch, rows]);
 
   useEffect(() => {
-    if (isAdminOrSalesOrAccountantOrManager) reload();
+    if (isAdminOrSalesOrAccountantOrManager || isStudentAffairs) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSalesOrAccountantOrManager]);
+  }, [isAdminOrSalesOrAccountantOrManager, isStudentAffairs]);
 
   if (loading) return null;
-  if (!isAdminOrSalesOrAccountantOrManager) return null;
+  if (!isAdminOrSalesOrAccountantOrManager && !isStudentAffairs) return null;
 
   const openCreate = () => {
     setCStudentCode("");

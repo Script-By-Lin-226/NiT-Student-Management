@@ -70,7 +70,7 @@ export function useAuth() {
     isStudent: user?.role === "student",
     isParent: user?.role === "parent",
     isTeacher: user?.role === "teacher",
-    isStaff: ["hr", "manager", "sales", "teacher", "accountant"].includes(user?.role || ""),
+    isStaff: ["hr", "manager", "sales", "teacher", "accountant", "student_affairs"].includes(user?.role || ""),
     isAdmin: user?.role === "admin",
     isAdminOrSales: user?.role === "admin" || user?.role === "sales" || user?.role === "manager",
     isAccountant: user?.role === "accountant",
@@ -78,5 +78,6 @@ export function useAuth() {
     isAdminOrSalesOrManager: ["admin", "sales", "manager"].includes(user?.role || ""),
     isAdminOrSalesOrAccountantOrManager: ["admin", "sales", "accountant", "manager"].includes(user?.role || ""),
     isAdminOrManager: ["admin"].includes(user?.role || ""),
+    isStudentAffairs: user?.role === "student_affairs",
   };
 }
