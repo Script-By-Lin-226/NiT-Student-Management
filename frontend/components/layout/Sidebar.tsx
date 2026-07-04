@@ -49,6 +49,7 @@ const accountantNav = [
 
 const studentAffairsNav = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Courses", href: "/admin/courses", icon: BookOpen },
   { name: "Enrollments", href: "/admin/enrollments", icon: Award },
   { name: "Attendance", href: "/admin/attendance", icon: Clock },
   { name: "Timetable", href: "/admin/timetables", icon: CalendarClock },

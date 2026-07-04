@@ -1328,7 +1328,7 @@ class AdminPanelService:
 
     async def get_dashboard_summary(request: Request, session: AsyncSession):
         """Fetch multiple KPI counts efficiently for the dashboard."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # In parallel
@@ -1364,7 +1364,7 @@ class AdminPanelService:
         })
 
     async def create_course(request: Request, session: AsyncSession, payload: AdminCourseCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         year = await session.execute(select(AcademicYear).where(AcademicYear.academic_year_id == payload.academic_year_id))
@@ -1469,7 +1469,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Batches fetched successfully", "data": data})
 
     async def create_batch(request: Request, session: AsyncSession, payload: AdminBatchCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Check course
@@ -1570,7 +1570,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Subjects fetched successfully", "data": data})
 
     async def create_subject(request: Request, session: AsyncSession, payload: AdminSubjectCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Check course
@@ -2420,7 +2420,7 @@ class AdminPanelService:
 
 
     async def list_rooms(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Room))

@@ -4,34 +4,35 @@ import { PortalService } from "@/services/portal.service";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useDashboardData(selectedChildCode?: string, childAttendancePage: number = 1) {
-  const { isStudent, isParent, isAdminOrSales } = useAuth();
+  const { isStudent, isParent, isAdminOrSales, isStudentAffairs } = useAuth();
+  const showAdminStats = isAdminOrSales || isStudentAffairs;
 
   // Admin Data - Split into smaller queries for faster perceived loading
   const summary = useQuery({
     queryKey: ["admin", "dashboard", "summary"],
     queryFn: () => AdminService.getDashboardSummary(),
-    enabled: !!isAdminOrSales,
+    enabled: !!showAdminStats,
     staleTime: 1000 * 30,
   });
 
   const enrollments = useQuery({
     queryKey: ["admin", "dashboard", "enrollments"],
     queryFn: () => AdminService.listEnrollments(true),
-    enabled: !!isAdminOrSales,
+    enabled: !!showAdminStats,
     staleTime: 1000 * 30,
   });
 
   const attendance = useQuery({
     queryKey: ["admin", "dashboard", "attendance"],
     queryFn: () => AdminService.listAttendance(14), // Last 14 days for charts
-    enabled: !!isAdminOrSales,
+    enabled: !!showAdminStats,
     staleTime: 1000 * 30,
   });
 
   const rooms = useQuery({
     queryKey: ["admin", "dashboard", "rooms"],
     queryFn: () => AdminService.listRooms(),
-    enabled: !!isAdminOrSales,
+    enabled: !!showAdminStats,
     staleTime: 1000 * 30,
   });
 
