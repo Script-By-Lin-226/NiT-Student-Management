@@ -212,14 +212,19 @@ class Enrollment(Base):
     )
 
     enrollment_date = Column(DateTime, default=func.now(), index=True)
-    status = Column(Boolean, default=True)
-    
-    batch_no = Column(String, nullable=True) # Kept for migration / legacy
+    status = Column(Boolean, default=True, index=True)  # index added for status-filtered queries
+
+    batch_no = Column(String, nullable=True)
     payment_plan = Column(String, nullable=True)
     downpayment = Column(Float, nullable=True)
     installment_amount = Column(Float, nullable=True)
     total_fee = Column(Float, nullable=True) # Price at the time of enrollment
     exam_fee_gbp = Column(Float, nullable=True) # Exam fee in GBP at time of enrollment
+
+    # Composite index to speed up ORDER BY enrollment_date DESC, enrollment_id DESC pagination
+    __table_args__ = (
+        UniqueConstraint("enrollment_code", name="uq_enrollment_code"),
+    )
 
     # Relationships
     student = relationship("User", back_populates="enrollments")

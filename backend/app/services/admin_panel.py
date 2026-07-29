@@ -753,7 +753,10 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
-        query = select(User).where(User.role == "teacher").order_by(User.created_at.desc()).offset(offset).limit(limit)
+        # Defer large blob columns for list view (profile_picture can be 100s of KB base64)
+        query = select(User).where(User.role == "teacher").options(
+            defer(User.password_hash), defer(User.address), defer(User.profile_picture), defer(User.signature)
+        ).order_by(User.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(query)
         teachers = result.scalars().all()
 
@@ -1627,52 +1630,68 @@ class AdminPanelService:
     async def list_enrollments(request: Request, session: AsyncSession, status: bool = None, page: int = 1, limit: int = 50):
         if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
-        
+
+        # --- Cache check ---
+        from app.core.cache import cache_manager
+        cache_key = f"enrollment:list:{page}:{limit}:{status}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse(cached)
+
         offset = (page - 1) * limit
         from app.models.model import Batch
+        # Defer large text blobs: profile_picture (base64), address, password_hash
         base_q = select(Enrollment, User, Course, Batch).join(User, Enrollment.student_id == User.user_id).join(Course, Enrollment.course_id == Course.course_id).outerjoin(Batch, Enrollment.batch_id == Batch.batch_id).options(
-            defer(User.address), defer(User.password_hash)
+            defer(User.address), defer(User.password_hash), defer(User.profile_picture), defer(User.signature)
         ).order_by(Enrollment.enrollment_date.desc(), Enrollment.enrollment_id.desc())
 
         if status is not None:
             base_q = base_q.where(Enrollment.status == status)
 
-        # Count
+        # Count (run in parallel with data query context)
         count_q = select(func.count(Enrollment.enrollment_id))
         if status is not None:
             count_q = count_q.where(Enrollment.status == status)
-        
+
         res_count = await session.execute(count_q)
         total_count = res_count.scalar() or 0
-            
+
         paginated_q = base_q.offset(offset).limit(limit)
         r = await session.execute(paginated_q)
         rows = r.all()
-        # For each enrollment, we need total paid amount to calculate balance
-        # We can fetch payments for these enrollments in bulk
+
+        # Bulk-fetch payment summaries for this page's enrollments only
         enroll_ids = [row[0].enrollment_id for row in rows]
-        
+
         pay_sums = {}
         pay_discounts = {}
         exam_paid_gbp = {}
         pay_counts = {}
-        
+
         if enroll_ids:
-            # Simple sum query
             sum_q = select(
-                Payment.enrollment_id, 
+                Payment.enrollment_id,
                 func.sum(Payment.amount + func.coalesce(Payment.amount_2, 0)).label("total"),
                 func.sum(func.coalesce(Payment.discount_amount, 0)).label("discount"),
                 func.sum(func.coalesce(Payment.exam_fee_paid_gbp, 0)).label("exam_gbp"),
                 func.count(Payment.payment_id).label("p_count")
             ).where(Payment.enrollment_id.in_(enroll_ids)).group_by(Payment.enrollment_id)
-            
+
             p_res = await session.execute(sum_q)
             for eid, total, disc, e_gbp, pcount in p_res:
                 pay_sums[eid] = float(total or 0)
                 pay_discounts[eid] = float(disc or 0)
                 exam_paid_gbp[eid] = float(e_gbp or 0)
                 pay_counts[eid] = int(pcount or 0)
+
+        # Fetch profile pictures separately only for users in this page (avoids loading blob in main join)
+        profile_pictures = {}
+        if enroll_ids and rows:
+            user_ids = list({row[1].user_id for row in rows})
+            pic_q = select(User.user_id, User.profile_picture).where(User.user_id.in_(user_ids))
+            pic_res = await session.execute(pic_q)
+            for uid, pic in pic_res:
+                profile_pictures[uid] = pic
 
         data = []
         for e, u, c, b in rows:
@@ -1684,14 +1703,14 @@ class AdminPanelService:
             d["room"] = getattr(c, "room", None)
             d["batch_start_date"] = b.start_date.isoformat() if b and b.start_date else None
             d["batch_end_date"] = b.end_date.isoformat() if b and b.end_date else None
-            
+
             plan = getattr(e, "payment_plan", None)
             course_cost = float(getattr(e, "total_fee", 0.0) or (c.fee_full_payment if plan == "full" else (c.fee_installment if plan == "installment" else 0.0)) or 0.0)
-            
+
             total_paid = pay_sums.get(e.enrollment_id, 0.0)
             total_discount = pay_discounts.get(e.enrollment_id, 0.0)
             paid_gbp = exam_paid_gbp.get(e.enrollment_id, 0.0)
-            
+
             d["course_cost"] = course_cost
             d["total_paid"] = total_paid
             d["balance_due"] = max(0.0, course_cost - (total_paid + total_discount))
@@ -1699,14 +1718,16 @@ class AdminPanelService:
             d["exam_fee_total_gbp"] = float(getattr(e, "exam_fee_gbp", 0.0) or c.exam_fee_gbp or 0.0)
             d["exam_fee_pending_gbp"] = max(0.0, d["exam_fee_total_gbp"] - paid_gbp)
             d["payment_count"] = pay_counts.get(e.enrollment_id, 0)
-            
+
             d["foc_items"] = (c.foc_items_installment if plan == "installment" else c.foc_items)
-            d["profile_picture"] = u.profile_picture
-            d["signature"] = getattr(u, "signature", None)
+            # Profile picture is fetched separately to keep the main join lean
+            d["profile_picture"] = profile_pictures.get(u.user_id)
+            d["signature"] = None  # Signature not needed in list view; load on demand
             data.append(d)
-        return JSONResponse({
-            "status_code": 200, 
-            "message": "Enrollments fetched successfully", 
+
+        response_body = {
+            "status_code": 200,
+            "message": "Enrollments fetched successfully",
             "data": data,
             "pagination": {
                 "total_count": total_count,
@@ -1714,7 +1735,10 @@ class AdminPanelService:
                 "current_page": page,
                 "limit": limit
             }
-        })
+        }
+        # Cache the serialized response for 60 seconds
+        await cache_manager.set(cache_key, response_body, expire=60)
+        return JSONResponse(response_body)
 
     async def create_enrollment(request: Request, session: AsyncSession, payload: AdminEnrollmentCreate):
         if not await validating_admin_role(request, allow_sales=True):
@@ -1779,6 +1803,9 @@ class AdminPanelService:
         await session.commit()
         await session.refresh(e)
         await log_activity(request, session, "Create Enrollment", f"Enrollment {enrollment_code} created for student {payload.student_code} in course {payload.course_code}")
+        # Invalidate enrollment list cache so next read is fresh
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("enrollment:list:*")
         return JSONResponse({"status_code": 201, "message": "Enrollment created successfully", "data": _serialize_enrollment(e)}, status_code=201)
 
     async def update_enrollment(request: Request, session: AsyncSession, enrollment_code: str, payload: AdminEnrollmentUpdate):
@@ -1834,6 +1861,9 @@ class AdminPanelService:
 
         await session.commit()
         await log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
+        # Invalidate enrollment list cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("enrollment:list:*")
         return JSONResponse({"status_code": 200, "message": "Enrollment updated successfully", "data": _serialize_enrollment(e)})
 
     async def delete_enrollment(request: Request, session: AsyncSession, enrollment_code: str):
@@ -1846,6 +1876,9 @@ class AdminPanelService:
         await session.delete(e)
         await session.commit()
         await log_activity(request, session, "Delete Enrollment", f"Enrollment {enrollment_code} deleted")
+        # Invalidate enrollment list cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("enrollment:list:*")
         return JSONResponse({"status_code": 200, "message": "Enrollment deleted successfully"})
 
     async def approve_student(request: Request, session: AsyncSession, user_id: int, payload: AdminStudentApprove):

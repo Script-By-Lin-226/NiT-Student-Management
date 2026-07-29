@@ -152,8 +152,10 @@ export default function AdminEnrollmentsPage() {
     });
   }, [q, filterCourse, filterBatch, rows]);
 
+  // Reload when auth resolves — only if data is stale (React Query handles this automatically
+  // via staleTime; this effect is intentionally a no-op to avoid double-fetch)
   useEffect(() => {
-    if (isAdminOrSalesOrAccountantOrManager) reload();
+    // Auth state has resolved; React Query will auto-fetch if stale
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminOrSalesOrAccountantOrManager]);
 
@@ -189,7 +191,7 @@ export default function AdminEnrollmentsPage() {
         exam_fee_gbp: cExamFeeGbp !== "" ? Number(cExamFeeGbp) : null,
       });
       setCreateOpen(false);
-      reload();
+      // React Query onSuccess invalidation handles the refetch automatically
       toast.success("Enrollment created");
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to create enrollment");
@@ -227,7 +229,7 @@ export default function AdminEnrollmentsPage() {
       });
       setEditOpen(false);
       setSelected(null);
-      reload();
+      // React Query onSuccess invalidation handles the refetch automatically
       toast.success("Enrollment updated");
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to update enrollment");
@@ -242,7 +244,7 @@ export default function AdminEnrollmentsPage() {
     if (!enrollToDelete) return;
     try {
       await deleteMutation.mutateAsync(enrollToDelete.enrollment_code);
-      reload();
+      // React Query onSuccess invalidation handles the refetch automatically
       toast.success("Enrollment deleted");
     } catch (er: any) {
       toast.error(er?.response?.data?.message || "Failed to delete enrollment");

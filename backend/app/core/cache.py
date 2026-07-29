@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional
 import redis.asyncio as redis
 from app.core.config import settings
 
@@ -82,6 +82,39 @@ class CacheManager:
                 del self._local_cache[key]
         except Exception as e:
             logger.error(f"Cache delete error for key {key}: {e}")
+
+    async def delete_pattern(self, pattern: str):
+        """Delete all cache keys matching a glob pattern (e.g. 'enrollment:list:*').
+        
+        Uses Redis SCAN for atomic pattern-based deletion in Redis mode.
+        Falls back to prefix matching on the in-memory dict.
+        """
+        if not settings.ENABLE_CACHE:
+            return
+
+        try:
+            if self._client:
+                # Use SCAN to find matching keys without blocking (unlike KEYS)
+                cursor = 0
+                keys_to_delete = []
+                while True:
+                    cursor, keys = await self._client.scan(cursor=cursor, match=pattern, count=100)
+                    keys_to_delete.extend(keys)
+                    if cursor == 0:
+                        break
+                if keys_to_delete:
+                    await self._client.delete(*keys_to_delete)
+                    logger.debug(f"Cache: deleted {len(keys_to_delete)} keys matching '{pattern}'")
+            else:
+                # In-memory: convert glob '*' to prefix match
+                prefix = pattern.rstrip("*")
+                keys_to_delete = [k for k in list(self._local_cache.keys()) if k.startswith(prefix)]
+                for k in keys_to_delete:
+                    del self._local_cache[k]
+                if keys_to_delete:
+                    logger.debug(f"Cache: deleted {len(keys_to_delete)} in-memory keys matching '{pattern}'")
+        except Exception as e:
+            logger.error(f"Cache delete_pattern error for pattern '{pattern}': {e}")
 
     async def close(self):
         if self._client:

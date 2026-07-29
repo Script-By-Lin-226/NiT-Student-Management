@@ -49,6 +49,8 @@ export function useCourses(page: number = 1, limit: number = 50) {
   return useQuery({
     queryKey: [...adminKeys.courses(), page, limit],
     queryFn: () => AdminService.listCourses(page, limit),
+    staleTime: 60_000,  // Courses rarely change; cache for 1 minute
+    gcTime: 300_000,    // Keep in memory for 5 minutes
   });
 }
 
@@ -64,6 +66,8 @@ export function useEnrollments(status?: boolean, page: number = 1, limit: number
   return useQuery({
     queryKey: [...adminKeys.enrollments(), status, page, limit],
     queryFn: () => AdminService.listEnrollments(status, page, limit),
+    staleTime: 30_000,  // Keep data fresh for 30s; prevents refetch on window focus
+    gcTime: 120_000,    // Keep in garbage-collection memory for 2 minutes
   });
 }
 
@@ -106,6 +110,8 @@ export function useBatches(courseId?: number) {
   return useQuery({
     queryKey: adminKeys.batches(courseId),
     queryFn: () => AdminService.listBatches(courseId),
+    staleTime: 60_000,  // Batches rarely change mid-session
+    gcTime: 300_000,
   });
 }
 
@@ -226,7 +232,11 @@ export function useCreateEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: any) => AdminService.createEnrollment(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+    onSuccess: () => {
+      // Only invalidate enrollment and payment caches — not rooms, timetables, users etc.
+      queryClient.invalidateQueries({ queryKey: adminKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.payments() });
+    },
   });
 }
 
@@ -234,7 +244,10 @@ export function useUpdateEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ code, payload }: { code: string; payload: any }) => AdminService.updateEnrollment(code, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.payments() });
+    },
   });
 }
 
@@ -242,7 +255,10 @@ export function useDeleteEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (code: string) => AdminService.deleteEnrollment(code),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.payments() });
+    },
   });
 }
 

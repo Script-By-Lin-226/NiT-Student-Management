@@ -37,10 +37,16 @@ def is_transient_db_error(exc: Exception) -> bool:
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=1800,
-    pool_size=5,
-    max_overflow=10,
+    pool_recycle=900,      # Recycle connections every 15 min (better freshness on Render)
+    pool_size=10,          # Increased from 5 → 10 for concurrent admin usage
+    max_overflow=20,       # Increased from 10 → 20
     pool_timeout=30,
+    connect_args={
+        "server_settings": {
+            "statement_timeout": "15000",  # Kill runaway queries after 15s
+            "idle_in_transaction_session_timeout": "30000",  # Release idle transactions after 30s
+        }
+    },
 )
 
 AsyncSessionLocal = async_sessionmaker(
