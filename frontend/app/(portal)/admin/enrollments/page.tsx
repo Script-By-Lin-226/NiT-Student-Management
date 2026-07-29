@@ -47,7 +47,7 @@ function Modal({
 
 export default function AdminEnrollmentsPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdminOrSalesOrAccountantOrManager, isAdmin, isAccountant, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrAccountant, isAdminOrSalesOrAccountantOrManager, isAdmin, isAccountant, isStudentAffairs, loading } = useAuth();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -108,8 +108,8 @@ export default function AdminEnrollmentsPage() {
 
 
   useEffect(() => {
-    if (!loading && !isAdminOrSalesOrAccountantOrManager) router.replace("/dashboard");
-  }, [loading, isAdminOrSalesOrAccountantOrManager, router]);
+    if (!loading && !isAdminOrSalesOrAccountantOrManager && !isStudentAffairs) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrAccountantOrManager, isStudentAffairs, router]);
 
   // Derive unique batch options for the selected course from loaded rows
   const filterBatchOptions = useMemo(() => {
@@ -155,12 +155,16 @@ export default function AdminEnrollmentsPage() {
   // Reload when auth resolves — only if data is stale (React Query handles this automatically
   // via staleTime; this effect is intentionally a no-op to avoid double-fetch)
   useEffect(() => {
+<<<<<<< HEAD
     // Auth state has resolved; React Query will auto-fetch if stale
+=======
+    if (isAdminOrSalesOrAccountantOrManager || isStudentAffairs) reload();
+>>>>>>> f98eecee7f092956fabfc7eb09c87372a186dffa
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSalesOrAccountantOrManager]);
+  }, [isAdminOrSalesOrAccountantOrManager, isStudentAffairs]);
 
   if (loading) return null;
-  if (!isAdminOrSalesOrAccountantOrManager) return null;
+  if (!isAdminOrSalesOrAccountantOrManager && !isStudentAffairs) return null;
 
   const openCreate = () => {
     setCStudentCode("");

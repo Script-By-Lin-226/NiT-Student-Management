@@ -1087,5 +1087,54 @@ export class AdminService {
     const res = await api.get<{ data: BudgetVsActual[] }>("/admin/accounting/budget-vs-actual");
     return res.data.data;
   }
+
+  // Batch lifecycle
+  static async endBatch(batchId: number): Promise<{ batch_id: number; batch_no: string; is_active: boolean }> {
+    const res = await api.post<{ data: { batch_id: number; batch_no: string; is_active: boolean } }>(`/admin/batches/${batchId}/end`);
+    return res.data.data;
+  }
+
+  static async getBatchStudents(batchId: number): Promise<{ student_code: string; student_name: string; enrollment_id: number; profile_picture?: string | null }[]> {
+    const res = await api.get<{ data: any[] }>(`/admin/batches/${batchId}/students`);
+    return res.data.data;
+  }
+
+  static async getBatchAttendance(batchId: number, startDate?: string, endDate?: string): Promise<AdminAttendanceRecord[]> {
+    const res = await api.get<{ data: AdminAttendanceRecord[] }>(`/admin/attendance/batch/${batchId}`, {
+      params: { start_date: startDate, end_date: endDate }
+    });
+    return res.data.data;
+  }
+
+  static async getBatchAttendanceReport(batchId: number, month?: string): Promise<BatchAttendanceReport> {
+    const res = await api.get<{ data: BatchAttendanceReport }>(`/admin/attendance/report/batch/${batchId}`, {
+      params: { month }
+    });
+    return res.data.data;
+  }
 }
 
+export interface StudentAttendanceStat {
+  user_code: string;
+  username: string;
+  profile_picture?: string | null;
+  overall: { present: number; total: number; percentage: number | null };
+  month: { present: number; total: number; percentage: number | null };
+  week: { present: number; total: number; percentage: number | null };
+  monthly_specific?: { present: number; total: number; percentage: number | null } | null;
+}
+
+export interface BatchAttendanceReport {
+  batch_id: number;
+  batch_no: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  total_classes_overall: number;
+  total_classes_month: number;
+  total_classes_week: number;
+  total_classes_specific_month?: number;
+  available_months: string[];
+  month_filter?: string | null;
+  students: StudentAttendanceStat[];
+}

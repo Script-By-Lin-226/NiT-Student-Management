@@ -46,7 +46,8 @@ function Modal({
 
 export default function AdminCoursesPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading: authLoading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, isStudentAffairs, loading: authLoading } = useAuth();
+  const hasAccess = isAdminOrSalesOrManager || isStudentAffairs;
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -95,8 +96,8 @@ export default function AdminCoursesPage() {
   const busy = yearsLoading || coursesLoading || createCourse.isPending || updateCourse.isPending || deleteCourse.isPending;
 
   useEffect(() => {
-    if (!authLoading && !isAdminOrSalesOrManager) router.replace("/dashboard");
-  }, [authLoading, isAdminOrSalesOrManager, router]);
+    if (!authLoading && !hasAccess) router.replace("/dashboard");
+  }, [authLoading, hasAccess, router]);
 
   const yearNameById = useMemo(() => {
     const m = new Map<number, string>();
@@ -111,7 +112,7 @@ export default function AdminCoursesPage() {
   }, [q, rows]);
 
   if (authLoading) return null;
-  if (!isAdminOrSalesOrManager) return null;
+  if (!hasAccess) return null;
 
   const openCreate = () => {
     setCName(""); setCInstructor(""); setCFeeFull(0); setCFeeInst(0); setCExamFeeGbp(0);
@@ -577,7 +578,8 @@ export default function AdminCoursesPage() {
 function BatchManagement({ courseId }: { courseId: number }) {
   const { data: batchRes, isLoading } = useBatches(courseId);
   const { data: rooms = [] } = useRooms();
-  const { isAdmin, isAdminOrSales } = useAuth();
+  const { isAdmin, isAdminOrSales, isStudentAffairs } = useAuth();
+  const canCreate = isAdminOrSales || isStudentAffairs;
   const batches = batchRes?.data || [];
   const createBatch = useCreateBatch();
   const updateBatch = useUpdateBatch();
@@ -667,8 +669,8 @@ function BatchManagement({ courseId }: { courseId: number }) {
 
   return (
     <div className="space-y-6">
-      {/* Create form — visible to admin, sales, and manager */}
-      {isAdminOrSales && (
+      {/* Create form — visible to admin, sales, manager, and student affairs */}
+      {canCreate && (
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
           <h4 className="text-sm font-bold text-slate-900 border-l-4 border-brand-500 pl-3">New Batch</h4>
           <div className="grid grid-cols-2 gap-3">
@@ -842,7 +844,8 @@ function BatchManagement({ courseId }: { courseId: number }) {
 
 function SubjectManagement({ courseId, courseCode, courseName }: { courseId: number; courseCode: string; courseName: string }) {
   const { data: subjectRes, isLoading } = useSubjects(courseId);
-  const { isAdmin, isAdminOrSales } = useAuth();
+  const { isAdmin, isAdminOrSales, isStudentAffairs } = useAuth();
+  const canCreate = isAdminOrSales || isStudentAffairs;
   const subjects = subjectRes?.data || [];
   const createSubject = useCreateSubject();
   const deleteSubject = useDeleteSubject();
@@ -912,8 +915,8 @@ function SubjectManagement({ courseId, courseCode, courseName }: { courseId: num
 
   return (
     <div className="space-y-6">
-      {/* Create form — visible to admin, sales, and manager */}
-      {isAdminOrSales && (
+      {/* Create form — visible to admin, sales, manager, and student affairs */}
+      {canCreate && (
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-500 pl-3">New Subject</h4>

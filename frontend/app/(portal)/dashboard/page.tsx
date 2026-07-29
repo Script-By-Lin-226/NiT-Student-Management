@@ -105,7 +105,7 @@ const renderExtraItemsCell = (payment: any) => {
 };
 
 export default function DashboardPage() {
-  const { isStudent, isParent, isAdminOrSales, isAdmin, user } = useAuth();
+  const { isStudent, isParent, isAdminOrSales, isAdmin, user, isStudentAffairs } = useAuth();
   const [selectedChild, setSelectedChild] = useState<string>("");
   const [childPage, setChildPage] = useState<number>(1);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<any | null>(null);
@@ -690,7 +690,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (isAdminOrSales) {
+  if (isAdminOrSales || isStudentAffairs) {
     const getGreeting = () => {
       const hr = new Date().getHours();
       if (hr < 12) return "Good Morning";
@@ -702,6 +702,7 @@ export default function DashboardPage() {
       if (user?.role === "admin") return "Admin Dashboard";
       if (user?.role === "manager") return "Manager Portal Dashboard";
       if (user?.role === "sales") return "Sales Portal Dashboard";
+      if (user?.role === "student_affairs") return "Student Affairs Dashboard";
       return "Operations Dashboard";
     };
 

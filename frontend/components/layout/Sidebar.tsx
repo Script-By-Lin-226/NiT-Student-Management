@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Clock, CalendarDays, Award, User, LogOut, Users, Shield, DoorOpen, CalendarClock, CreditCard, Database, BarChart } from "lucide-react";
+import { Home, BookOpen, Clock, CalendarDays, Award, User, LogOut, Users, Shield, DoorOpen, CalendarClock, CreditCard, Database, BarChart, GraduationCap } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 import BrandLogo from "@/components/BrandLogo";
@@ -47,6 +47,15 @@ const accountantNav = [
   { name: "Profile", href: "/profile", icon: User },
 ];
 
+const studentAffairsNav = [
+  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Courses", href: "/admin/courses", icon: BookOpen },
+  { name: "Enrollments", href: "/admin/enrollments", icon: Award },
+  { name: "Attendance", href: "/admin/attendance", icon: Clock },
+  { name: "Timetable", href: "/admin/timetables", icon: CalendarClock },
+  { name: "Profile", href: "/profile", icon: User },
+];
+
 const adminNav = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Students", href: "/admin/students", icon: Users },
@@ -74,6 +83,7 @@ export default function Sidebar() {
   if (isStaff) navigation = staffNav;
   if (user?.role === "teacher") navigation = teacherNav;
   if (user?.role === "accountant") navigation = accountantNav;
+  if (user?.role === "student_affairs") navigation = studentAffairsNav;
   if (user?.role === "sales" || user?.role === "manager") navigation = adminNav.filter(item => item.name !== "Activity Logs" && item.name !== "Staff" && item.name !== "Backup");
   if (isAdmin) navigation = adminNav;
 

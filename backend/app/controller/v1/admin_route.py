@@ -195,6 +195,14 @@ async def mark_attendance(payload: AttendanceMarkRequest, request: Request, sess
 async def update_attendance(attendance_id: int, payload: AttendanceUpdateRequest, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.update_attendance(request, session, attendance_id, payload)
 
+@router.get("/attendance/batch/{batch_id}")
+async def get_batch_attendance(batch_id: int, request: Request, start_date: str = None, end_date: str = None, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_batch_attendance(request, session, batch_id, start_date, end_date)
+
+@router.get("/attendance/report/batch/{batch_id}")
+async def get_batch_attendance_report(batch_id: int, request: Request, month: str = None, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_batch_attendance_report(request, session, batch_id, month)
+
 @router.get("/attendance/{student_code}")
 async def get_specific_attendance(student_code: str, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_specific_attendance(student_code, request, session)
@@ -230,6 +238,14 @@ async def create_batch(payload: AdminBatchCreate, request: Request, session: Asy
 @router.put("/batches/{batch_id}")
 async def update_batch(batch_id: int, payload: AdminBatchUpdate, request: Request, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.update_batch(request, session, batch_id, payload)
+
+@router.post("/batches/{batch_id}/end")
+async def end_batch(batch_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.end_batch(request, session, batch_id)
+
+@router.get("/batches/{batch_id}/students")
+async def get_batch_students(batch_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+    return await AdminPanelService.get_batch_students(request, session, batch_id)
 
 @router.delete("/batches/{batch_id}")
 async def delete_batch(batch_id: int, request: Request, session: AsyncSession = Depends(get_db)):

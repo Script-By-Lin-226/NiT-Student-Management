@@ -113,7 +113,7 @@ const formatDate = (date: Date | null) => {
 
 export default function AdminTimetablesPage() {
   const router = useRouter();
-  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, loading } = useAuth();
+  const { isAdminOrSales, isAdminOrSalesOrManager, isAdmin, isStudentAffairs, loading } = useAuth();
 
   const [rows, setRows] = useState<AdminTimeTableRow[]>([]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
@@ -161,8 +161,8 @@ export default function AdminTimetablesPage() {
   const [eSubjects, setESubjects] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!loading && !isAdminOrSalesOrManager) router.replace("/dashboard");
-  }, [loading, isAdminOrSalesOrManager, router]);
+    if (!loading && !isAdminOrSalesOrManager && !isStudentAffairs) router.replace("/dashboard");
+  }, [loading, isAdminOrSalesOrManager, isStudentAffairs, router]);
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -232,9 +232,9 @@ export default function AdminTimetablesPage() {
   };
 
   useEffect(() => {
-    if (isAdminOrSalesOrManager) load();
+    if (isAdminOrSalesOrManager || isStudentAffairs) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminOrSalesOrManager]);
+  }, [isAdminOrSalesOrManager, isStudentAffairs]);
 
   useEffect(() => {
     if (cCourseCode) {
@@ -282,7 +282,7 @@ export default function AdminTimetablesPage() {
   }, [quickSubjectOpen, cCourseCode, subjects]);
 
   if (loading) return null;
-  if (!isAdminOrSalesOrManager) return null;
+  if (!isAdminOrSalesOrManager && !isStudentAffairs) return null;
 
   const openCreate = () => {
     const firstCourse = courses[0];
@@ -556,8 +556,11 @@ export default function AdminTimetablesPage() {
                         <div className="font-semibold text-slate-800">{r.course_name}</div>
                         <div className="text-xs text-brand-600 font-bold uppercase tracking-tight">{r.course_code}</div>
                         {r.subject_name && (
-                          <div className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
-                            {r.subject_name}
+                          <div className="flex flex-col gap-0.5 mt-1 items-start">
+                            <span className="text-[10px] font-black text-blue-600 border border-blue-100 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {r.subject_name}
+                            </span>
+                            <span className="text-[8px] font-bold text-slate-400 px-0.5">Default subject (overrideable)</span>
                           </div>
                         )}
                       </td>

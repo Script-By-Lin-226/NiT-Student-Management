@@ -302,7 +302,8 @@ async def _next_staff_code(session: AsyncSession, role: str) -> str:
         "teacher": "TCH",
         "hr": "HRX",
         "manager": "MGR",
-        "accountant": "ACC"
+        "accountant": "ACC",
+        "student_affairs": "STA"
     }
     prefix = prefix_map.get(role, "STF")
     
@@ -487,7 +488,7 @@ class AdminPanelService:
         )
 
     async def get_students_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Base query optimized to exclude large columns
@@ -594,6 +595,15 @@ class AdminPanelService:
                     batch_o = b_r.scalars().first()
                     if batch_o:
                         batch_id = batch_o.batch_id
+                    else:
+                        new_batch = Batch(
+                            batch_no=payload.batch_no.strip(),
+                            course_id=course_obj.course_id,
+                            is_active=True
+                        )
+                        session.add(new_batch)
+                        await session.flush()
+                        batch_id = new_batch.batch_id
                 
                 enroll = Enrollment(
                     enrollment_code=e_code,
@@ -749,7 +759,7 @@ class AdminPanelService:
         )
     
     async def get_teachers_details(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -777,7 +787,7 @@ class AdminPanelService:
         })
     
     async def get_specific_teacher(user_code: str ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(User).where(and_(User.user_code == user_code , User.role == "teacher"))
@@ -1236,7 +1246,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 201, "message": "Academic year created successfully", "data": _serialize_academic_year(new_academic_year)}, status_code=201)
         
     async def get_all_academic_years(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
         query = select(AcademicYear)
         result = await session.execute(query)
@@ -1244,7 +1254,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": [_serialize_academic_year(y) for y in years]})
         
     async def get_specific_academic_details(academic_year_id: int ,request: Request , session:AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
         
         query = select(AcademicYear).where(AcademicYear.academic_year_id == academic_year_id)
@@ -1295,7 +1305,7 @@ class AdminPanelService:
     # CRUD - Courses
 
     async def list_courses(request: Request, session: AsyncSession, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
@@ -1321,7 +1331,7 @@ class AdminPanelService:
 
     async def get_dashboard_summary(request: Request, session: AsyncSession):
         """Fetch multiple KPI counts efficiently for the dashboard."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # In parallel
@@ -1357,7 +1367,7 @@ class AdminPanelService:
         })
 
     async def create_course(request: Request, session: AsyncSession, payload: AdminCourseCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         year = await session.execute(select(AcademicYear).where(AcademicYear.academic_year_id == payload.academic_year_id))
@@ -1445,7 +1455,7 @@ class AdminPanelService:
     # --- CRUD - Batches ---
 
     async def list_batches(request: Request, session: AsyncSession, course_id: Optional[int] = None):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Batch, Course).join(Course, Batch.course_id == Course.course_id)
@@ -1462,7 +1472,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Batches fetched successfully", "data": data})
 
     async def create_batch(request: Request, session: AsyncSession, payload: AdminBatchCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Check course
@@ -1546,7 +1556,7 @@ class AdminPanelService:
     # --- CRUD - Subjects ---
 
     async def list_subjects(request: Request, session: AsyncSession, course_id: Optional[int] = None):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = select(Subject, Course).join(Course, Subject.course_id == Course.course_id)
@@ -1563,7 +1573,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Subjects fetched successfully", "data": data})
 
     async def create_subject(request: Request, session: AsyncSession, payload: AdminSubjectCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         # Check course
@@ -1628,7 +1638,7 @@ class AdminPanelService:
     # --- CRUD - Enrollments ---
 
     async def list_enrollments(request: Request, session: AsyncSession, status: bool = None, page: int = 1, limit: int = 50):
-        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # --- Cache check ---
@@ -1741,7 +1751,7 @@ class AdminPanelService:
         return JSONResponse(response_body)
 
     async def create_enrollment(request: Request, session: AsyncSession, payload: AdminEnrollmentCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         stu_r = await session.execute(select(User).where(and_(User.user_code == payload.student_code, User.role == "student")))
@@ -1775,6 +1785,17 @@ class AdminPanelService:
             batch = b_r.scalars().first()
             if batch:
                 batch_id = batch.batch_id
+                batch_no = batch.batch_no # Keep exact case from DB
+            else:
+                new_batch = Batch(
+                    batch_no=batch_no.strip(),
+                    course_id=course.course_id,
+                    is_active=True
+                )
+                session.add(new_batch)
+                await session.flush()
+                batch_id = new_batch.batch_id
+                batch_no = new_batch.batch_no
         elif batch_id and not batch_no:
             b_res = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
             batch = b_res.scalars().first()
@@ -1829,6 +1850,10 @@ class AdminPanelService:
 
             if batch_id and batch_id != 0:
                 e.batch_id = batch_id
+                b_res = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+                batch_o = b_res.scalars().first()
+                if batch_o:
+                    e.batch_no = batch_o.batch_no
             elif batch_no:
                 b_r = await session.execute(
                     select(Batch).where(
@@ -1843,7 +1868,15 @@ class AdminPanelService:
                     e.batch_id = batch.batch_id
                     e.batch_no = batch.batch_no
                 else:
-                    return JSONResponse({"status_code": 404, "message": f"Batch '{batch_no}' not found for this course"}, status_code=404)
+                    new_batch = Batch(
+                        batch_no=batch_no.strip(),
+                        course_id=e.course_id,
+                        is_active=True
+                    )
+                    session.add(new_batch)
+                    await session.flush()
+                    e.batch_id = new_batch.batch_id
+                    e.batch_no = new_batch.batch_no
             else:
                 e.batch_id = None
                 e.batch_no = None
@@ -1919,7 +1952,7 @@ class AdminPanelService:
 
     async def mark_attendance(request: Request, session: AsyncSession, payload: AttendanceMarkRequest):
         """Mark attendance for a student. One record allowed per student per day per slot/subject."""
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # Resolve user_code -> user_id
@@ -1939,16 +1972,19 @@ class AdminPanelService:
         # Resolve Course/Batch if not explicitly provided
         course_id = payload.course_id
         batch_id = None
+        # subject_id comes from payload first (staff override), fall back to timetable default later
         subject_id = payload.subject_id
         
-        # If timetable_id is provided, we can resolve subject_id and potentially course_id
+        # If timetable_id is provided, resolve course_id and batch_id from it.
+        # subject_id from timetable is only used as fallback if staff did NOT explicitly pick one.
         if payload.timetable_id:
             tt_r = await session.execute(select(TimeTable).where(TimeTable.timetable_id == payload.timetable_id))
             tt = tt_r.scalars().first()
             if tt:
                 if not course_id: course_id = tt.course_id
                 if not batch_id: batch_id = tt.batch_id
-                if not subject_id: subject_id = tt.subject_id
+                # Only use timetable subject as default if staff didn't pass an explicit subject
+                if subject_id is None: subject_id = tt.subject_id
 
         # If course_id is still not resolved, we try to find the active enrollment
         if not course_id:
@@ -1971,6 +2007,26 @@ class AdminPanelService:
             batch_q = select(Enrollment.batch_id).where(and_(Enrollment.student_id == student.user_id, Enrollment.course_id == course_id, Enrollment.status == True))
             br = await session.execute(batch_q)
             batch_id = br.scalars().first()
+
+        # ── Batch start date guard ─────────────────────────────────────────
+        if batch_id:
+            batch_r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+            batch_obj = batch_r.scalars().first()
+            if batch_obj:
+                if not batch_obj.is_active:
+                    return JSONResponse(
+                        {"status_code": 400, "message": "This batch has ended and no longer accepts attendance."},
+                        status_code=400
+                    )
+                if batch_obj.start_date and today < batch_obj.start_date:
+                    return JSONResponse(
+                        {
+                            "status_code": 400,
+                            "message": f"This batch has not started yet. Batch starts on {batch_obj.start_date}. Attendance can only be marked from the start date."
+                        },
+                        status_code=400
+                    )
+        # ──────────────────────────────────────────────────────────────────
 
         # ── One-per-day-per-subject guard ──────────────────────────────────
         dup_filters = [
@@ -2001,7 +2057,7 @@ class AdminPanelService:
             user_id=student.user_id,
             course_id=course_id,
             batch_id=batch_id,
-            subject_id=payload.subject_id,
+            subject_id=subject_id,
             timetable_id=payload.timetable_id,
             attendance_date=today,
             slot=payload.slot,
@@ -2030,7 +2086,7 @@ class AdminPanelService:
         }, status_code=201)
 
     async def get_all_attendance(request: Request, session: AsyncSession, days: int = 30):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         q = (
@@ -2145,10 +2201,259 @@ class AdminPanelService:
             }
         })
 
+    # ── Batch lifecycle ────────────────────────────────────────────────────
+
+    async def end_batch(request: Request, session: AsyncSession, batch_id: int):
+        """Explicitly end a batch — sets is_active = False regardless of dates."""
+        if not await validating_admin_role(request, allow_sales=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+        batch = r.scalars().first()
+        if not batch:
+            return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
+
+        if not batch.is_active:
+            return JSONResponse({"status_code": 409, "message": "Batch is already ended"}, status_code=409)
+
+        batch.is_active = False
+        if not batch.end_date:
+            batch.end_date = get_now_local().date()
+        await session.commit()
+        await log_activity(request, session, "End Batch", f"Batch ID {batch_id} ({batch.batch_no}) explicitly ended")
+        return JSONResponse({
+            "status_code": 200,
+            "message": "Batch ended successfully",
+            "data": {"batch_id": batch_id, "batch_no": batch.batch_no, "is_active": False}
+        })
+
+    async def get_batch_students(request: Request, session: AsyncSession, batch_id: int):
+        """Return all students enrolled in a specific batch."""
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+        batch = r.scalars().first()
+        if not batch:
+            return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
+
+        q = (
+            select(Enrollment, User)
+            .join(User, Enrollment.student_id == User.user_id)
+            .where(and_(Enrollment.batch_id == batch_id, Enrollment.status == True))
+        )
+        res = await session.execute(q)
+        students = [
+            {
+                "student_code": u.user_code,
+                "student_name": u.username,
+                "enrollment_id": e.enrollment_id,
+                "profile_picture": u.profile_picture,
+            }
+            for e, u in res.all()
+        ]
+        return JSONResponse({"status_code": 200, "message": "Batch students fetched", "data": students})
+
+    async def get_batch_attendance(request: Request, session: AsyncSession, batch_id: int, start_date: str = None, end_date: str = None):
+        """Return attendance records for a specific batch, optionally filtered by date range."""
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        from sqlalchemy.orm import aliased
+        Teacher = aliased(User)
+        q = (
+            select(Attendance, User, Subject, Teacher.username.label("teacher_name"), TimeTable)
+            .join(User, Attendance.user_id == User.user_id)
+            .outerjoin(Subject, Attendance.subject_id == Subject.subject_id)
+            .outerjoin(TimeTable, Attendance.timetable_id == TimeTable.timetable_id)
+            .outerjoin(Teacher, TimeTable.teacher_id == Teacher.user_id)
+            .where(Attendance.batch_id == batch_id)
+            .order_by(Attendance.attendance_date.desc(), Attendance.attendance_id.desc())
+        )
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+                q = q.where(Attendance.attendance_date >= sd)
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+                q = q.where(Attendance.attendance_date <= ed)
+            except ValueError:
+                pass
+
+        res = await session.execute(q)
+        rows = res.all()
+        return JSONResponse({
+            "status_code": 200,
+            "message": "Batch attendance fetched successfully",
+            "data": [
+                {
+                    "attendance_id": a.attendance_id,
+                    "user_id": a.user_id,
+                    "user_code": u.user_code,
+                    "username": u.username,
+                    "profile_picture": u.profile_picture,
+                    "attendance_date": str(a.attendance_date),
+                    "slot": a.slot,
+                    "check_today": a.check_today,
+                    "subject_id": a.subject_id,
+                    "subject_name": sub.subject_name if sub else None,
+                    "timetable_id": a.timetable_id,
+                    "teacher_name": teacher_name,
+                    "time_range": f"{t.start_time} - {t.end_time}" if t else None,
+                }
+                for a, u, sub, teacher_name, t in rows
+            ],
+        })
+
+    async def get_batch_attendance_report(request: Request, session: AsyncSession, batch_id: int, month: Optional[str] = None):
+        """Compute per-student attendance report for a batch: overall, monthly, weekly breakdowns and specific month filters."""
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
+            return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
+
+        r = await session.execute(select(Batch).where(Batch.batch_id == batch_id))
+        batch = r.scalars().first()
+        if not batch:
+            return JSONResponse({"status_code": 404, "message": "Batch not found"}, status_code=404)
+
+        today = get_now_local().date()
+        one_week_ago = today - timedelta(days=7)
+        one_month_ago = today - timedelta(days=30)
+
+        # Get all enrolled students
+        enroll_q = (
+            select(Enrollment, User)
+            .join(User, Enrollment.student_id == User.user_id)
+            .where(and_(Enrollment.batch_id == batch_id, Enrollment.status == True))
+        )
+        enroll_res = await session.execute(enroll_q)
+        students = {u.user_id: {"user_code": u.user_code, "username": u.username, "profile_picture": u.profile_picture} for e, u in enroll_res.all()}
+
+        if not students:
+            return JSONResponse({
+                "status_code": 200,
+                "message": "No students enrolled in this batch",
+                "data": {"batch_id": batch_id, "batch_no": batch.batch_no, "students": [], "available_months": [], "month_filter": month}
+            })
+
+        # Get all attendance for this batch
+        att_q = select(Attendance).where(Attendance.batch_id == batch_id).order_by(Attendance.attendance_date)
+        att_res = await session.execute(att_q)
+        all_records = att_res.scalars().all()
+
+        # Get distinct months of attendance
+        available_months = sorted(list(set(rec.attendance_date.strftime("%Y-%m") for rec in all_records)), reverse=True)
+
+        # Build per-student stats
+        student_stats = {}
+        for uid, info in students.items():
+            student_stats[uid] = {
+                "user_code": info["user_code"],
+                "username": info["username"],
+                "profile_picture": info["profile_picture"],
+                "overall_total": 0, "overall_present": 0,
+                "month_total": 0, "month_present": 0,
+                "week_total": 0, "week_present": 0,
+                "specific_total": 0, "specific_present": 0,
+            }
+
+        for rec in all_records:
+            uid = rec.user_id
+            if uid not in student_stats:
+                continue
+            stats = student_stats[uid]
+            # Overall
+            stats["overall_total"] += 1
+            if rec.check_today:
+                stats["overall_present"] += 1
+            # Monthly (last 30 days)
+            if rec.attendance_date >= one_month_ago:
+                stats["month_total"] += 1
+                if rec.check_today:
+                    stats["month_present"] += 1
+            # Weekly (last 7 days)
+            if rec.attendance_date >= one_week_ago:
+                stats["week_total"] += 1
+                if rec.check_today:
+                    stats["week_present"] += 1
+            # Specific month filter (YYYY-MM)
+            if month and rec.attendance_date.strftime("%Y-%m") == month:
+                stats["specific_total"] += 1
+                if rec.check_today:
+                    stats["specific_present"] += 1
+
+        def pct(present, total):
+            if total == 0:
+                return None
+            return round((present / total) * 100, 1)
+
+        report_students = []
+        for uid, stats in student_stats.items():
+            report_students.append({
+                "user_code": stats["user_code"],
+                "username": stats["username"],
+                "profile_picture": stats["profile_picture"],
+                "overall": {
+                    "present": stats["overall_present"],
+                    "total": stats["overall_total"],
+                    "percentage": pct(stats["overall_present"], stats["overall_total"]),
+                },
+                "month": {
+                    "present": stats["month_present"],
+                    "total": stats["month_total"],
+                    "percentage": pct(stats["month_present"], stats["month_total"]),
+                },
+                "week": {
+                    "present": stats["week_present"],
+                    "total": stats["week_total"],
+                    "percentage": pct(stats["week_present"], stats["week_total"]),
+                },
+                "monthly_specific": {
+                    "present": stats["specific_present"],
+                    "total": stats["specific_total"],
+                    "percentage": pct(stats["specific_present"], stats["specific_total"]),
+                } if month else None
+            })
+
+        # Sort by specific month percentage if filtered, else overall percentage desc
+        if month:
+            report_students.sort(key=lambda x: x["monthly_specific"]["percentage"] if x["monthly_specific"]["percentage"] is not None else -1, reverse=True)
+        else:
+            report_students.sort(key=lambda x: x["overall"]["percentage"] if x["overall"]["percentage"] is not None else -1, reverse=True)
+
+        # Batch-level totals (all unique class dates for the batch)
+        unique_dates = set(r.attendance_date for r in all_records)
+        total_classes = len(unique_dates)
+        recent_month_dates = {r.attendance_date for r in all_records if r.attendance_date >= one_month_ago}
+        recent_week_dates = {r.attendance_date for r in all_records if r.attendance_date >= one_week_ago}
+        specific_month_dates = {r.attendance_date for r in all_records if month and r.attendance_date.strftime("%Y-%m") == month}
+
+        return JSONResponse({
+            "status_code": 200,
+            "message": "Batch attendance report generated",
+            "data": {
+                "batch_id": batch_id,
+                "batch_no": batch.batch_no,
+                "start_date": str(batch.start_date) if batch.start_date else None,
+                "end_date": str(batch.end_date) if batch.end_date else None,
+                "is_active": batch.is_active,
+                "total_classes_overall": total_classes,
+                "total_classes_month": len(recent_month_dates),
+                "total_classes_week": len(recent_week_dates),
+                "total_classes_specific_month": len(specific_month_dates) if month else 0,
+                "available_months": available_months,
+                "month_filter": month,
+                "students": report_students,
+            }
+        })
+
     # CRUD - Rooms + Availability
 
+
     async def list_rooms(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(select(Room))
@@ -2315,7 +2620,7 @@ class AdminPanelService:
     # Timetables
 
     async def list_timetables(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         r = await session.execute(
@@ -2355,7 +2660,7 @@ class AdminPanelService:
         return JSONResponse({"status_code": 200, "message": "Timetables fetched successfully", "data": data})
 
     async def create_timetable(request: Request, session: AsyncSession, payload: AdminTimeTableCreate):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         c_r = await session.execute(select(Course).where(Course.course_code == payload.course_code))
@@ -3027,7 +3332,7 @@ class AdminPanelService:
             return 0
 
     async def get_teaching_hours_report(request: Request, session: AsyncSession):
-        if not await validating_admin_role(request, allow_sales=True):
+        if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
         # Get all teachers

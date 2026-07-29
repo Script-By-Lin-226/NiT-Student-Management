@@ -1,5 +1,15 @@
-# To-Do List - Resolve Database Migration Error
+# To-Do List - Student Affairs Dashboard & Courses Access
 
-- [x] Modify `backend/migration/env.py` to auto-stamp the database with head revision when tables exist but alembic history is missing
-- [x] Verify local database status and run `alembic upgrade head`
-- [x] Run backend tests using pytest to verify nothing is broken
+- [x] Fix dashboard fetching in `frontend/hooks/useDashboardData.ts` to include `student_affairs`
+- [x] Update `frontend/app/(portal)/dashboard/page.tsx` rendering checks to include `student_affairs`
+- [x] Authorize `student_affairs` on dashboard, courses, batches, subjects, and rooms in backend `admin_panel.py`
+- [x] Enable course list rendering and creation features for `student_affairs` in `frontend/app/(portal)/admin/courses/page.tsx`
+- [x] Add Course link to the Sidebar and Mobile navigation components for the `student_affairs` role
+- [x] Enable Attendance page and Timetable page access for the `student_affairs` role on both frontend and backend APIs
+- [x] Run TypeScript and Python syntax/compile checks to verify correctness
+
+## PDF Attendance Reporting Specific Month
+
+- [x] Update `frontend/utils/pdfAttendanceReport.ts` with robust month name parsing
+- [x] Verify frontend build compile status via `npm run build`
+
