@@ -152,14 +152,9 @@ export default function AdminEnrollmentsPage() {
     });
   }, [q, filterCourse, filterBatch, rows]);
 
-  // Reload when auth resolves — only if data is stale (React Query handles this automatically
-  // via staleTime; this effect is intentionally a no-op to avoid double-fetch)
+  // Auth state has resolved; React Query will auto-fetch if stale (no manual reload needed)
   useEffect(() => {
-<<<<<<< HEAD
-    // Auth state has resolved; React Query will auto-fetch if stale
-=======
-    if (isAdminOrSalesOrAccountantOrManager || isStudentAffairs) reload();
->>>>>>> f98eecee7f092956fabfc7eb09c87372a186dffa
+    // React Query handles re-fetching automatically when staleTime expires
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminOrSalesOrAccountantOrManager, isStudentAffairs]);
 
