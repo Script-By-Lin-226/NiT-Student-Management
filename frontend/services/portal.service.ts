@@ -73,6 +73,7 @@ export interface TimetableSlot {
   day: string;
   start_time: string;
   end_time: string;
+  room_name?: string | null;
   course: {
     course_code: string;
     course_name: string;

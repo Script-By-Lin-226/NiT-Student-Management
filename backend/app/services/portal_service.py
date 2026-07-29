@@ -5,12 +5,26 @@ from sqlalchemy import select, and_, func, or_
 from app.models.model import User, Enrollment, Course, Grade, TimeTable, Attendance, ParentStudent, Payment, Batch
 from app.services.rbac_portal import validating_student_role, validating_parent_role
 from app.core.timezone_utils import get_now_local
+from app.core.cache import cache_manager
+
+# Cache TTL constants (seconds)
+_CACHE_TTL_PORTAL = 60       # student portal reads
+_CACHE_TTL_TIMETABLE = 120   # timetable changes rarely
 
 
 def _user_from_request(request: Request) -> dict:
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
+
+
+async def _get_user_by_code(user_code: str, session: AsyncSession) -> User:
+    """Shared helper: fetch a User row by user_code, raise 404 if missing."""
+    result = await session.execute(select(User).where(User.user_code == user_code))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
 
@@ -45,11 +59,12 @@ class StudentPortalService:
         await validating_student_role(request)
         user_code = _user_from_request(request).get("user_code")
 
-        user_q = select(User).where(User.user_code == user_code)
-        user_r = await session.execute(user_q)
-        user = user_r.scalars().first()
-        if not user:
-            raise HTTPException(status_code=404, detail="Student not found")
+        cache_key = f"portal:courses:{user_code}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse({"success": True, "data": cached, "error": None})
+
+        user = await _get_user_by_code(user_code, session)
 
         q = (
             select(Enrollment, Course)
@@ -69,23 +84,25 @@ class StudentPortalService:
                     "course_id": c.course_id,
                     "course_code": c.course_code,
                     "course_name": c.course_name,
-                    "start_date": c.start_date,
+                    "start_date": str(c.start_date) if c.start_date else None,
                     "room": c.room,
                 }
             }
             for e, c in rows
         ]
+        await cache_manager.set(cache_key, data, expire=_CACHE_TTL_PORTAL)
         return JSONResponse({"success": True, "data": data, "error": None})
 
     async def get_my_attendance(request: Request, session: AsyncSession):
         await validating_student_role(request)
         user_code = _user_from_request(request).get("user_code")
 
-        user_q = select(User).where(User.user_code == user_code)
-        user_r = await session.execute(user_q)
-        user = user_r.scalars().first()
-        if not user:
-            raise HTTPException(status_code=404, detail="Student not found")
+        cache_key = f"portal:attendance:{user_code}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse({"success": True, "data": cached, "error": None})
+
+        user = await _get_user_by_code(user_code, session)
 
         q = select(Attendance).where(Attendance.user_id == user.user_id)
         result = await session.execute(q)
@@ -103,24 +120,23 @@ class StudentPortalService:
             }
             for r in records
         ]
-        return JSONResponse({
-            "success": True,
-            "data": {
-                "records": data,
-                "summary": {"total": total, "present": present, "attendance_rate": rate}
-            },
-            "error": None
-        })
+        payload = {
+            "records": data,
+            "summary": {"total": total, "present": present, "attendance_rate": rate}
+        }
+        await cache_manager.set(cache_key, payload, expire=_CACHE_TTL_PORTAL)
+        return JSONResponse({"success": True, "data": payload, "error": None})
 
     async def get_my_grades(request: Request, session: AsyncSession):
         await validating_student_role(request)
         user_code = _user_from_request(request).get("user_code")
 
-        user_q = select(User).where(User.user_code == user_code)
-        user_r = await session.execute(user_q)
-        user = user_r.scalars().first()
-        if not user:
-            raise HTTPException(status_code=404, detail="Student not found")
+        cache_key = f"portal:grades:{user_code}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse({"success": True, "data": cached, "error": None})
+
+        user = await _get_user_by_code(user_code, session)
 
         q = (
             select(Grade, Course)
@@ -139,60 +155,56 @@ class StudentPortalService:
             }
             for g, c in rows
         ]
+        await cache_manager.set(cache_key, data, expire=_CACHE_TTL_PORTAL)
         return JSONResponse({"success": True, "data": data, "error": None})
 
     async def get_my_timetable(request: Request, session: AsyncSession):
         await validating_student_role(request)
         user_code = _user_from_request(request).get("user_code")
 
-        user_q = select(User).where(User.user_code == user_code)
-        user_r = await session.execute(user_q)
-        user = user_r.scalars().first()
-        if not user:
-            raise HTTPException(status_code=404, detail="Student not found")
+        # ── Cache check ──────────────────────────────────────────────────────────
+        cache_key = f"portal:timetable:{user_code}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse({"success": True, "data": cached, "error": None})
 
-        # Get active enrollments with batch details
-        enroll_q = (
-            select(Enrollment, Batch)
-            .outerjoin(Batch, Enrollment.batch_id == Batch.batch_id)
-            .where(and_(Enrollment.student_id == user.user_id, Enrollment.status == True))
-        )
-        enroll_r = await session.execute(enroll_q)
-        enroll_rows = enroll_r.all()
-
+        # ── Single user lookup ───────────────────────────────────────────────────
+        user = await _get_user_by_code(user_code, session)
         current_date = get_now_local().date()
-        valid_enrolls = []
-        for e, b in enroll_rows:
-            if b:
-                if b.start_date and current_date < b.start_date:
-                    continue
-                if b.end_date and current_date > b.end_date:
-                    continue
-            valid_enrolls.append((e, b))
 
-        if not valid_enrolls:
-            return JSONResponse({"success": True, "data": [], "error": None})
-
-        conditions = []
-        for e, b in valid_enrolls:
-            if b:
-                conditions.append(
-                    and_(
-                        TimeTable.course_id == e.course_id,
-                        or_(TimeTable.batch_id == b.batch_id, TimeTable.batch_id.is_(None))
-                    )
-                )
-            else:
-                conditions.append(TimeTable.course_id == e.course_id)
-
+        # ── Single joined query: user → enrollments → timetable → course/batch ──
+        # Replaces the previous 3-round-trip waterfall.
+        # Logic:
+        #   - JOIN enrollments that are active for this student
+        #   - JOIN timetable on matching course (and optionally batch)
+        #   - Filter out batches that haven't started yet or have ended
         tt_q = (
-            select(TimeTable, Course, Batch)
+            select(TimeTable, Course, Batch, Enrollment)
             .join(Course, TimeTable.course_id == Course.course_id)
             .outerjoin(Batch, TimeTable.batch_id == Batch.batch_id)
-            .where(or_(*conditions))
+            .join(
+                Enrollment,
+                and_(
+                    Enrollment.course_id == TimeTable.course_id,
+                    Enrollment.student_id == user.user_id,
+                    Enrollment.status == True,
+                    # batch match: slot batch must match enrollment batch, OR slot has no batch
+                    or_(
+                        TimeTable.batch_id.is_(None),
+                        TimeTable.batch_id == Enrollment.batch_id,
+                    ),
+                )
+            )
+            # Batch date window filter (NULL = no restriction)
+            .where(
+                and_(
+                    or_(Batch.batch_id.is_(None), Batch.start_date.is_(None), Batch.start_date <= current_date),
+                    or_(Batch.batch_id.is_(None), Batch.end_date.is_(None), Batch.end_date >= current_date),
+                )
+            )
         )
         tt_r = await session.execute(tt_q)
-        rows = tt_r.all()
+        rows = tt_r.unique().all()   # unique() de-dupes ORM identity map
 
         data = [
             {
@@ -200,12 +212,12 @@ class StudentPortalService:
                 "day": t.day_of_week,
                 "start_time": t.start_time,
                 "end_time": t.end_time,
+                "room_name": t.room_name,
                 "course": {"course_code": c.course_code, "course_name": c.course_name},
-                "batch_start_date": b.start_date.isoformat() if b and b.start_date else None,
-                "batch_end_date": b.end_date.isoformat() if b and b.end_date else None,
             }
-            for t, c, b in rows
+            for t, c, b, e in rows
         ]
+        await cache_manager.set(cache_key, data, expire=_CACHE_TTL_TIMETABLE)
         return JSONResponse({"success": True, "data": data, "error": None})
 
 
