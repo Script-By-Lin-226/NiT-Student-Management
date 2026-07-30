@@ -2630,7 +2630,7 @@ class AdminPanelService:
             .outerjoin(User, TimeTable.teacher_id == User.user_id)
             .outerjoin(Subject, TimeTable.subject_id == Subject.subject_id)
         )
-        rows = r.all()
+        rows = r.unique().all()
         data = []
         for t, c, b, u, s in rows:
             data.append(

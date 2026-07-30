@@ -67,7 +67,7 @@ class TeacherPortalService:
             .order_by(TimeTable.day_of_week, TimeTable.start_time)
         )
         tt_r = await session.execute(tt_q)
-        timetable_rows = tt_r.all()
+        timetable_rows = tt_r.unique().all()
 
         # Query 2: teacher's courses
         c_r = await session.execute(select(Course).where(Course.instructor_id == teacher.user_id))
