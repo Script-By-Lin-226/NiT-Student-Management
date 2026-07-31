@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import Request, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boolean, DateTime, Date, and_
+from sqlalchemy import select, delete, insert, String, Text, Integer, Float, Boolean, DateTime, Date, and_, text
 from app.models.model import (
     User, AcademicYear, Course, Enrollment, Payment, 
     Room, TimeTable, Grade, Attendance, StaffAttendance, 
@@ -16,6 +16,64 @@ from app.core.timezone_utils import get_now_local
 from app.services.activity_log_service import log_activity
 import json
 from app.core.logging import logger
+
+
+# Sequence maps for PostgreSQL/SQLite autoincrement reset after import
+_SEQUENCE_MAPS = [
+    ("users", "user_id"),
+    ("academic_years", "academic_year_id"),
+    ("courses", "course_id"),
+    ("rooms", "room_id"),
+    ("enrollments", "enrollment_id"),
+    ("payments", "payment_id"),
+    ("batches", "batch_id"),
+    ("subjects", "subject_id"),
+    ("timetables", "timetable_id"),
+    ("grades", "grade_id"),
+    ("attendances", "attendance_id"),
+    ("staff_attendance", "id"),
+    ("parent_student", "id"),
+    ("activity_logs", "log_id"),
+    ("refresh_tokens", "id"),
+    ("accounts", "account_id"),
+    ("journal_entries", "entry_id"),
+    ("journal_entry_lines", "line_id"),
+    ("expenses", "expense_id"),
+]
+
+
+async def _reset_sequences_bg():
+    """Reset PostgreSQL/SQLite sequences after a data import.
+    
+    Runs in the background after import response is returned.
+    Uses its own session from AsyncSessionLocal.
+    """
+    from app.core.database_initialization import AsyncSessionLocal, engine
+    dialect_name = engine.dialect.name
+    async with AsyncSessionLocal() as session:
+        for table, pk in _SEQUENCE_MAPS:
+            try:
+                if "postgresql" in dialect_name:
+                    await session.execute(text(f"""
+                        SELECT setval(
+                            pg_get_serial_sequence('"{table}"', '{pk}'),
+                            COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) + 1,
+                            false
+                        )
+                    """))
+                elif "sqlite" in dialect_name:
+                    await session.execute(text(f"""
+                        UPDATE sqlite_sequence
+                        SET seq = COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0)
+                        WHERE name = '{table}'
+                    """))
+            except Exception as e:
+                logger.error(f"Sequence reset skipped for {table}: {e}")
+        try:
+            await session.commit()
+            logger.info("Background sequence reset completed.")
+        except Exception as e:
+            logger.error(f"Sequence reset commit failed: {e}")
 
 class BackupService:
     @staticmethod
@@ -337,59 +395,18 @@ class BackupService:
             
             await session.commit()
             
-            # --- Reset Sequences after import to ensure next ID is correct ---
-            from sqlalchemy import text, func
-            sequence_maps = [
-                ("users", "user_id"),
-                ("academic_years", "academic_year_id"),
-                ("courses", "course_id"),
-                ("rooms", "room_id"),
-                ("enrollments", "enrollment_id"),
-                ("payments", "payment_id"),
-                ("batches", "batch_id"),
-                ("subjects", "subject_id"),
-                ("timetables", "timetable_id"),
-                ("grades", "grade_id"),
-                ("attendances", "attendance_id"),
-                ("staff_attendance", "id"),
-                ("parent_student", "id"),
-                ("activity_logs", "log_id"),
-                ("refresh_tokens", "id"),
-                ("accounts", "account_id"),
-                ("journal_entries", "entry_id"),
-                ("journal_entry_lines", "line_id"),
-                ("expenses", "expense_id")
-            ]
-            
-            # Reset Sequences
-            for table, pk in sequence_maps:
-                try:
-                    dialect_name = session.bind.dialect.name
-                    if "postgresql" in dialect_name:
-                        await session.execute(text(f"""
-                            SELECT setval(
-                                pg_get_serial_sequence('"{table}"', '{pk}'), 
-                                COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) + 1, 
-                                false
-                            )
-                        """))
-                    elif "sqlite" in dialect_name:
-                        # Reset SQLite autoincrement sequence
-                        await session.execute(text(f"""
-                            UPDATE sqlite_sequence 
-                            SET seq = COALESCE((SELECT MAX("{pk}") FROM "{table}"), 0) 
-                            WHERE name = '{table}'
-                        """))
-                except Exception as e:
-                    logger.error(f"Skipping sequence reset for {table}: {str(e)}")
-            
-            await session.commit()
+            # Log activity before returning
             await log_activity(request, session, "Import Backup", f"Database restore completed. Stats: {json.dumps(stats)}")
             await session.commit()
 
+            # --- Reset Sequences in background (non-blocking) ---
+            # This runs after the response is returned so the client isn't blocked.
+            from app.core.background_tasks import fire_and_forget
+            await fire_and_forget(_reset_sequences_bg())
+
             return JSONResponse({
-                "status_code": 200, 
-                "message": "Data imported successfully", 
+                "status_code": 200,
+                "message": "Data imported successfully. Sequence reset running in background.",
                 "data": stats
             })
 

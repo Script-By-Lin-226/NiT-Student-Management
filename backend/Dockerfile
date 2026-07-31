@@ -3,7 +3,6 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
-# libpq-dev and gcc are needed for building psycopg2 if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -20,8 +19,14 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Set environment variables for production
+# Production environment settings
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Command to start the application (init_db creates tables on startup)
-CMD sh -c "uvicorn app.app:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Start with Gunicorn + UvicornWorker for production multi-worker support.
+# - WORKER_CONCURRENCY controls the number of worker processes (default 4).
+# - Railway injects PORT automatically.
+# - gunicorn.conf.py provides the full configuration.
+CMD gunicorn app.app:app \
+    -c gunicorn.conf.py \
+    --bind 0.0.0.0:${PORT:-8000}

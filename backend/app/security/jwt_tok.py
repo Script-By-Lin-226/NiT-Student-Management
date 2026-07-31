@@ -2,23 +2,26 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from app.core.config import settings
 
-async def create_access_token(data: dict):
+
+def create_access_token(data: dict) -> str:
+    """Create a signed JWT access token. Pure CPU — no async needed."""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "type": "access"})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-async def create_refresh_token(data: dict):
+
+def create_refresh_token(data: dict) -> str:
+    """Create a signed JWT refresh token. Pure CPU — no async needed."""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-async def decode_token(token: str):
+
+def decode_token(token: str) -> dict:
+    """Decode and verify a JWT token. Pure CPU — no async needed."""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError as e:
-        raise JWTError(f"Token verification failed: {str(e)}")      
+        raise JWTError(f"Token verification failed: {str(e)}")

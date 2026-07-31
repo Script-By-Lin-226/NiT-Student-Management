@@ -13,10 +13,12 @@ from app.schemas.time_table import AdminTimeTableCreate, AdminTimeTableUpdate
 from app.schemas.payment import PaymentCreate, PaymentUpdate
 from app.schemas.batch import AdminBatchCreate, AdminBatchUpdate
 from app.schemas.subject import AdminSubjectCreate, AdminSubjectUpdate
+from app.security.rate_limiter import limiter
 
 router = APIRouter(prefix="/admin", tags=["Admin Panel"])
 
 @router.get("/dashboard/summary")
+@limiter.limit("60/minute")
 async def get_dashboard_summary(request: Request, session: AsyncSession = Depends(get_db)):
     """Fetch counts of students, courses, active enrollments, and today attendance count."""
     return await AdminPanelService.get_dashboard_summary(request, session)
@@ -46,6 +48,7 @@ async def create_staff(payload: AdminStaffCreate, request: Request, session: Asy
     return await AdminPanelService.create_staff(payload, request, session)
 
 @router.get("/students")
+@limiter.limit("100/minute")
 async def get_students_details(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_students_details(request, session, page, limit)
 
@@ -68,6 +71,7 @@ async def get_student_relations(user_code: str, request: Request, session: Async
 
 
 @router.get("/teachers")
+@limiter.limit("100/minute")
 async def get_teachers_details(request: Request, page: int = 1, limit: int = 50, session: AsyncSession = Depends(get_db)):
     return await AdminPanelService.get_teachers_details(request, session, page, limit)
 
@@ -312,11 +316,13 @@ async def delete_payment(payment_id: int, request: Request, session: AsyncSessio
 # --- Backup and Restore ---
 
 @router.get("/backup/export")
+@limiter.limit("5/minute")
 async def export_backup(request: Request, session: AsyncSession = Depends(get_db)):
     return await BackupService.export_to_excel(request, session)
 
 from fastapi import UploadFile, File
 @router.post("/backup/import")
+@limiter.limit("5/minute")
 async def import_backup(request: Request, file: UploadFile = File(...), session: AsyncSession = Depends(get_db)):
     return await BackupService.import_from_excel(file, request, session)
 

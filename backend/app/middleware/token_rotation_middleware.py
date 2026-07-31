@@ -23,7 +23,7 @@ class TokenRotationMiddleware(BaseHTTPMiddleware):
 
         if access_token:
             try:
-                payload = await decode_token(access_token)
+                payload = decode_token(access_token)  # sync — no await needed
 
                 if self._should_rotate(payload):
                     new_tokens = await self._rotate_tokens(request, payload)

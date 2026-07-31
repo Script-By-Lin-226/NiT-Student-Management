@@ -36,16 +36,19 @@ def is_transient_db_error(exc: Exception) -> bool:
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=900,      # Recycle connections every 15 min (better freshness on Render)
-    pool_size=10,          # Increased from 5 → 10 for concurrent admin usage
-    max_overflow=20,       # Increased from 10 → 20
-    pool_timeout=30,
+    # ── Pool tuning ──────────────────────────────────────────────────────────
+    pool_size=20,          # Increased from 10 → 20 for concurrent request load
+    max_overflow=40,       # Increased from 20 → 40 for burst traffic
+    pool_timeout=30,       # Wait up to 30s for a free connection before raising
+    pool_pre_ping=True,    # Detect stale connections before use
+    pool_recycle=900,      # Recycle connections every 15 min (Railway best practice)
+    echo=False,            # Never log SQL in production
     connect_args={
         "server_settings": {
-            "statement_timeout": "15000",  # Kill runaway queries after 15s
-            "idle_in_transaction_session_timeout": "30000",  # Release idle transactions after 30s
-        }
+            "statement_timeout": "30000",              # Kill runaway queries after 30s
+            "idle_in_transaction_session_timeout": "30000",  # Release idle transactions
+        },
+        "command_timeout": 60,                         # asyncpg-level timeout (seconds)
     },
 )
 

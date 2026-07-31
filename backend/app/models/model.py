@@ -319,8 +319,8 @@ class TimeTable(Base):
     # Relationships
     course = relationship("Course", back_populates="timetable")
     batch = relationship("Batch", back_populates="timetables")
-    teacher = relationship("User")
-    subject = relationship("Subject")
+    teacher = relationship("User", lazy="noload")
+    subject = relationship("Subject", lazy="noload")
 
 
 # ==============================
@@ -374,10 +374,10 @@ class Attendance(Base):
     )
 
     student = relationship("User", back_populates="attendance")
-    course = relationship("Course")
+    course = relationship("Course", lazy="noload")
     batch = relationship("Batch", back_populates="attendance")
-    subject = relationship("Subject")
-    timetable = relationship("TimeTable")
+    subject = relationship("Subject", lazy="noload")
+    timetable = relationship("TimeTable", lazy="noload")
 
 
 # ==============================

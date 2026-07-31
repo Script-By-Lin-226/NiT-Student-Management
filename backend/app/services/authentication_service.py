@@ -83,12 +83,12 @@ class AuthenticationService:
         if not password_valid:
             raise HTTPException(status_code=401, detail="Invalid password")
         
-        access_token = await create_access_token(data={
+        access_token = create_access_token(data={
             "sub": str(existent_user.user_code).lower(),
             "role": existent_user.role,
             "user_code": existent_user.user_code,
         })
-        refresh_token = await create_refresh_token(data={
+        refresh_token = create_refresh_token(data={
             "sub": str(existent_user.user_code).lower(),
             "role": existent_user.role,
         })
@@ -151,7 +151,7 @@ class AuthenticationService:
         
         async with AsyncSessionLocal() as session:
             try:
-                payload = await decode_token(refresh_token_str)
+                payload = decode_token(refresh_token_str)
                 if payload.get("type") != "refresh":
                     raise HTTPException(status_code=401, detail="Invalid token type")
             except Exception:
@@ -187,12 +187,12 @@ class AuthenticationService:
             if not user.is_active:
                 raise HTTPException(status_code=403, detail="Account is inactive")
 
-            new_access_token = await create_access_token(data={
+            new_access_token = create_access_token(data={
                 "sub": str(user.user_code).lower(),
                 "role": user.role,
                 "user_code": user.user_code,
             })
-            new_refresh_token = await create_refresh_token(data={
+            new_refresh_token = create_refresh_token(data={
                 "sub": str(user.user_code).lower(),
                 "role": user.role,
             })
@@ -218,6 +218,13 @@ class AuthenticationService:
             raise HTTPException(status_code=401, detail="Unauthorized")
         
         user_code = user_data.get("user_code")
+        
+        # Try cache first
+        cache_key = f"me:{user_code.lower()}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return cached
+        
         query = select(User).where(User.user_code == user_code)
         result = await session.execute(query)
         user = result.scalar_one_or_none()
@@ -227,8 +234,8 @@ class AuthenticationService:
             
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is inactive")
-            
-        return {
+        
+        profile = {
             "user_id": user.user_id,
             "user_code": user.user_code,
             "username": user.username,
@@ -242,8 +249,10 @@ class AuthenticationService:
             "address": user.address,
             "parent_name": user.parent_name,
             "parent_phone": user.parent_phone,
-            "data_of_birth": user.data_of_birth
+            "data_of_birth": user.data_of_birth.isoformat() if user.data_of_birth else None,
         }
+        await cache_manager.set(cache_key, profile, expire=300)  # 5 min TTL
+        return profile
 
     @staticmethod
     async def update_profile(request: Request, payload: dict, session: AsyncSession):
@@ -268,9 +277,9 @@ class AuthenticationService:
         await session.commit()
         await session.refresh(user)
         
-        # Clear cache for this user
-        from app.core.cache import cache_manager
+        # Invalidate both user session cache and get_me profile cache
         await cache_manager.delete(f"user:{user.user_code.lower()}")
+        await cache_manager.delete(f"me:{user.user_code.lower()}")
         
         return {"message": "Profile updated successfully"}
 

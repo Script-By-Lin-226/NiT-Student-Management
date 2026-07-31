@@ -1187,7 +1187,8 @@ class AdminPanelService:
             "journal_entry_lines", "journal_entries", "expenses"
         ]
         
-        dialect_name = session.bind.dialect.name
+        from app.core.database_initialization import engine
+        dialect_name = engine.dialect.name
         if "sqlite" in dialect_name:
             # SQLite does not support TRUNCATE and CASCADE
             await session.execute(text("PRAGMA foreign_keys = OFF;"))
@@ -1248,10 +1249,19 @@ class AdminPanelService:
     async def get_all_academic_years(request: Request, session: AsyncSession):
         if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return {"message": "You are not authorized to perform this action"}
+        
+        from app.core.cache import cache_manager
+        cache_key = "academic_years:list"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": cached})
+        
         query = select(AcademicYear)
         result = await session.execute(query)
         years = result.scalars().all()
-        return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": [_serialize_academic_year(y) for y in years]})
+        data = [_serialize_academic_year(y) for y in years]
+        await cache_manager.set(cache_key, data, expire=300)  # 5 min TTL
+        return JSONResponse({"status_code": 200, "message": "Fetched all academic years", "data": data})
         
     async def get_specific_academic_details(academic_year_id: int ,request: Request , session:AsyncSession):
         if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
@@ -1308,6 +1318,12 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
+        from app.core.cache import cache_manager
+        cache_key = f"courses:list:{page}:{limit}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse(cached)
+        
         offset = (page - 1) * limit
         query = select(Course).order_by(Course.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(query)
@@ -1317,9 +1333,9 @@ class AdminPanelService:
         count_result = await session.execute(count_query)
         total_count = count_result.scalar() or 0
 
-        return JSONResponse({
-            "status_code": 200, 
-            "message": "Courses fetched successfully", 
+        response_data = {
+            "status_code": 200,
+            "message": "Courses fetched successfully",
             "data": [_serialize_course(c) for c in courses],
             "pagination": {
                 "total_count": total_count,
@@ -1327,14 +1343,22 @@ class AdminPanelService:
                 "current_page": page,
                 "limit": limit
             }
-        })
+        }
+        await cache_manager.set(cache_key, response_data, expire=120)  # 2 min TTL
+        return JSONResponse(response_data)
 
     async def get_dashboard_summary(request: Request, session: AsyncSession):
-        """Fetch multiple KPI counts efficiently for the dashboard."""
+        """Fetch multiple KPI counts efficiently for the dashboard. Results cached for 60s."""
         if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
-        # In parallel
+        from app.core.cache import cache_manager
+        cache_key = "dashboard:summary"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse({"status_code": 200, "message": "Dashboard summary fetched successfully", "data": cached})
+        
+        # Execute all count queries
         stu_q = select(func.count(User.user_id)).where(User.role == "student")
         crs_q = select(func.count(Course.course_id))
         enr_q = select(func.count(Enrollment.enrollment_id)).where(Enrollment.status == True)
@@ -1355,15 +1379,18 @@ class AdminPanelService:
             
         total_students, total_courses, active_enrollments, today_attendance = results
         
+        summary = {
+            "total_students": total_students,
+            "total_courses": total_courses,
+            "active_enrollments": active_enrollments,
+            "today_attendance_count": today_attendance
+        }
+        await cache_manager.set(cache_key, summary, expire=60)  # 60s TTL — refreshes every minute
+        
         return JSONResponse({
             "status_code": 200,
             "message": "Dashboard summary fetched successfully",
-            "data": {
-                "total_students": total_students,
-                "total_courses": total_courses,
-                "active_enrollments": active_enrollments,
-                "today_attendance_count": today_attendance
-            }
+            "data": summary
         })
 
     async def create_course(request: Request, session: AsyncSession, payload: AdminCourseCreate):
@@ -1399,6 +1426,10 @@ class AdminPanelService:
         await session.commit()
         await session.refresh(new_course)
         await log_activity(request, session, "Create Course", f"Course {course_code} ({payload.course_name}) created")
+        # Invalidate courses and dashboard caches
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("courses:list:*")
+        await cache_manager.delete("dashboard:summary")
         return JSONResponse({"status_code": 201, "message": "Course created successfully", "data": _serialize_course(new_course)}, status_code=201)
 
     async def update_course(request: Request, session: AsyncSession, course_code: str, payload: AdminCourseUpdate):
@@ -1438,6 +1469,9 @@ class AdminPanelService:
 
         await session.commit()
         await log_activity(request, session, "Update Course", f"Course {course_code} updated")
+        # Invalidate courses cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("courses:list:*")
         return JSONResponse({"status_code": 200, "message": "Course updated successfully", "data": _serialize_course(course)})
 
     async def delete_course(request: Request, session: AsyncSession, course_code: str):
@@ -1450,6 +1484,10 @@ class AdminPanelService:
         await session.delete(course)
         await session.commit()
         await log_activity(request, session, "Delete Course", f"Course {course_code} deleted")
+        # Invalidate courses and dashboard caches
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("courses:list:*")
+        await cache_manager.delete("dashboard:summary")
         return JSONResponse({"status_code": 200, "message": "Course deleted successfully"})
 
     # --- CRUD - Batches ---
