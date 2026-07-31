@@ -23,7 +23,5 @@ EXPOSE 8000
 # Set environment variables for production
 ENV PYTHONUNBUFFERED=1
 
-# Command to run migrations and start the application
-# We use sh -c to allow environment variable expansion (PORT) 
-# and running multiple commands.
-CMD sh -c "alembic upgrade head && uvicorn app.app:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Command to start the application (init_db creates tables on startup)
+CMD sh -c "uvicorn app.app:app --host 0.0.0.0 --port ${PORT:-8000}"
