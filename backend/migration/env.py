@@ -56,7 +56,8 @@ def do_run_migrations(connection: Connection) -> None:
     inspector = sa.inspect(connection)
     tables = inspector.get_table_names()
 
-    if 'academic_years' in tables:
+    user_tables = [t for t in tables if t != 'alembic_version']
+    if len(user_tables) > 0:
         # Check if alembic_version table exists and has a record
         has_version_table = 'alembic_version' in tables
         has_record = False
