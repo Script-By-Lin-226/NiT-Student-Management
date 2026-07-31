@@ -763,9 +763,10 @@ class AdminPanelService:
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
         offset = (page - 1) * limit
-        # Defer large blob columns for list view (profile_picture can be 100s of KB base64)
+        # Only defer password_hash (never serialized); address/profile_picture/signature
+        # are needed by _serialize_user — deferring them caused MissingGreenlet (500) in async.
         query = select(User).where(User.role == "teacher").options(
-            defer(User.password_hash), defer(User.address), defer(User.profile_picture), defer(User.signature)
+            defer(User.password_hash)
         ).order_by(User.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(query)
         teachers = result.scalars().all()
