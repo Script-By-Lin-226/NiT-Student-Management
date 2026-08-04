@@ -21,6 +21,10 @@
   - [x] Update backend to parse multiple extra items and create separate journal entries
   - [x] Update frontend payments page to support adding/removing multiple extra items in Record/Edit forms
   - [ ] Verify functionality via manual/browser tests
+- [x] Ensure Student Signature is included when generating payment receipts
+  - [x] Update `list_enrollments` in `backend/app/services/admin_panel.py` to return user signature
+  - [x] Update `generateReceiptPDF` in `frontend/utils/pdfReceipt.ts` to fallback to `payments` signature if `enrollment.signature` is not directly set
+  - [x] Verify receipt PDF output displays student signature image above signature line when present
 - [ ] Verification
   - [x] Run typescript & lint compile checks
   - [ ] Verify receipt downloading, dashboard rendering, and extra item fee submission

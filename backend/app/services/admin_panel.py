@@ -1733,14 +1733,16 @@ class AdminPanelService:
                 exam_paid_gbp[eid] = float(e_gbp or 0)
                 pay_counts[eid] = int(pcount or 0)
 
-        # Fetch profile pictures separately only for users in this page (avoids loading blob in main join)
+        # Fetch profile pictures & signatures separately only for users in this page (avoids loading blob in main join)
         profile_pictures = {}
+        signatures = {}
         if enroll_ids and rows:
             user_ids = list({row[1].user_id for row in rows})
-            pic_q = select(User.user_id, User.profile_picture).where(User.user_id.in_(user_ids))
+            pic_q = select(User.user_id, User.profile_picture, User.signature).where(User.user_id.in_(user_ids))
             pic_res = await session.execute(pic_q)
-            for uid, pic in pic_res:
+            for uid, pic, sig in pic_res:
                 profile_pictures[uid] = pic
+                signatures[uid] = sig
 
         data = []
         for e, u, c, b in rows:
@@ -1769,9 +1771,9 @@ class AdminPanelService:
             d["payment_count"] = pay_counts.get(e.enrollment_id, 0)
 
             d["foc_items"] = (c.foc_items_installment if plan == "installment" else c.foc_items)
-            # Profile picture is fetched separately to keep the main join lean
+            # Profile picture & signature are fetched separately to keep the main join lean
             d["profile_picture"] = profile_pictures.get(u.user_id)
-            d["signature"] = None  # Signature not needed in list view; load on demand
+            d["signature"] = signatures.get(u.user_id)
             data.append(d)
 
         response_body = {
