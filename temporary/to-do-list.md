@@ -25,6 +25,19 @@
   - [x] Update `list_enrollments` in `backend/app/services/admin_panel.py` to return user signature
   - [x] Update `generateReceiptPDF` in `frontend/utils/pdfReceipt.ts` to fallback to `payments` signature if `enrollment.signature` is not directly set
   - [x] Verify receipt PDF output displays student signature image above signature line when present
-- [ ] Verification
-  - [x] Run typescript & lint compile checks
-  - [ ] Verify receipt downloading, dashboard rendering, and extra item fee submission
+- [x] Add Wave Payment Method
+  - [x] Add Wave option to Primary Payment method selector in `frontend/app/(portal)/admin/payments/page.tsx`
+  - [x] Add Wave option to Secondary / Split Payment method selector in `payments/page.tsx`
+  - [x] Add Wave option to Extra Items method selector in `payments/page.tsx`
+  - [x] Add Wave option to Exam Fee method selector in `payments/page.tsx`
+  - [x] Update debit account mapping in `backend/app/services/admin_panel.py` for Wave, WavePay, AYA Pay, MMQR, Banking
+- [x] Remove Unneeded & Obsolete Files
+  - [x] Remove scratch & one-off scripts (`backend/app/refactor.py`, `backend/app/core/test.py`, `backend/scratch/`, `backend/scripts/db_urls.txt`, `backend/scripts/setup_new_db.py`, `backend/scripts/tmp_check.py`, `backend/scripts/frontend_update_auth.py`)
+  - [x] Remove 0-byte dummy databases (`backend/database.db`, `backend/storage.db`)
+  - [x] Remove duplicate/unneeded assets (`frontend/utils/Pyidaungsu.base64`, `frontend/public/favicon_io/`, unused starter SVGs)
+  - [x] Remove outdated docs (`docs/technical_overview_old.md`) and duplicate to-do file (`temporary/to-do list.md`)
+  - [x] Clean up empty directory trees (`frontend/features/`, `frontend/lib/`)
+- [x] Verification
+  - [x] Run python syntax check on backend
+  - [x] Run typescript/next build check on frontend
+

@@ -1483,6 +1483,7 @@ export default function AdminPaymentsPage() {
                 >
                   <option value="">Select Option</option>
                   <option value="KBZPay">KBZPay</option>
+                  <option value="Wave">Wave</option>
                   <option value="AYA Pay">AYA Pay</option>
                   <option value="Cash">Cash</option>
                   <option value="MMQR">MMQR</option>
@@ -1522,6 +1523,7 @@ export default function AdminPaymentsPage() {
                   >
                     <option value="">Select Option</option>
                     <option value="KBZPay">KBZPay</option>
+                    <option value="Wave">Wave</option>
                     <option value="AYA Pay">AYA Pay</option>
                     <option value="Cash">Cash</option>
                     <option value="MMQR">MMQR</option>
@@ -1662,6 +1664,7 @@ export default function AdminPaymentsPage() {
                             >
                               <option value="">Select Method</option>
                               <option value="KBZPay">KBZPay</option>
+                              <option value="Wave">Wave</option>
                               <option value="AYA Pay">AYA Pay</option>
                               <option value="Cash">Cash</option>
                               <option value="MMQR">MMQR</option>
@@ -1764,6 +1767,7 @@ export default function AdminPaymentsPage() {
                     >
                       <option value="">Select Option</option>
                       <option value="KBZPay">KBZPay</option>
+                      <option value="Wave">Wave</option>
                       <option value="AYA Pay">AYA Pay</option>
                       <option value="Cash">Cash</option>
                       <option value="MMQR">MMQR</option>

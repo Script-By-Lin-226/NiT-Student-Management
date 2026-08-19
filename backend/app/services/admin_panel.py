@@ -58,7 +58,7 @@ async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment)
 
     # Determine asset debit accounts
     pay_method = pay.payment_method or "Cash"
-    deb_acc_name = "CB Bank (MMK)" if pay_method == "Bank Transfer" else ("Petty Cash (MMK)" if pay_method == "Petty Cash" else ("KBZ Bank (MMK)" if pay_method == "KPay" else "Cash in Hand (MMK)"))
+    deb_acc_name = "CB Bank (MMK)" if pay_method in ["Bank Transfer", "Banking", "CB Bank", "Bank"] else ("Petty Cash (MMK)" if pay_method == "Petty Cash" else ("KBZ Bank (MMK)" if pay_method in ["KBZPay", "KPay", "Wave", "WavePay", "Wave Pay", "AYA Pay", "MMQR"] else "Cash in Hand (MMK)"))
     deb_acc = await get_acc(deb_acc_name, "Asset")
 
     # Debit lines
@@ -73,7 +73,7 @@ async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment)
     # Split payment
     if pay.amount_2 and pay.amount_2 > 0:
         pay_method_2 = pay.payment_method_2 or "Cash"
-        deb_acc_2_name = "CB Bank (MMK)" if pay_method_2 == "Bank Transfer" else ("Petty Cash (MMK)" if pay_method_2 == "Petty Cash" else ("KBZ Bank (MMK)" if pay_method_2 == "KPay" else "Cash in Hand (MMK)"))
+        deb_acc_2_name = "CB Bank (MMK)" if pay_method_2 in ["Bank Transfer", "Banking", "CB Bank", "Bank"] else ("Petty Cash (MMK)" if pay_method_2 == "Petty Cash" else ("KBZ Bank (MMK)" if pay_method_2 in ["KBZPay", "KPay", "Wave", "WavePay", "Wave Pay", "AYA Pay", "MMQR"] else "Cash in Hand (MMK)"))
         deb_acc_2 = await get_acc(deb_acc_2_name, "Asset")
         session.add(JournalEntryLine(
             entry_id=entry.entry_id,
@@ -127,7 +127,7 @@ async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment)
                 if price <= 0:
                     continue
                 item_method = it.get("method") or pay.extra_items_payment_method or pay.payment_method or "Cash"
-                deb_extra_name = "CB Bank (MMK)" if item_method == "Bank Transfer" else ("Petty Cash (MMK)" if item_method == "Petty Cash" else ("KBZ Bank (MMK)" if item_method in ["KPay", "KBZPay"] else "Cash in Hand (MMK)"))
+                deb_extra_name = "CB Bank (MMK)" if item_method in ["Bank Transfer", "Banking", "CB Bank", "Bank"] else ("Petty Cash (MMK)" if item_method == "Petty Cash" else ("KBZ Bank (MMK)" if item_method in ["KBZPay", "KPay", "Wave", "WavePay", "Wave Pay", "AYA Pay", "MMQR"] else "Cash in Hand (MMK)"))
                 deb_extra_acc = await get_acc(deb_extra_name, "Asset")
                 
                 session.add(JournalEntryLine(
@@ -144,7 +144,7 @@ async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment)
                 ))
         else:
             extra_method = pay.extra_items_payment_method or pay.payment_method or "Cash"
-            deb_extra_name = "CB Bank (MMK)" if extra_method == "Bank Transfer" else ("Petty Cash (MMK)" if extra_method == "Petty Cash" else ("KBZ Bank (MMK)" if extra_method in ["KPay", "KBZPay"] else "Cash in Hand (MMK)"))
+            deb_extra_name = "CB Bank (MMK)" if extra_method in ["Bank Transfer", "Banking", "CB Bank", "Bank"] else ("Petty Cash (MMK)" if extra_method == "Petty Cash" else ("KBZ Bank (MMK)" if extra_method in ["KBZPay", "KPay", "Wave", "WavePay", "Wave Pay", "AYA Pay", "MMQR"] else "Cash in Hand (MMK)"))
             deb_extra_acc = await get_acc(deb_extra_name, "Asset")
             extra_rev_acc = await get_acc("Extra Items Revenue (MMK)", "Revenue")
             
@@ -181,7 +181,7 @@ async def _create_journal_entry_for_payment(session: AsyncSession, pay: Payment)
     # Exam Fee Paid MMK
     if pay.exam_fee_paid_mmk and pay.exam_fee_paid_mmk > 0:
         exam_method = pay.exam_fee_payment_method or pay.payment_method or "Cash"
-        deb_exam_mmk_name = "CB Bank (MMK)" if exam_method == "Bank Transfer" else ("Petty Cash (MMK)" if exam_method == "Petty Cash" else ("KBZ Bank (MMK)" if exam_method == "KPay" else "Cash in Hand (MMK)"))
+        deb_exam_mmk_name = "CB Bank (MMK)" if exam_method in ["Bank Transfer", "Banking", "CB Bank", "Bank"] else ("Petty Cash (MMK)" if exam_method == "Petty Cash" else ("KBZ Bank (MMK)" if exam_method in ["KBZPay", "KPay", "Wave", "WavePay", "Wave Pay", "AYA Pay", "MMQR"] else "Cash in Hand (MMK)"))
         deb_exam_mmk_acc = await get_acc(deb_exam_mmk_name, "Asset")
         rev_exam_mmk_acc = await get_acc("Exam Fees Revenue (MMK)", "Revenue")
         
