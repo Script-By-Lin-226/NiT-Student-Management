@@ -69,6 +69,11 @@ class AuthenticationService:
         await session.commit()
         await session.refresh(new_user)
         
+        # Invalidate student list and dashboard cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("students:list:*")
+        await cache_manager.delete("dashboard:summary")
+
         return JSONResponse({
             "status_code": 201, 
             "message": "Student registered successfully", 

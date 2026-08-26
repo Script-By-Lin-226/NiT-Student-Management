@@ -494,10 +494,18 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True, allow_accountant=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
         
+        # Check cache
+        from app.core.cache import cache_manager
+        cache_key = f"students:list:{page}:{limit}"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse(cached)
+
         # Base query optimized to exclude large columns
         base_query = select(User).where(User.role == "student").options(
             defer(User.address),
-            defer(User.password_hash)
+            defer(User.password_hash),
+            defer(User.signature)
         )
         
         # Paginated query
@@ -511,7 +519,7 @@ class AdminPanelService:
         students = result.scalars().all()
         
         # Total count for pagination metadata
-        count_query = select(func.count(User.user_id)).where(User.role == "student") # Changed from User.id to User.user_id to match existing code
+        count_query = select(func.count(User.user_id)).where(User.role == "student")
         count_result = await session.execute(count_query)
         total_count = count_result.scalar() or 0
         
@@ -519,19 +527,19 @@ class AdminPanelService:
         if limit > 0:
             total_pages = (total_count + limit - 1) // limit
         
-        return JSONResponse(
-            {
-                "status_code": 200,
-                "message": "Students details fetched successfully",
-                "data": [_serialize_user_lite(s) for s in students],
-                "pagination": {
-                    "total_count": total_count,
-                    "total_pages": total_pages,
-                    "current_page": page,
-                    "limit": limit
-                }
+        response_body = {
+            "status_code": 200,
+            "message": "Students details fetched successfully",
+            "data": [_serialize_user_lite(s) for s in students],
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "limit": limit
             }
-        )
+        }
+        await cache_manager.set(cache_key, response_body, expire=60)
+        return JSONResponse(response_body)
 
     async def create_student(payload: AdminStudentCreate, request: Request, session: AsyncSession):
         if not await validating_admin_role(request, allow_sales=True):
@@ -626,6 +634,14 @@ class AdminPanelService:
 
         await session.commit()
         await session.refresh(new_user)
+        
+        # Invalidate student list, dashboard, and enrollment caches
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("students:list:*")
+        await cache_manager.delete("dashboard:summary")
+        if payload.course_code:
+            await cache_manager.delete_pattern("enrollment:list:*")
+
         return JSONResponse(
             {
                 "status_code": 201,
@@ -994,6 +1010,15 @@ class AdminPanelService:
             
         await session.commit()
         await log_activity(request, session, "Update User", f"User {user_code} updated")
+        
+        # Invalidate user session, list, and profile caches
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("students:list:*")
+        await cache_manager.delete_pattern("teachers:list:*")
+        await cache_manager.delete_pattern("parents:list:*")
+        await cache_manager.delete(f"user:{user_code.lower()}")
+        await cache_manager.delete(f"me:{user_code.lower()}")
+
         return JSONResponse({"status_code": 200, "message": "User updated successfully"})
         
     async def delete_user(user_code: str, request: Request, session: AsyncSession):
@@ -1028,6 +1053,17 @@ class AdminPanelService:
         await session.delete(user)
         await session.commit()
         await log_activity(request, session, "Delete User", f"User {user_code} deleted")
+
+        # Invalidate caches
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("students:list:*")
+        await cache_manager.delete_pattern("teachers:list:*")
+        await cache_manager.delete_pattern("parents:list:*")
+        await cache_manager.delete_pattern("enrollment:list:*")
+        await cache_manager.delete("dashboard:summary")
+        await cache_manager.delete(f"user:{user_code.lower()}")
+        await cache_manager.delete(f"me:{user_code.lower()}")
+
         return JSONResponse({"status_code": 200, "message": "User deleted successfully"})
 
     async def change_user_password(user_code: str, payload: AdminUserPasswordChange, request: Request, session: AsyncSession):
@@ -1868,9 +1904,10 @@ class AdminPanelService:
         await session.commit()
         await session.refresh(e)
         await log_activity(request, session, "Create Enrollment", f"Enrollment {enrollment_code} created for student {payload.student_code} in course {payload.course_code}")
-        # Invalidate enrollment list cache so next read is fresh
+        # Invalidate enrollment list and room capacity caches so next read is fresh
         from app.core.cache import cache_manager
         await cache_manager.delete_pattern("enrollment:list:*")
+        await cache_manager.delete("rooms:list")
         return JSONResponse({"status_code": 201, "message": "Enrollment created successfully", "data": _serialize_enrollment(e)}, status_code=201)
 
     async def update_enrollment(request: Request, session: AsyncSession, enrollment_code: str, payload: AdminEnrollmentUpdate):
@@ -1938,9 +1975,10 @@ class AdminPanelService:
 
         await session.commit()
         await log_activity(request, session, "Update Enrollment", f"Enrollment {enrollment_code} updated")
-        # Invalidate enrollment list cache
+        # Invalidate enrollment list and rooms cache
         from app.core.cache import cache_manager
         await cache_manager.delete_pattern("enrollment:list:*")
+        await cache_manager.delete("rooms:list")
         return JSONResponse({"status_code": 200, "message": "Enrollment updated successfully", "data": _serialize_enrollment(e)})
 
     async def delete_enrollment(request: Request, session: AsyncSession, enrollment_code: str):
@@ -1953,9 +1991,10 @@ class AdminPanelService:
         await session.delete(e)
         await session.commit()
         await log_activity(request, session, "Delete Enrollment", f"Enrollment {enrollment_code} deleted")
-        # Invalidate enrollment list cache
+        # Invalidate enrollment list and rooms cache
         from app.core.cache import cache_manager
         await cache_manager.delete_pattern("enrollment:list:*")
+        await cache_manager.delete("rooms:list")
         return JSONResponse({"status_code": 200, "message": "Enrollment deleted successfully"})
 
     async def approve_student(request: Request, session: AsyncSession, user_id: int, payload: AdminStudentApprove):
@@ -1990,6 +2029,15 @@ class AdminPanelService:
             
         await session.commit()
         await log_activity(request, session, "Approve Student", f"Student {u.user_code} (was {old_code}) and their enrollments were approved and activated")
+
+        # Invalidate student list, enrollment list, and dashboard cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete_pattern("students:list:*")
+        await cache_manager.delete_pattern("enrollment:list:*")
+        await cache_manager.delete("dashboard:summary")
+        await cache_manager.delete(f"user:{u.user_code.lower()}")
+        await cache_manager.delete(f"me:{u.user_code.lower()}")
+
         return JSONResponse({"status_code": 200, "message": "Student approved successfully", "data": {"user_code": u.user_code}})
 
     # CRUD - Attendance
@@ -2500,55 +2548,79 @@ class AdminPanelService:
         if not await validating_admin_role(request, allow_sales=True, allow_student_affairs=True):
             return JSONResponse({"status_code": 403, "message": "You are not authorized to perform this action"}, status_code=403)
 
+        # Check Cache
+        from app.core.cache import cache_manager
+        cache_key = "rooms:list"
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return JSONResponse(cached)
+
         r = await session.execute(select(Room))
         rooms = r.scalars().all()
 
+        # Single bulk query for active enrollment counts grouped by (course_id, batch_id)
+        en_q = select(
+            Enrollment.course_id,
+            Enrollment.batch_id,
+            func.count(Enrollment.enrollment_id)
+        ).where(Enrollment.status == True).group_by(Enrollment.course_id, Enrollment.batch_id)
+        en_res = await session.execute(en_q)
+
+        batch_counts = {}
+        course_total_counts = defaultdict(int)
+        for c_id, b_id, cnt in en_res.all():
+            count_val = int(cnt or 0)
+            batch_counts[(c_id, b_id)] = count_val
+            course_total_counts[c_id] += count_val
+
+        # Single bulk query for timetable room assignments
+        tt_q = select(
+            TimeTable.room_name,
+            TimeTable.course_id,
+            TimeTable.batch_id
+        ).where(TimeTable.room_name.isnot(None)).distinct()
+        tt_res = await session.execute(tt_q)
+        room_timetable_pairs = defaultdict(list)
+        for r_name, c_id, b_id in tt_res.all():
+            if r_name:
+                room_timetable_pairs[r_name].append((c_id, b_id))
+
+        # Single bulk query for default courses assigned to rooms
+        crs_q = select(Course.room, Course.course_id).where(Course.room.isnot(None))
+        crs_res = await session.execute(crs_q)
+        default_room_courses = defaultdict(list)
+        for r_name, c_id in crs_res.all():
+            if r_name:
+                default_room_courses[r_name].append(c_id)
+
         data = []
         for room in rooms:
-            # Load calculation: The maximum number of students across all time slots for this room.
-            # 1. Get all Course/Batch pairs assigned to this room in the timetable
-            tt_q = await session.execute(
-                select(TimeTable.course_id, TimeTable.batch_id)
-                .where(TimeTable.room_name == room.room_name)
-                .distinct()
-            )
-            pairs = tt_q.all()
-            
+            pairs = room_timetable_pairs.get(room.room_name, [])
             max_load = 0
             for c_id, b_id in pairs:
-                en_q = select(func.count(Enrollment.enrollment_id)).where(Enrollment.status == True)
                 if b_id:
-                    en_q = en_q.where(and_(Enrollment.course_id == c_id, Enrollment.batch_id == b_id))
+                    cnt = batch_counts.get((c_id, b_id), 0)
                 else:
-                    en_q = en_q.where(Enrollment.course_id == c_id)
-                
-                en_res = await session.execute(en_q)
-                count = en_res.scalar() or 0
-                if count > max_load:
-                    max_load = count
-            
-            # Also consider courses that have this room as default but no timetable yet
-            c_q = await session.execute(
-                select(Course.course_id)
-                .where(Course.room == room.room_name)
-            )
-            default_courses = c_q.scalars().all()
-            for c_id in default_courses:
-                # Check if this course already covered by timetable check
-                if any(p[0] == c_id for p in pairs): continue
-                
-                en_q = select(func.count(Enrollment.enrollment_id)).where(and_(Enrollment.course_id == c_id, Enrollment.status == True))
-                en_res = await session.execute(en_q)
-                count = en_res.scalar() or 0
-                if count > max_load:
-                    max_load = count
+                    cnt = course_total_counts.get(c_id, 0)
+                if cnt > max_load:
+                    max_load = cnt
+
+            # Also consider default courses for this room not already in timetable pairs
+            for c_id in default_room_courses.get(room.room_name, []):
+                if any(p[0] == c_id for p in pairs):
+                    continue
+                cnt = course_total_counts.get(c_id, 0)
+                if cnt > max_load:
+                    max_load = cnt
 
             d = _serialize_room(room)
             d["current_load"] = max_load
             d["is_full"] = max_load >= room.capacity if room.capacity > 0 else False
             data.append(d)
 
-        return JSONResponse({"status_code": 200, "message": "Rooms fetched successfully", "data": data})
+        response_body = {"status_code": 200, "message": "Rooms fetched successfully", "data": data}
+        await cache_manager.set(cache_key, response_body, expire=60)
+        return JSONResponse(response_body)
 
     async def create_room(request: Request, session: AsyncSession, payload: AdminRoomCreate):
         if not await validating_admin_role(request, allow_sales=True):
@@ -2563,6 +2635,11 @@ class AdminPanelService:
         await session.commit()
         await session.refresh(room)
         await log_activity(request, session, "Create Room", f"'{payload.room_name}' created with capacity {payload.capacity}")
+        
+        # Invalidate rooms cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete("rooms:list")
+        
         return JSONResponse({"status_code": 201, "message": "Room created successfully", "data": _serialize_room(room)}, status_code=201)
 
     async def update_room(request: Request, session: AsyncSession, room_id: int, payload: AdminRoomUpdate):
@@ -2583,6 +2660,11 @@ class AdminPanelService:
 
         await session.commit()
         await log_activity(request, session, "Update Room", f"{payload.room_name} updated")
+        
+        # Invalidate rooms cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete("rooms:list")
+        
         return JSONResponse({"status_code": 200, "message": "Room updated successfully", "data": _serialize_room(room)})
 
     async def delete_room(request: Request, session: AsyncSession, room_id: int):
@@ -2597,6 +2679,11 @@ class AdminPanelService:
         await session.delete(room)
         await session.commit()
         await log_activity(request, session, "Delete Room", f"Room ID: {room_id} deleted")
+        
+        # Invalidate rooms cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete("rooms:list")
+        
         return JSONResponse({"status_code": 200, "message": "Room deleted successfully"})
 
     @staticmethod
@@ -2766,6 +2853,9 @@ class AdminPanelService:
         if payload.teacher_code: msg += f" with Teacher {payload.teacher_code}"
         msg += f" on {payload.day_of_week} {payload.start_time}-{payload.end_time} created"
         await log_activity(request, session, "Create Timetable", msg)
+        # Invalidate rooms cache since timetable assignments affect room loads
+        from app.core.cache import cache_manager
+        await cache_manager.delete("rooms:list")
         return JSONResponse({"status_code": 201, "message": "Timetable created successfully", "data": {"timetable_id": tt.timetable_id}}, status_code=201)
 
     async def update_timetable(request: Request, session: AsyncSession, timetable_id: int, payload: AdminTimeTableUpdate):
@@ -2831,6 +2921,9 @@ class AdminPanelService:
 
         await session.commit()
         await log_activity(request, session, "Update Timetable", f"Timetable ID {timetable_id} updated")
+        # Invalidate rooms cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete("rooms:list")
         return JSONResponse({"status_code": 200, "message": "Timetable updated successfully"})
 
     async def delete_timetable(request: Request, session: AsyncSession, timetable_id: int):
@@ -2844,6 +2937,9 @@ class AdminPanelService:
         await session.delete(tt)
         await session.commit()
         await log_activity(request, session, "Delete Timetable", f"Timetable ID {timetable_id} deleted")
+        # Invalidate rooms cache
+        from app.core.cache import cache_manager
+        await cache_manager.delete("rooms:list")
         return JSONResponse({"status_code": 200, "message": "Timetable deleted successfully"})
 
     # --- Payments CRUD ---
