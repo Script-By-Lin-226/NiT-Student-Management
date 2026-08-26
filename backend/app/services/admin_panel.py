@@ -242,44 +242,47 @@ def _serialize_user(u: User) -> dict:
 
 async def _next_student_code(session: AsyncSession, department: str = "College", manual_prefix: str = None) -> str:
     """
-    Generate a student_code like CO0031426 (4-digit seq).
+    Generate a unique student_code like CO0001226 (4-digit seq).
     Supports 10000 students.
     Month is unpadded (1-12).
     """
+    import re
     prefix = manual_prefix if manual_prefix else ("IN" if department == "Institute" else "CO")
     
-    # Try finding the highest sequence in the new 9-10 character format first
-    # We look for codes >= 9 chars starting with prefix
+    # Retrieve existing student codes with matching prefix to extract highest sequence number safely
     result = await session.execute(
-        select(func.max(func.cast(func.substr(User.user_code, 3, 4), Integer)))
+        select(User.user_code)
         .where(and_(
             User.role == "student", 
-            User.user_code.like(f"{prefix}%"),
-            func.length(User.user_code) >= 9
+            User.user_code.like(f"{prefix}%")
         ))
     )
-    max_seq = result.scalar()
-
-    if max_seq is None:
-        # Fallback to old 8-9 character format (3-digit seq)
-        result = await session.execute(
-            select(func.max(func.cast(func.substr(User.user_code, 3, 3), Integer)))
-            .where(and_(
-                User.role == "student", 
-                User.user_code.like(f"{prefix}%"),
-                func.length(User.user_code) < 9
-            ))
-        )
-        max_seq = result.scalar() or 0
+    existing_codes = result.scalars().all()
+    
+    max_seq = 0
+    pattern = re.compile(rf"^{prefix}(\d{{3,4}})")
+    for code in existing_codes:
+        m = pattern.match(code)
+        if m:
+            try:
+                val = int(m.group(1))
+                if val > max_seq:
+                    max_seq = val
+            except ValueError:
+                pass
 
     seq = max_seq + 1
-    
     now = get_now_local()
-    # Unpadded month as requested (e.g. 4 for April instead of 04)
     month_str = str(now.month)
     year_str = str(now.year)[-2:]
     
-    return f"{prefix}{seq:04d}{month_str}{year_str}"
+    # Collision check loop to ensure absolute uniqueness
+    while True:
+        candidate = f"{prefix}{seq:04d}{month_str}{year_str}"
+        check = await session.execute(select(User.user_id).where(User.user_code == candidate))
+        if not check.scalar_one_or_none():
+            return candidate
+        seq += 1
 
 async def _next_parent_code(session: AsyncSession) -> str:
     """

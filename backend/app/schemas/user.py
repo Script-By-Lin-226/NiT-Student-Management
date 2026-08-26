@@ -146,12 +146,12 @@ class StudentRegister(BaseModel):
     profile_picture: str
     
     # Division & Enrollment
-    department: str
+    department: str = "College"
     course_code: str
     
     # Tracking
     how_did_you_hear: str
-    student_type: str
+    student_type: str = "New Student"
     
     # E-Signature
     signature: str

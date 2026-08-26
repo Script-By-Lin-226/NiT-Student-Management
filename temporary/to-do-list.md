@@ -1,43 +1,19 @@
-# Payments & Receipts Enhancements To-Do List
+# To-Do List: Codebase Cleanup & Student Register 400 Error Fix
 
-- [x] Support printing receipt in A4 and A5 sizes
-  - [x] Add state `openReceiptDropdown` in `payments/page.tsx`
-  - [x] Update "Receipt" button in Payments Table to display A4/A5 choice dropdown
-  - [x] Update "Receipt" button in Enrollment Card view to display A4/A5 choice dropdown
-  - [x] Update "Receipt" button in Payment History Modal to display A4/A5 choice dropdown
-  - [x] Pass chosen layout size to `generateReceiptPDF` function call
-- [x] Add Income Dashboard in Payments page
-  - [x] Add `activeTab` state (`"tracker"` or `"dashboard"`) in `payments/page.tsx`
-  - [x] Add tab navigation buttons at the top of Payments page
-  - [x] Add date range filter states and fetch logic (`fetchIncomeDashboardData`)
-  - [x] Render KPI summary cards, AreaChart trend, category breakdown, and Audit Log table under "dashboard" tab
-- [x] Complete Extra Items details in Payment forms
-  - [x] Add `pExtraItemsMethod` state for extra items payment method
-  - [x] Add input/select elements for name, price, and payment method in Record Payment form
-  - [x] Add input/select elements for name, price, and payment method in Edit Payment form
-  - [x] Save and submit `extra_items_payment_method` in payment payload
-  - [x] Add validation to ensure name and method are entered when extra items fee is non-zero
-- [/] Support multiple extra items with specific name, price, and method
-  - [x] Update backend to parse multiple extra items and create separate journal entries
-  - [x] Update frontend payments page to support adding/removing multiple extra items in Record/Edit forms
-  - [ ] Verify functionality via manual/browser tests
-- [x] Ensure Student Signature is included when generating payment receipts
-  - [x] Update `list_enrollments` in `backend/app/services/admin_panel.py` to return user signature
-  - [x] Update `generateReceiptPDF` in `frontend/utils/pdfReceipt.ts` to fallback to `payments` signature if `enrollment.signature` is not directly set
-  - [x] Verify receipt PDF output displays student signature image above signature line when present
-- [x] Add Wave Payment Method
-  - [x] Add Wave option to Primary Payment method selector in `frontend/app/(portal)/admin/payments/page.tsx`
-  - [x] Add Wave option to Secondary / Split Payment method selector in `payments/page.tsx`
-  - [x] Add Wave option to Extra Items method selector in `payments/page.tsx`
-  - [x] Add Wave option to Exam Fee method selector in `payments/page.tsx`
-  - [x] Update debit account mapping in `backend/app/services/admin_panel.py` for Wave, WavePay, AYA Pay, MMQR, Banking
-- [x] Remove Unneeded & Obsolete Files
-  - [x] Remove scratch & one-off scripts (`backend/app/refactor.py`, `backend/app/core/test.py`, `backend/scratch/`, `backend/scripts/db_urls.txt`, `backend/scripts/setup_new_db.py`, `backend/scripts/tmp_check.py`, `backend/scripts/frontend_update_auth.py`)
-  - [x] Remove 0-byte dummy databases (`backend/database.db`, `backend/storage.db`)
-  - [x] Remove duplicate/unneeded assets (`frontend/utils/Pyidaungsu.base64`, `frontend/public/favicon_io/`, unused starter SVGs)
-  - [x] Remove outdated docs (`docs/technical_overview_old.md`) and duplicate to-do file (`temporary/to-do list.md`)
-  - [x] Clean up empty directory trees (`frontend/features/`, `frontend/lib/`)
-- [x] Verification
-  - [x] Run python syntax check on backend
-  - [x] Run typescript/next build check on frontend
+- [x] 1. Clean Up Useless & Obsolete Files
+  - [x] Remove scratch / one-off scripts in `backend/scripts/` (`test_serialize.py`, `test_ts.py`, `create_test_acc.py`, `remove_admin.py`, `remove_sample_expenses.py`, `check_enrollments.py`, `list_codes.py`, `gen_ddl.py`, `gen_op_commands.py`, `add_exam_fee_payment_method.py`, `fix_alembic.py`, `fix_enrollment_fees.py`, `fix_sequences.py`, `migrate_codes.py`, `update_db.py`, `check_timezone.py`, `backfill_receipts.py`)
+  - [x] Remove root scratch scripts in `scripts/` (`benchmark_performance.py`, `finance_system.py`, `generate_payment_receipt_summary.py`, `performance_test.py`, `seed_performance_data.py`, `wipe_database.py`)
+  - [x] Remove empty `database/` directory
+  - [x] Remove `temporary/count_lines.ps1`
+  - [x] Clean stale `frontend/tsconfig.tsbuildinfo`
+  - [x] Add `backend/pytest.ini` with `pythonpath = .` and `testpaths = tests`
 
+- [x] 2. Fix Student Register Error 400 & Validation
+  - [x] Update `StudentRegister` in `backend/app/schemas/user.py` with flexible optional fields & defaults
+  - [x] Update `register_user` in `backend/app/services/authentication_service.py` with trimmed/lowercased email matching and clear error messages
+  - [x] Improve `_next_student_code` in `backend/app/services/admin_panel.py` with collision detection & regex sequence parser
+  - [x] Update `frontend/app/(auth)/register/page.tsx` error handling to correctly parse and display string `detail` from backend
+
+- [x] 3. Verification & Testing
+  - [x] Run backend unit tests & syntax checks
+  - [x] Run frontend TypeScript compile & build check

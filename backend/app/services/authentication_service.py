@@ -19,15 +19,24 @@ class AuthenticationService:
     @staticmethod
     async def register_user(user: StudentRegister, session: AsyncSession):
         from datetime import datetime, time
+        from sqlalchemy import func
+        import secrets
         
-        query = select(User).where(User.email == user.email)
+        cleaned_email = user.email.strip().lower() if user.email else ""
+        if not cleaned_email:
+            raise HTTPException(status_code=400, detail="Email address is required")
+        
+        query = select(User).where(func.lower(User.email) == cleaned_email)
         result = await session.execute(query)
         existent_user = result.scalar_one_or_none()
         
         if existent_user:
-            raise HTTPException(status_code=400, detail="User already exists")
+            raise HTTPException(
+                status_code=400, 
+                detail="An account with this email address already exists. Please use a different email or log in."
+            )
         
-        raw_password = getattr(user, 'password', None) or user.phone
+        raw_password = getattr(user, 'password', None) or (user.phone.strip() if user.phone and user.phone.strip() else f"Stu_{secrets.token_hex(4)}")
         hashed_password = await hash_password(raw_password)
         user_code = await _next_student_code(session, getattr(user, "department", "College"))
         
@@ -37,22 +46,22 @@ class AuthenticationService:
         
         new_user = User(
             user_code=user_code,
-            username=user.username,
-            email=user.email,
+            username=user.username.strip() if user.username else "Student",
+            email=cleaned_email,
             password_hash=hashed_password,
             data_of_birth=dob_dt,
-            phone=user.phone,
-            nrc=user.nrc,
-            gender=user.gender,
-            address=user.address,
-            parent_name=user.parent_name,
-            parent_phone=user.parent_phone,
+            phone=user.phone.strip() if user.phone else None,
+            nrc=user.nrc.strip() if user.nrc else None,
+            gender=user.gender.strip() if user.gender else None,
+            address=user.address.strip() if user.address else None,
+            parent_name=user.parent_name.strip() if user.parent_name else None,
+            parent_phone=user.parent_phone.strip() if user.parent_phone else None,
             profile_picture=user.profile_picture,
             signature=user.signature,
             role="student",
             is_active=False,
             how_did_you_hear=user.how_did_you_hear,
-            student_type=user.student_type,
+            student_type=user.student_type or "New Student",
             intended_course_code=user.course_code
         )
         
@@ -60,7 +69,14 @@ class AuthenticationService:
         await session.commit()
         await session.refresh(new_user)
         
-        return JSONResponse({"status_code": 201, "message": "Student registered successfully", "data": {"user_code": new_user.user_code, "username": new_user.username}})
+        return JSONResponse({
+            "status_code": 201, 
+            "message": "Student registered successfully", 
+            "data": {
+                "user_code": new_user.user_code, 
+                "username": new_user.username
+            }
+        })
 
     @staticmethod
     @limiter.limit("5/minute")

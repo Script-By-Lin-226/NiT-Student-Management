@@ -233,9 +233,11 @@ export default function RegisterPage() {
       await AuthService.register(finalFormData);
       setIsSuccess(true);
     } catch (err: any) {
-      const details = err.response?.data?.detail;
-      if (Array.isArray(details)) {
-        setError(details.map((d: any) => `${d.loc.join(".")}: ${d.msg}`).join(", "));
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(detail.map((d: any) => `${d.loc ? d.loc.slice(1).join(".") + ": " : ""}${d.msg}`).join(", "));
+      } else if (typeof detail === "string" && detail.trim()) {
+        setError(detail);
       } else {
         setError(
           err.response?.data?.message ||
@@ -293,6 +295,7 @@ export default function RegisterPage() {
       if (!formData.gender) return "Gender selection is required";
     }
     if (step === 2) {
+      if (!formData.department) return "Please select NiT College's Course or Institute's Course";
       if (!formData.course_code.trim()) return "Please select a course of interest";
       if (!formData.student_type) return "Please select your student type";
     }
@@ -531,6 +534,30 @@ export default function RegisterPage() {
 
                         {currentStep === 2 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-slate-700">Select NiT College's Course or Institute's Course <span className="text-red-500">*</span></label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: "College", value: "College" },
+                                                { label: "Institute", value: "Institute" }
+                                            ].map((dept) => (
+                                                <button
+                                                    key={dept.value}
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, department: dept.value }))}
+                                                    className={cn(
+                                                        "px-4 py-3 rounded-2xl border-2 transition-all text-sm font-medium",
+                                                        formData.department === dept.value
+                                                            ? "border-[#0d4d4d] bg-[#0d4d4d]/5 text-[#0d4d4d] font-bold"
+                                                            : "border-slate-100 hover:border-slate-200 text-slate-500"
+                                                    )}
+                                                >
+                                                    {dept.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-slate-700">Course Category</label>
                                         <select 
